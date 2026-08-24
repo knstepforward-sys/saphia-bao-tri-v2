@@ -1,0 +1,39 @@
+# ============================================================================
+# Kho lưu bản thân MÃ NGUỒN, không lưu thứ dựng lại được hay thứ riêng tư.
+# Lập 24/8/2026.
+# ============================================================================
+
+# --- Thư viện tải về: dựng lại được bằng `npm install`, nặng hàng trăm MB ---
+node_modules/
+node_modules-incomplete/
+node_modules-link-old
+
+# --- File do build sinh ra: dựng lại được bằng `npx vite build` ---
+_dev/dist/
+dist/
+
+# --- File Excel mẫu do bộ kiểm thử sinh ra mỗi lần chạy ---
+.thu-excel/
+
+# --- ⚠️ TOKEN ĐĂNG NHẬP GOOGLE — TUYỆT ĐỐI KHÔNG ĐƯA VÀO KHO ---
+# Bình thường nằm ở thư mục home chứ không nằm đây, nhưng chặn sẵn phòng
+# trường hợp có ai chạy `clasp login` với cờ lưu vào thư mục dự án.
+.clasprc.json
+**/.clasprc.json
+
+# --- Thư mục tạm khi làm việc ---
+tmp/
+output/
+
+# --- Rác của hệ điều hành / trình soạn thảo ---
+Thumbs.db
+desktop.ini
+.DS_Store
+*.swp
+*~
+
+# --- Kho git RIÊNG (wrapper GitHub Pages, có remote riêng) — không lồng vào đây ---
+SAPHIA-project/baocao-saphia/
+
+# --- Cau hinh RIENG cua tung may (quy uoc .local = khong dua vao kho) ---
+**/.claude/settings.local.json

@@ -1,0 +1,188 @@
+<!-- ==========================================================================
+     TRANG IN MÃ QR — tối ưu cho việc in ra giấy đề-can rồi cắt dán lên máy.
+     Mọi thứ chỉ hiện trên màn hình (.man-hinh) đều bị ẩn khi in.
+     ========================================================================== -->
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 16px; background: #f1f3f4; color: #202124;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+
+  .man-hinh {
+    max-width: 900px; margin: 0 auto 20px; background: #fff; border-radius: 12px;
+    padding: 18px 20px; border: 1px solid #dadce0;
+  }
+  .man-hinh h1 { margin: 0 0 6px; font-size: 20px; }
+  .man-hinh p { margin: 6px 0; font-size: 14px; line-height: 1.5; color: #5f6368; }
+  .canh-bao {
+    background: #fef7e0; border-left: 4px solid #e37400; color: #7a4f01;
+    padding: 10px 12px; border-radius: 6px; font-size: 13.5px; margin-top: 10px;
+  }
+  .nut-in {
+    display: inline-block; margin-top: 12px; border: none; cursor: pointer;
+    background: #1a73e8; color: #fff; padding: 11px 20px;
+    border-radius: 8px; font-size: 15px; font-weight: 700;
+  }
+  .chon-co { margin-top: 12px; font-size: 14px; }
+  .chon-co select { font: inherit; padding: 6px 8px; border-radius: 6px; border: 1px solid #dadce0; }
+
+  /* --- Lưới nhãn -------------------------------------------------------- */
+  .luoi {
+    max-width: 900px; margin: 0 auto;
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+  }
+  .nhan {
+    background: #fff; border: 1px dashed #9aa0a6; border-radius: 6px;
+    padding: 10px 8px; text-align: center; break-inside: avoid;
+  }
+  .nhan img { width: 100%; max-width: 190px; height: auto; display: block; margin: 0 auto 6px; }
+  .nhan .ma { font-size: 19px; font-weight: 800; letter-spacing: .5px; line-height: 1.15; }
+  .nhan .ten { font-size: 12.5px; margin-top: 3px; line-height: 1.3; }
+  .nhan .phu { font-size: 11px; color: #5f6368; margin-top: 2px; }
+  .nhan .loi { font-size: 12px; color: #d93025; font-weight: 600; }
+
+  /* --- Khi in ----------------------------------------------------------- */
+  @page { margin: 8mm; }
+  @media print {
+    body { background: #fff; padding: 0; }
+    .man-hinh { display: none; }
+    .luoi { max-width: none; gap: 4px; }
+    .nhan { border: 1px dashed #999; }
+  }
+</style>
+
+<body>
+
+<!-- Dữ liệu đi qua THUỘC TÍNH HTML, không nhét thẳng vào chuỗi JavaScript.
+     Cú pháp in ra của template mã hoá dấu nháy thành thực thể HTML; trình duyệt
+     giải mã lại khi đọc thuộc tính, nhưng KHÔNG giải mã bên trong khối script.
+     Nhét thẳng vào chuỗi JS là JSON.parse chết ngay. -->
+<div id="goc" hidden
+     data-loai="<?= loai ?>"
+     data-thieu="<?= soThieu ?>"
+     data-json="<?= duLieu ?>"></div>
+
+<div class="man-hinh">
+  <h1 id="tieuDe"></h1>
+  <p id="moTa"></p>
+  <p id="canhBaoThieu" style="color:#d93025;font-weight:600"></p>
+
+  <div class="chon-co" id="khuLoc">
+    <span id="nhanLoc">Bộ phận:</span>
+    <select id="locBoPhan"></select>
+    &nbsp;&nbsp;Số nhãn mỗi hàng:
+    <select id="soCot">
+      <option value="2">2 — nhãn lớn</option>
+      <option value="3" selected>3 — vừa</option>
+      <option value="4">4 — nhỏ, tiết kiệm giấy</option>
+    </select>
+    <div class="nho" style="margin-top:6px" id="demHien"></div>
+  </div>
+
+  <div id="khuCanhBao"></div>
+
+  <button class="nut-in" onclick="window.print()">🖨️ In ngay</button>
+  <p style="margin-top:10px;font-size:13px">
+    In ra giấy đề-can, cắt theo đường kẻ đứt, dán chỗ dễ thấy và ít dính dầu trên máy.
+    Nên bọc băng keo trong lên trên để QR không bị mờ vì bụi và dầu.
+  </p>
+</div>
+
+<div class="luoi" id="luoi"></div>
+
+<script>
+  var GOC = document.getElementById('goc');
+  var LOAI = GOC.dataset.loai;
+  var SO_THIEU = Number(GOC.dataset.thieu) || 0;
+  var DS = JSON.parse(GOC.dataset.json);
+
+  var laTho = LOAI === 'tho';
+
+  document.getElementById('tieuDe').textContent =
+    laTho ? 'Mã QR cá nhân của thợ — ' + DS.length + ' người'
+          : 'Mã QR dán lên máy — ' + DS.length + ' máy';
+
+  document.getElementById('moTa').textContent = laTho
+    ? 'Mỗi thợ quét mã của mình một lần để mở trang công việc, rồi ghim vào màn hình chính hoặc lưu link lại.'
+    : 'Công nhân quét mã dán trên máy để báo sự cố. Mỗi máy một mã riêng, không dùng lẫn được.';
+
+  if (SO_THIEU) {
+    document.getElementById('canhBaoThieu').textContent =
+      '⚠️ Có ' + SO_THIEU + ' dòng chưa có link nên không tạo được mã. ' +
+      'Chạy menu "4. Sinh lại link QR / link cá nhân" rồi mở lại trang này.';
+  }
+
+  if (laTho) {
+    document.getElementById('khuCanhBao').innerHTML =
+      '<div class="canh-bao"><b>Mã QR của thợ chứa mật khẩu đăng nhập của người đó.</b> ' +
+      'Chỉ in và đưa tận tay từng người. Không dán lên tường, không chụp gửi nhóm chung. ' +
+      'Ai quét được mã của người khác sẽ nhận việc và đóng phiếu dưới tên người đó.</div>';
+  }
+
+  function thoat(s) {
+    return String(s === null || s === undefined ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  // --- Lọc theo bộ phận ---------------------------------------------------
+  // In cả 98 máy một lượt thì phải ngồi tách nhãn theo xưởng bằng tay. Lọc sẵn
+  // rồi in từng bộ phận, cầm đi dán là xong.
+  var oLoc = document.getElementById('locBoPhan');
+
+  if (laTho) {
+    // Thợ không chia theo bộ phận — bỏ hẳn ô lọc cho đỡ rối.
+    document.getElementById('nhanLoc').style.display = 'none';
+    oLoc.style.display = 'none';
+  } else {
+    var dsBoPhan = [];
+    DS.forEach(function (x) {
+      var bp = (x.phu || '(chưa ghi bộ phận)').trim();
+      if (dsBoPhan.indexOf(bp) === -1) dsBoPhan.push(bp);
+    });
+    dsBoPhan.sort();
+
+    oLoc.innerHTML = '<option value="">Tất cả (' + DS.length + ' máy)</option>' +
+      dsBoPhan.map(function (bp) {
+        var n = DS.filter(function (x) {
+          return (x.phu || '(chưa ghi bộ phận)').trim() === bp;
+        }).length;
+        return '<option value="' + thoat(bp) + '">' + thoat(bp) + ' (' + n + ' máy)</option>';
+      }).join('');
+  }
+
+  function dsHienTai() {
+    var bp = laTho ? '' : oLoc.value;
+    if (!bp) return DS;
+    return DS.filter(function (x) {
+      return (x.phu || '(chưa ghi bộ phận)').trim() === bp;
+    });
+  }
+
+  function ve() {
+    var ds = dsHienTai();
+
+    document.getElementById('demHien').textContent =
+      'Đang hiện ' + ds.length + ' nhãn — bấm In sẽ in đúng ngần này.';
+
+    document.getElementById('luoi').innerHTML = ds.map(function (x) {
+      var anh = x.anh
+        ? '<img src="' + thoat(x.anh) + '" alt="QR ' + thoat(x.ma) + '" loading="lazy">'
+        : '<div class="loi">Chưa có link</div>';
+      return '<div class="nhan">' + anh +
+        '<div class="ma">' + thoat(x.ma) + '</div>' +
+        '<div class="ten">' + thoat(x.ten) + '</div>' +
+        '<div class="phu">' + thoat(x.phu) + '</div></div>';
+    }).join('');
+  }
+
+  oLoc.addEventListener('change', ve);
+
+  document.getElementById('soCot').addEventListener('change', function () {
+    document.getElementById('luoi').style.gridTemplateColumns =
+      'repeat(' + this.value + ', 1fr)';
+  });
+
+  ve();
+</script>
+</body>

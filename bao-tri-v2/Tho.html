@@ -1,0 +1,964 @@
+<!-- ==========================================================================
+     TRANG THỢ — mở link cá nhân → nhận việc → hoàn thành.
+     Không polling, không push: có nút "Làm mới" thủ công đúng theo thiết kế.
+     ========================================================================== -->
+<?!= include('Style') ?>
+
+<style>
+.phieu {
+  border: 1px solid var(--vien);
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 10px;
+  background: #fff;
+}
+.phieu.lech { border-color: #f9c74f; background: #fffdf5; }
+.phieu-dau { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.phieu-ma { font-weight: 700; font-size: 15px; }
+.phieu-may { font-size: 15px; margin-top: 4px; font-weight: 600; }
+.phieu-mota { font-size: 14px; color: var(--chu-nhat); margin-top: 4px; }
+.phieu-nut { display: flex; gap: 8px; margin-top: 10px; }
+.phieu-nut .nut { padding: 11px; font-size: 15px; border-radius: 10px; }
+.the-nho {
+  font-size: 12px; font-weight: 700; border-radius: 999px;
+  padding: 2px 9px; background: #f1f3f4; color: var(--chu-nhat);
+}
+.the-nho.dien { background: #fef7e0; color: #7a4f01; }
+.the-nho.co   { background: #e8f0fe; color: var(--xanh-dam); }
+.the-nho.lau  { background: #fce8e6; color: #a50e0b; }
+.pt-dong { display: flex; gap: 6px; margin-bottom: 6px; }
+.pt-dong input {
+  border: 1.5px solid var(--vien); border-radius: 8px;
+  padding: 9px 10px; font: inherit; min-width: 0;
+}
+.pt-ten { flex: 1; }
+.pt-sl { width: 62px; }
+.pt-dvt { width: 74px; }
+.pt-xoa {
+  border: none; background: #fce8e6; color: var(--do);
+  border-radius: 8px; width: 38px; font-size: 18px; cursor: pointer;
+}
+.trong { color: var(--chu-nhat); font-size: 14.5px; padding: 6px 0; }
+
+/* Một dòng trong danh sách bảo trì đã ghi trong ca */
+.bt-dong {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 9px 0; border-bottom: 1px solid var(--vien);
+}
+.bt-dong:last-child { border-bottom: none; }
+.bt-tt { flex: 1; min-width: 0; }
+.bt-nd { font-size: 14.5px; font-weight: 600; }
+.bt-phu { font-size: 12.5px; color: var(--chu-nhat); margin-top: 2px; }
+.bt-xoa {
+  flex-shrink: 0; border: none; background: #fce8e6; color: var(--do);
+  border-radius: 8px; padding: 7px 12px; font-size: 13px; font-weight: 700;
+  cursor: pointer;
+}
+.dau-muc {
+  font-size: 13px; font-weight: 700; color: var(--chu-nhat);
+  text-transform: uppercase; letter-spacing: .4px; margin: 16px 0 8px;
+}
+</style>
+
+<body>
+
+<div id="goc" data-tho="<?= maTho ?>" data-token="<?= token ?>" hidden></div>
+
+<div class="phu-kin" id="manCho">
+  <div class="quay"></div>
+  <div>Đang tải công việc…</div>
+</div>
+
+<div class="phu-kin an" id="manLoi">
+  <div style="font-size:42px">🔒</div>
+  <div id="loiND" class="giua" style="padding:0 24px"></div>
+</div>
+
+<!-- ======================= MÀN HÌNH CHÍNH ================================ -->
+<div class="boc an" id="manChinh">
+
+  <div class="the">
+    <div class="may-ten" id="tenTho"></div>
+    <div class="may-phu">
+      <span class="nhan" id="chuyenMon"></span>
+      <span class="nhan xam" id="caHienTai"></span>
+      <span class="nhan xam" id="nhanBaoTri"></span>
+    </div>
+  </div>
+
+  <div id="khuCuaToi"></div>
+  <div id="khuChoNhan"></div>
+  <div id="khuLichSu"></div>
+
+  <div class="thanh-duoi">
+    <div class="boc-nut" style="display:flex;gap:6px">
+      <button class="nut phu" id="nutTaoViec" type="button" style="flex:1;font-size:15px">+ Việc chung</button>
+      <button class="nut phu" id="nutBaoTri" type="button" style="flex:1;font-size:15px">+ Bảo trì</button>
+      <button class="nut phu" id="nutLamMoi" type="button" style="flex:0 0 54px;padding:15px 0">🔄</button>
+    </div>
+  </div>
+</div>
+
+<!-- ======================= MÀN HÌNH GHI BẢO TRÌ ========================== -->
+<div class="boc an" id="manBaoTri">
+
+  <div class="the">
+    <div class="the-tieu-de">Bảo trì hằng ngày</div>
+    <div class="phieu-mota">Việc làm rải rác trong ca, không gây dừng máy. Không tính
+      giờ, chỉ đếm số việc. Ghi xong là đóng luôn.</div>
+    <div class="bao xanh" id="btDem" style="margin:10px 0 0"></div>
+  </div>
+
+  <div class="the">
+    <div class="the-tieu-de">Nội dung bảo trì *</div>
+    <textarea id="btNoiDung" maxlength="300" style="min-height:56px"
+      placeholder="Ví dụ: Tra dầu trục chính, siết lại ốc chân máy"></textarea>
+  </div>
+
+  <div class="the">
+    <div class="the-tieu-de">Máy / khu vực</div>
+    <textarea id="btDoiTuong" maxlength="100" style="min-height:44px"
+      placeholder="Ví dụ: 4T-05 hoặc Khu dệt 6 thoi"></textarea>
+  </div>
+
+  <div class="the">
+    <div class="the-tieu-de">Phụ tùng đã dùng (không bắt buộc)</div>
+    <div id="btPtDS"></div>
+    <button class="nut phu" id="btPtThem" type="button"
+      style="padding:10px;font-size:15px">+ Thêm phụ tùng</button>
+  </div>
+
+  <div class="the" id="btTheDS">
+    <div class="the-tieu-de">Đã ghi trong ca này</div>
+    <div id="btDS"></div>
+  </div>
+
+  <div class="thanh-duoi">
+    <div class="boc-nut" style="display:flex;gap:8px">
+      <button class="nut phu" id="btXong" type="button" style="flex:0 0 34%">Quay lại</button>
+      <button class="nut" id="btLuu" type="button" style="flex:1">Ghi và nhập tiếp</button>
+    </div>
+  </div>
+</div>
+
+<!-- ======================= MÀN HÌNH TẠO VIỆC CHUNG ======================= -->
+<div class="boc an" id="manTaoViec">
+
+  <div class="the">
+    <div class="the-tieu-de">Tạo công việc chung</div>
+    <div class="phieu-mota">Việc không gắn với máy nào: lắp camera, sửa điện văn phòng,
+      kéo dây nhà kho… Phiếu sẽ vào thẳng mục "Việc tôi đang làm".</div>
+  </div>
+
+  <div class="the">
+    <div class="the-tieu-de">Tên công việc *</div>
+    <textarea id="tvTen" maxlength="300" style="min-height:56px"
+      placeholder="Ví dụ: Lắp 4 camera phòng họp tầng 2"></textarea>
+  </div>
+
+  <div class="the">
+    <div class="the-tieu-de">Khu vực</div>
+    <textarea id="tvKhuVuc" maxlength="100" style="min-height:44px"
+      placeholder="Ví dụ: Văn phòng tầng 2 / Nhà kho / Khuôn viên"></textarea>
+  </div>
+
+  <div class="the">
+    <div class="the-tieu-de">Nhóm việc</div>
+    <div class="chips" id="tvNhomLoi">
+      <button class="chip" type="button" data-gt="DIEN"><span class="icon">⚡</span>Điện</button>
+      <button class="chip" type="button" data-gt="CO_KHI"><span class="icon">🔩</span>Cơ khí</button>
+      <button class="chip" type="button" data-gt="KHONG_RO"><span class="icon">🧰</span>Khác</button>
+    </div>
+  </div>
+
+  <div class="the">
+    <div class="the-tieu-de">Mô tả thêm</div>
+    <textarea id="tvMoTa" maxlength="300" style="min-height:56px"
+      placeholder="Không bắt buộc"></textarea>
+  </div>
+
+  <div class="thanh-duoi">
+    <div class="boc-nut" style="display:flex;gap:8px">
+      <button class="nut phu" id="tvHuy" type="button" style="flex:0 0 34%">Quay lại</button>
+      <button class="nut" id="tvLuu" type="button" style="flex:1">Tạo và nhận việc</button>
+    </div>
+  </div>
+</div>
+
+<!-- ======================= MÀN HÌNH CHI TIẾT PHIẾU ======================= -->
+<div class="boc an" id="manChiTiet">
+  <div id="ctND"></div>
+  <div class="thanh-duoi">
+    <div class="boc-nut" style="display:flex;gap:8px">
+      <button class="nut phu" id="ctDong" type="button" style="flex:0 0 34%">Quay lại</button>
+      <button class="nut" id="ctSua" type="button" style="flex:1">✏️ Sửa nội dung</button>
+    </div>
+  </div>
+</div>
+
+<!-- ======================= MÀN HÌNH CẬP NHẬT HIỆN TRẠNG ================== -->
+<div class="boc an" id="manCapNhat">
+
+  <div class="the">
+    <div class="the-tieu-de">Cập nhật hiện trạng</div>
+    <div class="phieu-ma" id="cnMa"></div>
+    <div class="phieu-may" id="cnMay"></div>
+    <div class="phieu-mota">Sửa lại nếu tới nơi thấy khác với lúc công nhân báo.</div>
+  </div>
+
+  <div class="the">
+    <div class="the-tieu-de">Tình trạng máy</div>
+    <div class="chips" id="cnTinhTrang">
+      <button class="chip" type="button" data-gt="DA_DUNG"><span class="icon">🛑</span>Đã dừng</button>
+      <button class="chip" type="button" data-gt="DANG_CHAY"><span class="icon">⚙️</span>Còn chạy</button>
+      <button class="chip" type="button" data-gt="KHONG_RO"><span class="icon">❓</span>Không rõ</button>
+    </div>
+  </div>
+
+  <div class="the">
+    <div class="the-tieu-de">Nhóm lỗi</div>
+    <div class="chips" id="cnNhomLoi">
+      <button class="chip" type="button" data-gt="DIEN"><span class="icon">⚡</span>Điện</button>
+      <button class="chip" type="button" data-gt="CO_KHI"><span class="icon">🔩</span>Cơ khí</button>
+      <button class="chip" type="button" data-gt="KHONG_RO"><span class="icon">❓</span>Không rõ</button>
+    </div>
+  </div>
+
+  <div class="thanh-duoi">
+    <div class="boc-nut" style="display:flex;gap:8px">
+      <button class="nut phu" id="cnHuy" type="button" style="flex:0 0 34%">Quay lại</button>
+      <button class="nut" id="cnLuu" type="button" style="flex:1">Lưu thay đổi</button>
+    </div>
+  </div>
+</div>
+
+<!-- ======================= MÀN HÌNH HOÀN THÀNH =========================== -->
+<div class="boc an" id="manHoanThanh">
+
+  <div class="the">
+    <div class="the-tieu-de">Hoàn thành phiếu</div>
+    <div class="phieu-ma" id="htMa"></div>
+    <div class="phieu-may" id="htMay"></div>
+    <div class="phieu-mota" id="htMoTa"></div>
+  </div>
+
+  <div class="the">
+    <div class="the-tieu-de">Nội dung đã xử lý *</div>
+    <textarea id="htNoiDung" maxlength="1000"
+      placeholder="Ví dụ: thay vòng bi trục chính, căn chỉnh lại dây curoa…"></textarea>
+    <div class="dem-ky-tu"><span id="htDem">0</span>/1000</div>
+  </div>
+
+  <div class="the">
+    <div class="the-tieu-de">Phụ tùng đã dùng (không bắt buộc)</div>
+    <div id="ptDS"></div>
+    <button class="nut phu" id="ptThem" type="button"
+      style="padding:10px;font-size:15px">+ Thêm phụ tùng</button>
+  </div>
+
+  <div class="the">
+    <div class="the-tieu-de">Ghi chú</div>
+    <textarea id="htGhiChu" maxlength="1000" style="min-height:60px"
+      placeholder="Cần theo dõi thêm, đề nghị đặt vật tư…"></textarea>
+  </div>
+
+  <div class="thanh-duoi">
+    <div class="boc-nut" style="display:flex;gap:8px">
+      <button class="nut phu" id="htHuy" type="button" style="flex:0 0 34%">Quay lại</button>
+      <button class="nut" id="htGui" type="button" style="flex:1">Xác nhận hoàn thành</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===========================================================================
+var G = document.getElementById('goc');
+var MA_THO = (G.dataset.tho || '').trim();
+var TOKEN = (G.dataset.token || '').trim();
+var DATA = null;
+var phieuDangLam = null;   // phiếu đang mở màn hình hoàn thành
+var rq = {};               // maSuCo|hành động → requestId, giữ nguyên khi bấm lại
+
+function $(id) { return document.getElementById(id); }
+function hien(id) { $(id).classList.remove('an'); }
+function an(id) { $(id).classList.add('an'); }
+
+function layRq(khoa) {
+  if (!rq[khoa]) rq[khoa] = 'RQ-' + Date.now() + '-' + Math.random().toString(36).slice(2, 10);
+  return rq[khoa];
+}
+function xoaRq(khoa) { delete rq[khoa]; }
+
+function thoat(s) {
+  return String(s === null || s === undefined ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+var TEN_NHOM_LOI = { DIEN: '⚡ Điện', CO_KHI: '🔩 Cơ khí', KHONG_RO: '❓ Không rõ' };
+var TEN_TT_MAY = { DA_DUNG: '🛑 Máy đã dừng', DANG_CHAY: '⚙️ Máy còn chạy', KHONG_RO: '❓ Không rõ' };
+var TEN_CA = { N: 'Ca ngày', D: 'Ca đêm' };
+
+// ===========================================================================
+// Nạp dữ liệu
+// ===========================================================================
+window.addEventListener('load', nap);
+
+function nap() {
+  if (!MA_THO || !TOKEN) return baoLoi('Link thiếu thông tin. Hãy dùng đúng link cá nhân đã được cấp.');
+  google.script.run
+    .withSuccessHandler(nhan)
+    .withFailureHandler(function (e) { baoLoi('Không kết nối được máy chủ: ' + e.message); })
+    .getTechnicianBootstrap(MA_THO, TOKEN);
+}
+
+function nhan(kq) {
+  if (!kq || !kq.ok) return baoLoi((kq && kq.error) || 'Không tải được dữ liệu.');
+  DATA = kq;
+
+  $('tenTho').textContent = kq.tho.tenTho;
+  $('chuyenMon').textContent = { DIEN: 'Thợ điện', CO_KHI: 'Thợ cơ khí', CA_HAI: 'Điện + Cơ khí' }[kq.tho.chuyenMon] || kq.tho.chuyenMon;
+  $('caHienTai').textContent = (TEN_CA[kq.caHienTai.ca] || 'Ngoài giờ trực') + ' · ' + kq.capNhatLuc;
+  DS_BAO_TRI = kq.dsBaoTri || [];
+  veDemBaoTri_();
+
+  veCuaToi(kq.cuaToi);
+  veChoNhan(kq.choNhan);
+  veLichSu(kq.lichSu);
+
+  an('manCho');
+  hien('manChinh');
+}
+
+function baoLoi(td) {
+  $('loiND').textContent = td;
+  an('manCho');
+  hien('manLoi');
+}
+
+// ===========================================================================
+// Vẽ danh sách
+// ===========================================================================
+function veCuaToi(ds) {
+  var h = '<div class="dau-muc">Việc tôi đang làm (' + ds.length + ')</div>';
+  if (!ds.length) {
+    h += '<div class="the trong">Bạn chưa nhận việc nào.</div>';
+  } else {
+    h += ds.map(function (p) {
+      // Việc chung không có trạng thái máy để sửa nên bỏ nút Cập nhật.
+      var nutSua = p.laCongViec ? '' :
+        '<button class="nut phu" style="flex:0 0 42%" onclick="moCapNhat(\'' + p.maSuCo + '\')">Cập nhật</button>';
+      return '<div class="phieu">' + dauPhieu_(p) + thanPhieu_(p) +
+        '<div class="phieu-nut">' + nutSua +
+        '<button class="nut" style="flex:1" onclick="moHoanThanh(\'' + p.maSuCo + '\')">Hoàn thành</button>' +
+        '</div></div>';
+    }).join('');
+  }
+  $('khuCuaToi').innerHTML = h;
+}
+
+var PHIEU_AN = [];
+
+function veChoNhan(ds) {
+  // Phiếu ngoài chuyên môn mà đã có người đúng nghề đang trực thì gập lại,
+  // để danh sách chính chỉ còn việc thật sự của mình.
+  var hien = ds.filter(function (p) { return !p.anBotDi; });
+  PHIEU_AN = ds.filter(function (p) { return p.anBotDi; });
+
+  var h = '<div class="dau-muc">Phiếu đang chờ (' + hien.length + ')</div>';
+  h += hien.length
+    ? hien.map(veMotPhieuCho_).join('')
+    : '<div class="the trong">Không có phiếu nào đang chờ.</div>';
+
+  if (PHIEU_AN.length) {
+    h += '<button class="nut phu" id="nutHienThem" type="button" ' +
+      'style="padding:11px;font-size:14.5px">Xem ' + PHIEU_AN.length +
+      ' phiếu ngoài chuyên môn</button><div id="khuPhieuAn"></div>';
+  }
+
+  $('khuChoNhan').innerHTML = h;
+
+  if (PHIEU_AN.length) {
+    $('nutHienThem').addEventListener('click', function () {
+      $('khuPhieuAn').innerHTML = PHIEU_AN.map(veMotPhieuCho_).join('');
+      this.remove();
+    });
+  }
+}
+
+function veMotPhieuCho_(p) {
+  var canhBao = p.dungChuyenMon ? '' :
+    '<div class="phieu-mota" style="color:#7a4f01">⚠️ Ngoài chuyên môn của bạn — ' +
+    'kiểm tra trước, nếu hư nặng thì báo dừng máy chờ ca sáng.</div>';
+  return '<div class="phieu' + (p.dungChuyenMon ? '' : ' lech') + '">' +
+    dauPhieu_(p) + thanPhieu_(p) + canhBao +
+    '<div class="phieu-nut">' +
+    '<button class="nut phu" style="flex:0 0 42%" onclick="moCapNhat(\'' + p.maSuCo + '\')">Cập nhật</button>' +
+    '<button class="nut" style="flex:1" onclick="nhanViec(\'' + p.maSuCo + '\')">Nhận việc</button>' +
+    '</div></div>';
+}
+
+function veLichSu(ds) {
+  if (!ds.length) { $('khuLichSu').innerHTML = ''; return; }
+  $('khuLichSu').innerHTML = '<div class="dau-muc">Đã xong gần đây — bấm để xem chi tiết</div>' +
+    ds.map(function (p) {
+      return '<div class="phieu" style="cursor:pointer" onclick="moChiTiet(\'' +
+        p.maSuCo + '\')"><div class="phieu-dau">' +
+        '<span class="phieu-ma">' + thoat(p.maSuCo) + '</span>' +
+        '<span class="the-nho">✅ ' + thoat(p.phutXuLy) + ' phút</span>' +
+        '<span style="margin-left:auto;color:#5f6368">›</span></div>' +
+        '<div class="phieu-may">' + thoat(tieuDePhieu_(p)) + '</div>' +
+        '<div class="phieu-mota">Xong lúc ' + thoat(p.thoiGianHoanThanh) + '</div></div>';
+    }).join('');
+}
+
+// --- Chi tiết một phiếu đã xong -------------------------------------------
+var TEN_TT_MAY_CT = { DA_DUNG: 'Đã dừng', DANG_CHAY: 'Còn chạy', KHONG_RO: 'Không rõ' };
+
+/** Một dòng "nhãn — giá trị". Bỏ hẳn dòng nếu không có giá trị. */
+function dongCt_(nhan, gt, phu) {
+  if (gt === '' || gt === null || gt === undefined) return '';
+  return '<div style="display:flex;gap:10px;padding:7px 0;border-bottom:1px solid var(--vien)">' +
+    '<div style="flex:0 0 42%;color:var(--chu-nhat);font-size:13.5px">' + thoat(nhan) + '</div>' +
+    '<div style="flex:1;font-size:14.5px">' + thoat(gt) +
+    (phu ? '<div class="nho" style="margin-top:2px">' + thoat(phu) + '</div>' : '') +
+    '</div></div>';
+}
+
+function theCt_(tieuDe, noiDung) {
+  if (!noiDung) return '';
+  return '<div class="the"><div class="the-tieu-de">' + thoat(tieuDe) + '</div>' +
+    noiDung + '</div>';
+}
+
+var phieuDangXem = null;
+
+function moChiTiet(maSuCo) {
+  var p = (DATA.lichSu || []).filter(function (x) { return x.maSuCo === maSuCo; })[0];
+  if (!p) return;
+  phieuDangXem = p;
+
+  var h = '';
+
+  h += '<div class="the giua">' +
+    '<div style="font-size:34px">✅</div>' +
+    '<div class="ma-phieu" style="font-size:22px">' + thoat(p.maSuCo) + '</div>' +
+    '<div class="nho">' + thoat(tieuDePhieu_(p)) + '</div></div>';
+
+  h += theCt_('Máy',
+    dongCt_('Mã máy', p.maMay) +
+    dongCt_('Tên máy', p.tenMay) +
+    dongCt_('Bộ phận', p.boPhan) +
+    dongCt_('Ca', TEN_CA[p.ca] || p.ca));
+
+  h += theCt_('Công nhân báo',
+    dongCt_('Nhóm lỗi', (TEN_NHOM_LOI[p.nhomLoi] || p.nhomLoi)) +
+    dongCt_('Tình trạng máy', TEN_TT_MAY_CT[p.trangThaiMay] || p.trangThaiMay) +
+    dongCt_('Mô tả', p.moTa));
+
+  // Phần đáng chú ý nhất với thợ: cho thấy rõ khoảng chờ do đang bận việc khác
+  // KHÔNG bị tính vào chỉ số của họ.
+  var choBan = Number(p.phutChoThoBan) || 0;
+  h += theCt_('Thời gian',
+    dongCt_('Báo lúc', p.thoiGianBao) +
+    dongCt_('Bạn nhận lúc', p.thoiGianNhan,
+      p.phutTiepNhan !== '' ? 'Tổng từ lúc báo: ' + p.phutTiepNhan + ' phút' : '') +
+    dongCt_('Hoàn thành lúc', p.thoiGianHoanThanh,
+      p.phutXuLy !== '' ? 'Thời gian sửa: ' + p.phutXuLy + ' phút' : '') +
+    (choBan > 0
+      ? dongCt_('Chờ do bạn đang bận', choBan + ' phút',
+          'Không tính vào chỉ số đáp ứng của bạn')
+      : '') +
+    dongCt_('Đáp ứng tính cho bạn',
+      p.phutDapUngThuc !== '' ? p.phutDapUngThuc + ' phút' : '') +
+    (Number(p.soChongViec) > 0
+      ? dongCt_('Nhận khi đang giữ việc khác', p.soChongViec + ' phiếu') : ''));
+
+  h += theCt_('Bạn đã xử lý',
+    dongCt_('Nội dung', p.noiDungXuLy) +
+    dongCt_('Phụ tùng', p.phuTung) +
+    dongCt_('Ghi chú', p.ghiChu));
+
+  $('ctND').innerHTML = h;
+  an('manChinh');
+  hien('manChiTiet');
+  window.scrollTo(0, 0);
+}
+
+$('ctDong').addEventListener('click', function () {
+  an('manChiTiet');
+  hien('manChinh');
+});
+
+// --- Sửa lại phiếu đã đóng -------------------------------------------------
+// Dùng lại chính màn hình Hoàn thành: cùng ba ô nội dung / phụ tùng / ghi chú.
+// Biến maSuCoDangSua khác rỗng nghĩa là đang ở chế độ sửa.
+var maSuCoDangSua = '';
+
+/** "Vòng bi 6204 x2 cái; Dây curoa x1 sợi" → các dòng nhập phụ tùng. */
+function bungPhuTungVaoO_(idDS, tomTat) {
+  $(idDS).innerHTML = '';
+  String(tomTat || '').split(';').map(function (s) { return s.trim(); })
+    .filter(Boolean).forEach(function (x) {
+      var m = x.match(/^(.+?)\s+x(\S+)(?:\s+(.+))?$/);
+      themDongPhuTung_(idDS);
+      var d = $(idDS).lastChild;
+      d.querySelector('.pt-ten').value = m ? m[1].trim() : x;
+      d.querySelector('.pt-sl').value = m ? m[2].trim() : '';
+      d.querySelector('.pt-dvt').value = m && m[3] ? m[3].trim() : '';
+    });
+}
+
+$('ctSua').addEventListener('click', function () {
+  var p = phieuDangXem;
+  if (!p) return;
+
+  maSuCoDangSua = p.maSuCo;
+  phieuDangLam = p;
+
+  $('htMa').textContent = p.maSuCo;
+  $('htMay').textContent = tieuDePhieu_(p);
+  $('htMoTa').textContent = (!p.laCongViec && p.moTa) ? '“' + p.moTa + '”' : '';
+  $('htNoiDung').value = p.noiDungXuLy || '';
+  $('htGhiChu').value = p.ghiChu || '';
+  $('htDem').textContent = $('htNoiDung').value.length;
+  bungPhuTungVaoO_('ptDS', p.phuTung);
+
+  $('htGui').textContent = 'Lưu thay đổi';
+  an('manChiTiet');
+  hien('manHoanThanh');
+  window.scrollTo(0, 0);
+});
+
+function dauPhieu_(p) {
+  // Việc chung không có ai chờ nên không hiện nhãn "chờ N phút".
+  var lau = (!p.laCongViec && p.phutDaCho !== '' && p.phutDaCho >= 30)
+    ? '<span class="the-nho lau">chờ ' + p.phutDaCho + ' phút</span>' : '';
+  var loai = p.nhomLoi === 'DIEN' ? 'dien' : (p.nhomLoi === 'CO_KHI' ? 'co' : '');
+  var nhan = p.laCongViec ? '<span class="the-nho">🧰 Việc chung</span>' : '';
+  return '<div class="phieu-dau">' +
+    '<span class="phieu-ma">' + thoat(p.maSuCo) + '</span>' + nhan +
+    '<span class="the-nho ' + loai + '">' + thoat(TEN_NHOM_LOI[p.nhomLoi] || p.nhomLoi) + '</span>' +
+    lau + '</div>';
+}
+
+/**
+ * Tiêu đề hiển thị của một phiếu.
+ * Việc chung không gắn máy nào nên tiêu đề chính là nội dung công việc (lưu ở
+ * Mo_Ta). p.tenMay là đường lùi cho phiếu tạo trước khi đổi cách lưu.
+ */
+function tieuDePhieu_(p) {
+  if (p.laCongViec) return p.moTa || p.tenMay || '(không có tiêu đề)';
+  return (p.tenMay || p.maMay || '') + (p.maMay ? ' · ' + p.maMay : '');
+}
+
+function thanPhieu_(p) {
+  var tieuDe = tieuDePhieu_(p);
+  var phu = p.laCongViec
+    ? (p.boPhan ? 'Khu vực: ' + p.boPhan + ' · ' : '') + 'tạo lúc ' + p.thoiGianBao
+    : (TEN_TT_MAY[p.trangThaiMay] || '') + ' · báo lúc ' + p.thoiGianBao;
+  return '<div class="phieu-may">' + thoat(tieuDe) + '</div>' +
+    '<div class="phieu-mota">' + thoat(phu) + '</div>' +
+    // Việc chung đã dùng mô tả làm tiêu đề rồi, không lặp lại lần nữa.
+    (!p.laCongViec && p.moTa ? '<div class="phieu-mota">“' + thoat(p.moTa) + '”</div>' : '');
+}
+
+// ===========================================================================
+// Hành động
+// ===========================================================================
+function nhanViec(maSuCo) {
+  // Cảnh báo nếu nhận việc mới khi chưa đóng việc cũ — vẫn cho nhận, nhưng thợ
+  // biết mình đang ôm nhiều việc, và hệ thống ghi lại So_Chong_Viec cho báo cáo.
+  var dangGiu = (DATA.cuaToi || []).length;
+  if (dangGiu > 0) {
+    var ds = DATA.cuaToi.map(function (p) { return p.maSuCo; }).join(', ');
+    if (!confirm('Bạn đang giữ ' + dangGiu + ' phiếu chưa hoàn thành (' + ds + ').\n\n' +
+                 'Vẫn nhận thêm phiếu ' + maSuCo + '?\n' +
+                 'Thời gian chờ do bạn đang bận sẽ không bị tính vào chỉ số đáp ứng của bạn.')) {
+      return;
+    }
+  }
+
+  var khoa = 'nhan|' + maSuCo;
+  khoaMan(true);
+  google.script.run
+    .withSuccessHandler(function (kq) {
+      khoaMan(false);
+      if (!kq || !kq.ok) { alert((kq && kq.error) || 'Nhận việc thất bại.'); nap(); return; }
+      xoaRq(khoa);
+      nap();
+    })
+    .withFailureHandler(function (e) { khoaMan(false); alert('Lỗi: ' + e.message + '\nBấm lại để thử tiếp.'); })
+    .acceptIncident(maSuCo, MA_THO, TOKEN, layRq(khoa));
+}
+
+// --- Cập nhật hiện trạng (trạng thái máy + nhóm lỗi) -----------------------
+var phieuDangSua = null;
+var chonCN = { trangThaiMay: '', nhomLoi: '' };
+
+function timPhieu_(maSuCo) {
+  var tatCa = (DATA.choNhan || []).concat(DATA.cuaToi || [], PHIEU_AN || []);
+  return tatCa.filter(function (p) { return p.maSuCo === maSuCo; })[0] || null;
+}
+
+function chonChip_(idNhom, giaTri) {
+  Array.prototype.forEach.call($(idNhom).querySelectorAll('.chip'), function (c) {
+    c.setAttribute('aria-pressed', String(c.dataset.gt === giaTri));
+  });
+}
+
+function moCapNhat(maSuCo) {
+  phieuDangSua = timPhieu_(maSuCo);
+  if (!phieuDangSua) return;
+
+  $('cnMa').textContent = phieuDangSua.maSuCo;
+  $('cnMay').textContent = tieuDePhieu_(phieuDangSua);
+
+  chonCN = {
+    trangThaiMay: phieuDangSua.trangThaiMay || '',
+    nhomLoi: phieuDangSua.nhomLoi || ''
+  };
+  chonChip_('cnTinhTrang', chonCN.trangThaiMay);
+  chonChip_('cnNhomLoi', chonCN.nhomLoi);
+
+  an('manChinh');
+  hien('manCapNhat');
+  window.scrollTo(0, 0);
+}
+
+['cnTinhTrang', 'cnNhomLoi'].forEach(function (idNhom) {
+  $(idNhom).addEventListener('click', function (ev) {
+    var nut = ev.target.closest('.chip');
+    if (!nut) return;
+    chonChip_(idNhom, nut.dataset.gt);
+    if (idNhom === 'cnTinhTrang') chonCN.trangThaiMay = nut.dataset.gt;
+    else chonCN.nhomLoi = nut.dataset.gt;
+  });
+});
+
+$('cnHuy').addEventListener('click', function () {
+  an('manCapNhat');
+  hien('manChinh');
+});
+
+$('cnLuu').addEventListener('click', function () {
+  if (chonCN.trangThaiMay === phieuDangSua.trangThaiMay &&
+      chonCN.nhomLoi === phieuDangSua.nhomLoi) {
+    an('manCapNhat');
+    hien('manChinh');
+    return;
+  }
+
+  var khoa = 'capnhat|' + phieuDangSua.maSuCo + '|' + chonCN.trangThaiMay + '|' + chonCN.nhomLoi;
+  $('cnLuu').disabled = true;
+  $('cnLuu').textContent = 'Đang lưu…';
+
+  google.script.run
+    .withSuccessHandler(function (kq) {
+      $('cnLuu').disabled = false;
+      $('cnLuu').textContent = 'Lưu thay đổi';
+      if (!kq || !kq.ok) return alert((kq && kq.error) || 'Cập nhật thất bại.');
+      xoaRq(khoa);
+      an('manCapNhat');
+      hien('manCho');
+      nap();
+    })
+    .withFailureHandler(function (e) {
+      $('cnLuu').disabled = false;
+      $('cnLuu').textContent = 'Lưu thay đổi';
+      alert('Lỗi: ' + e.message + '\nBấm lại để thử tiếp.');
+    })
+    .updateIncidentState({
+      incidentId: phieuDangSua.maSuCo,
+      techId: MA_THO,
+      token: TOKEN,
+      requestId: layRq(khoa),
+      trangThaiMayMoi: chonCN.trangThaiMay,
+      nhomLoiMoi: chonCN.nhomLoi
+    });
+});
+
+function khoaMan(dang) {
+  document.body.style.opacity = dang ? '.55' : '';
+  document.body.style.pointerEvents = dang ? 'none' : '';
+}
+
+$('nutLamMoi').addEventListener('click', function () {
+  an('manChinh');
+  hien('manCho');
+  nap();
+});
+
+// --- Ghi bảo trì hằng ngày -------------------------------------------------
+// Màn hình này được thiết kế để nhập LẶP LẠI nhiều lần trong ca: ghi xong không
+// thoát ra, chỉ xoá ô nội dung và tăng bộ đếm, giữ nguyên ô máy/khu vực vì thợ
+// thường bảo trì vài hạng mục trên cùng một máy.
+var DS_BAO_TRI = [];
+
+function veDemBaoTri_() {
+  var n = DS_BAO_TRI.length;
+  $('btDem').textContent = 'Đã ghi ' + n + ' việc bảo trì trong ca này.';
+  $('nhanBaoTri').textContent = '🧰 Bảo trì ca này: ' + n;
+
+  if (!n) {
+    $('btDS').innerHTML = '<div class="trong">Chưa ghi việc nào trong ca này.</div>';
+    return;
+  }
+  $('btDS').innerHTML = DS_BAO_TRI.map(function (m) {
+    var phu = [m.gio, m.doiTuong, m.phuTung].filter(Boolean).join(' · ');
+    return '<div class="bt-dong"><div class="bt-tt">' +
+      '<div class="bt-nd">' + thoat(m.noiDung) + '</div>' +
+      '<div class="bt-phu">' + thoat(phu) + '</div></div>' +
+      '<button class="bt-xoa" type="button" onclick="xoaBaoTri(\'' + m.maSuCo + '\')">Xoá</button>' +
+      '</div>';
+  }).join('');
+}
+
+/** Xoá một việc bảo trì ghi nhầm. Server chỉ cho xoá việc của chính mình, trong ca này. */
+function xoaBaoTri(maSuCo) {
+  if (!confirm('Xoá việc bảo trì này khỏi ca?')) return;
+  khoaMan(true);
+  google.script.run
+    .withSuccessHandler(function (kq) {
+      khoaMan(false);
+      if (!kq || !kq.ok) return alert((kq && kq.error) || 'Xoá thất bại.');
+      DS_BAO_TRI = DS_BAO_TRI.filter(function (m) { return m.maSuCo !== kq.maSuCo; });
+      veDemBaoTri_();
+    })
+    .withFailureHandler(function (e) { khoaMan(false); alert('Lỗi: ' + e.message); })
+    .deleteDailyMaintenance(maSuCo, MA_THO, TOKEN, 'RQ-XOA-' + Date.now());
+}
+
+$('nutBaoTri').addEventListener('click', function () {
+  $('btNoiDung').value = '';
+  $('btDoiTuong').value = '';
+  $('btPtDS').innerHTML = '';
+  veDemBaoTri_();
+  an('manChinh');
+  hien('manBaoTri');
+  window.scrollTo(0, 0);
+});
+
+$('btXong').addEventListener('click', function () {
+  an('manBaoTri');
+  hien('manCho');
+  nap();
+});
+
+$('btLuu').addEventListener('click', function () {
+  var noiDung = $('btNoiDung').value.trim();
+  if (!noiDung) return alert('Vui lòng nhập nội dung bảo trì.');
+
+  var doiTuong = $('btDoiTuong').value.trim();
+  var phuTungBt = docPhuTung_('btPtDS');
+  var khoa = 'baotri|' + noiDung + '|' + doiTuong;
+  $('btLuu').disabled = true;
+  $('btLuu').textContent = 'Đang ghi…';
+
+  google.script.run
+    .withSuccessHandler(function (kq) {
+      $('btLuu').disabled = false;
+      $('btLuu').textContent = 'Ghi và nhập tiếp';
+      if (!kq || !kq.ok) return alert((kq && kq.error) || 'Ghi thất bại.');
+      xoaRq(khoa);
+      if (kq.muc) DS_BAO_TRI.unshift(kq.muc);
+      veDemBaoTri_();
+      // Giữ nguyên ô máy/khu vực cho lần ghi kế tiếp; nội dung và phụ tùng thì
+      // xoá vì mỗi hạng mục bảo trì dùng vật tư khác nhau.
+      $('btNoiDung').value = '';
+      $('btPtDS').innerHTML = '';
+      $('btNoiDung').focus();
+    })
+    .withFailureHandler(function (e) {
+      $('btLuu').disabled = false;
+      $('btLuu').textContent = 'Ghi và nhập tiếp';
+      alert('Lỗi: ' + e.message + '\nBấm lại để thử tiếp.');
+    })
+    .createDailyMaintenance({
+      techId: MA_THO,
+      token: TOKEN,
+      requestId: layRq(khoa),
+      noiDung: noiDung,
+      doiTuong: doiTuong,
+      phuTung: phuTungBt
+    });
+});
+
+// --- Tạo công việc chung ---------------------------------------------------
+var chonTV = 'KHONG_RO';
+
+$('nutTaoViec').addEventListener('click', function () {
+  $('tvTen').value = '';
+  $('tvKhuVuc').value = '';
+  $('tvMoTa').value = '';
+  chonTV = 'KHONG_RO';
+  chonChip_('tvNhomLoi', chonTV);
+  an('manChinh');
+  hien('manTaoViec');
+  window.scrollTo(0, 0);
+});
+
+$('tvNhomLoi').addEventListener('click', function (ev) {
+  var nut = ev.target.closest('.chip');
+  if (!nut) return;
+  chonTV = nut.dataset.gt;
+  chonChip_('tvNhomLoi', chonTV);
+});
+
+$('tvHuy').addEventListener('click', function () {
+  an('manTaoViec');
+  hien('manChinh');
+});
+
+$('tvLuu').addEventListener('click', function () {
+  var ten = $('tvTen').value.trim();
+  if (!ten) return alert('Vui lòng nhập tên công việc.');
+
+  // requestId gắn với nội dung → bấm lại sau lỗi mạng không tạo phiếu trùng.
+  var khoa = 'taoviec|' + ten + '|' + $('tvKhuVuc').value.trim();
+  $('tvLuu').disabled = true;
+  $('tvLuu').textContent = 'Đang tạo…';
+
+  google.script.run
+    .withSuccessHandler(function (kq) {
+      $('tvLuu').disabled = false;
+      $('tvLuu').textContent = 'Tạo và nhận việc';
+      if (!kq || !kq.ok) return alert((kq && kq.error) || 'Tạo thất bại.');
+      xoaRq(khoa);
+      an('manTaoViec');
+      hien('manCho');
+      nap();
+    })
+    .withFailureHandler(function (e) {
+      $('tvLuu').disabled = false;
+      $('tvLuu').textContent = 'Tạo và nhận việc';
+      alert('Lỗi: ' + e.message + '\nBấm lại để thử tiếp.');
+    })
+    .createGeneralTask({
+      techId: MA_THO,
+      token: TOKEN,
+      requestId: layRq(khoa),
+      tenCongViec: ten,
+      khuVuc: $('tvKhuVuc').value.trim(),
+      nhomLoi: chonTV,
+      moTa: $('tvMoTa').value.trim()
+    });
+});
+
+// ===========================================================================
+// Màn hình hoàn thành
+// ===========================================================================
+function moHoanThanh(maSuCo) {
+  phieuDangLam = (DATA.cuaToi || []).filter(function (p) { return p.maSuCo === maSuCo; })[0];
+  if (!phieuDangLam) return;
+  maSuCoDangSua = '';                             // đây là đóng phiếu, không phải sửa
+  $('htGui').textContent = 'Xác nhận hoàn thành';
+
+  $('htMa').textContent = phieuDangLam.maSuCo;
+  $('htMay').textContent = tieuDePhieu_(phieuDangLam);
+  $('htMoTa').textContent = phieuDangLam.moTa ? '“' + phieuDangLam.moTa + '”' : '';
+  $('htNoiDung').value = '';
+  $('htGhiChu').value = '';
+  $('htDem').textContent = '0';
+  $('ptDS').innerHTML = '';
+
+  an('manChinh');
+  hien('manHoanThanh');
+  window.scrollTo(0, 0);
+}
+
+$('htNoiDung').addEventListener('input', function () { $('htDem').textContent = this.value.length; });
+
+
+// --- Khối phụ tùng dùng chung cho màn Hoàn thành và màn Bảo trì -------------
+function themDongPhuTung_(idDS) {
+  var ds = $(idDS);
+  if (ds.children.length >= 5) return alert('Tối đa 5 dòng phụ tùng mỗi phiếu.');
+  var d = document.createElement('div');
+  d.className = 'pt-dong';
+  d.innerHTML =
+    '<input class="pt-ten" placeholder="Tên phụ tùng">' +
+    '<input class="pt-sl" type="number" min="0" step="1" placeholder="SL">' +
+    '<input class="pt-dvt" placeholder="ĐVT">' +
+    '<button class="pt-xoa" type="button" title="Xoá">×</button>';
+  d.querySelector('.pt-xoa').addEventListener('click', function () { d.remove(); });
+  ds.appendChild(d);
+}
+
+function docPhuTung_(idDS) {
+  return Array.prototype.map.call($(idDS).children, function (d) {
+    return {
+      ten: d.querySelector('.pt-ten').value.trim(),
+      soLuong: d.querySelector('.pt-sl').value.trim(),
+      dvt: d.querySelector('.pt-dvt').value.trim()
+    };
+  }).filter(function (x) { return x.ten; });
+}
+
+$('ptThem').addEventListener('click', function () { themDongPhuTung_('ptDS'); });
+$('btPtThem').addEventListener('click', function () { themDongPhuTung_('btPtDS'); });
+
+$('htHuy').addEventListener('click', function () {
+  an('manHoanThanh');
+  hien(maSuCoDangSua ? 'manChiTiet' : 'manChinh');
+});
+
+$('htGui').addEventListener('click', function () {
+  var noiDung = $('htNoiDung').value.trim();
+  if (!noiDung) return alert('Vui lòng nhập nội dung đã xử lý.');
+
+  var phuTung = docPhuTung_('ptDS');
+  var laSua = !!maSuCoDangSua;
+  var nhanNut = laSua ? 'Lưu thay đổi' : 'Xác nhận hoàn thành';
+
+  // Đóng phiếu là thao tác KHÔNG hoàn tác được, mà nút lại nằm ở thanh cố định
+  // đè lên nội dung nên rất dễ bấm nhầm khi đang gõ phụ tùng. Cho xem lại đúng
+  // những gì sắp lưu. Sửa phiếu thì nhẹ hơn nên không hỏi.
+  if (!laSua) {
+    var tomTat = 'Đóng phiếu ' + phieuDangLam.maSuCo + '?\n\n' +
+      'Nội dung: ' + (noiDung.length > 70 ? noiDung.slice(0, 70) + '…' : noiDung) + '\n' +
+      'Phụ tùng: ' + (phuTung.length ? phuTung.length + ' dòng' : 'không khai') + '\n' +
+      'Ghi chú: ' + ($('htGhiChu').value.trim() ? 'có' : 'để trống') + '\n\n' +
+      'Đóng rồi phải vào sửa lại, nên khai đủ phụ tùng trước khi bấm.';
+    if (!confirm(tomTat)) return;
+  }
+
+  var khoa = (laSua ? 'sua|' : 'xong|') + phieuDangLam.maSuCo;
+  $('htGui').disabled = true;
+  $('htGui').textContent = 'Đang lưu…';
+
+  function xong_(kq) {
+    $('htGui').disabled = false;
+    $('htGui').textContent = nhanNut;
+    if (!kq || !kq.ok) return alert((kq && kq.error) || 'Lưu thất bại.');
+    xoaRq(khoa);
+    alert(laSua
+      ? 'Đã cập nhật phiếu ' + kq.phieu.maSuCo + '.'
+      : 'Đã đóng phiếu ' + kq.phieu.maSuCo + ' — thời gian xử lý ' + kq.phieu.phutXuLy + ' phút.');
+    maSuCoDangSua = '';
+    an('manHoanThanh');
+    hien('manCho');
+    nap();
+  }
+
+  function loi_(e) {
+    $('htGui').disabled = false;
+    $('htGui').textContent = nhanNut;
+    alert('Lỗi: ' + e.message + '\nBấm lại để thử tiếp.');
+  }
+
+  var duLieu = {
+    incidentId: phieuDangLam.maSuCo,
+    techId: MA_THO,
+    token: TOKEN,
+    requestId: layRq(khoa),
+    noiDungXuLy: noiDung,
+    phuTung: phuTung,
+    ghiChu: $('htGhiChu').value.trim()
+  };
+
+  var goi = google.script.run.withSuccessHandler(xong_).withFailureHandler(loi_);
+  if (laSua) goi.updateCompletedIncident(duLieu);
+  else goi.completeIncident(duLieu);
+});
+</script>
+</body>

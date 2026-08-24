@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html>
+<head>
+<base target="_top">
+<meta charset="utf-8">
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    font-size: 13.5px; color: #202124; margin: 0; padding: 16px 18px 90px;
+    line-height: 1.5;
+  }
+  h3 { margin: 0 0 4px; font-size: 15px; }
+  .phu { color: #5f6368; font-size: 12px; margin: 0 0 14px; }
+  .khoi { margin-bottom: 16px; }
+  .nhan { font-weight: 600; display: block; margin-bottom: 6px; }
+  .hang { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
+  .o { flex: 1 1 130px; min-width: 130px; }
+  input[type=date] {
+    width: 100%; padding: 7px 8px; border: 1px solid #dadce0;
+    border-radius: 6px; font-size: 13.5px; font-family: inherit;
+  }
+  .nhanh { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+  .nhanh button {
+    background: #f1f3f4; border: 1px solid #dadce0; border-radius: 14px;
+    padding: 4px 11px; font-size: 12px; cursor: pointer; font-family: inherit;
+  }
+  .nhanh button:hover { background: #e8eaed; }
+  .ds {
+    border: 1px solid #dadce0; border-radius: 6px; padding: 8px 10px;
+    max-height: 132px; overflow-y: auto; background: #fff;
+  }
+  .ds label {
+    display: block; padding: 2px 0; cursor: pointer;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .ds input { margin-right: 7px; vertical-align: -1px; }
+  .cot2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .meo { color: #5f6368; font-size: 11.5px; margin-top: 5px; }
+  .canh {
+    background: #fef7e0; border-left: 3px solid #f9ab00; padding: 8px 10px;
+    border-radius: 0 6px 6px 0; font-size: 12px; margin-top: 8px;
+  }
+  .day {
+    position: fixed; left: 0; right: 0; bottom: 0; background: #fff;
+    border-top: 1px solid #dadce0; padding: 11px 18px;
+    display: flex; gap: 10px; align-items: center;
+  }
+  .chinh {
+    background: #1a73e8; color: #fff; border: 0; border-radius: 7px;
+    padding: 10px 22px; font-weight: 600; font-size: 13.5px; cursor: pointer;
+    font-family: inherit;
+  }
+  .chinh:disabled { background: #9aa0a6; cursor: default; }
+  .loi { color: #c5221f; font-size: 12.5px; }
+  .an { display: none; }
+  #manKq { text-align: center; padding: 26px 10px; }
+  #manKq .lienKet {
+    display: inline-block; background: #1a73e8; color: #fff; text-decoration: none;
+    padding: 10px 20px; border-radius: 8px; font-weight: 600; margin-top: 14px;
+  }
+</style>
+</head>
+<body>
+
+<div id="manNhap">
+  <h3>Xuất báo cáo</h3>
+  <p class="phu">Tạo một Google Sheet mới trong Drive. Dữ liệu gốc không bị đụng tới.</p>
+
+  <div class="khoi">
+    <span class="nhan">Khoảng ngày</span>
+    <div class="hang">
+      <div class="o"><input type="date" id="tuNgay"></div>
+      <div class="o"><input type="date" id="denNgay"></div>
+    </div>
+    <div class="nhanh">
+      <button type="button" id="nThangNay">Tháng này</button>
+      <button type="button" id="nThangTruoc">Tháng trước</button>
+      <button type="button" id="n7Ngay">7 ngày qua</button>
+    </div>
+    <div class="meo">
+      Tính theo ngày ca: sự cố lúc 2h sáng thuộc ca đêm của ngày hôm trước.
+    </div>
+  </div>
+
+  <div class="khoi cot2">
+    <div>
+      <span class="nhan">Bộ phận</span>
+      <div class="ds" id="dsBoPhan"></div>
+      <div class="meo">Không tick ô nào = tất cả bộ phận.</div>
+    </div>
+    <div>
+      <span class="nhan">Thợ</span>
+      <div class="ds" id="dsTho"></div>
+      <div class="meo">Không tick ô nào = tất cả thợ.</div>
+    </div>
+  </div>
+
+  <div class="khoi">
+    <label>
+      <input type="checkbox" id="kemViecChung">
+      Kèm cả việc chung (CV-) và bảo trì hằng ngày (BT-)
+    </label>
+    <div class="meo">
+      Không tick: báo cáo chỉ gồm phiếu gắn với máy — sự cố và dừng máy.
+      Tick vào cùng với nút "Tháng trước" sẽ ra đúng file báo cáo tháng như trước nay.
+    </div>
+    <div class="canh an" id="canhTho">
+      Đang lọc theo thợ nên các phiếu <b>dừng máy (DM-)</b> sẽ không có trong file:
+      phiếu dừng máy không gắn thợ nào. Muốn xem máy dừng bao nhiêu phút thì bỏ
+      tick thợ.
+    </div>
+  </div>
+</div>
+
+<div id="manKq" class="an">
+  <div id="kqTom"></div>
+  <a id="kqLink" class="lienKet" href="#" target="_blank" rel="noopener">Mở báo cáo</a>
+  <p class="meo">Muốn file Excel: mở lên rồi chọn Tệp → Tải xuống → Microsoft Excel (.xlsx).</p>
+</div>
+
+<div class="day" id="thanhDay">
+  <button type="button" class="chinh" id="nutXuat" disabled>Đang tải…</button>
+  <span class="loi" id="oLoi"></span>
+</div>
+
+<script>
+var DL = null;
+
+function $(id) { return document.getElementById(id); }
+function hien(id) { $(id).classList.remove('an'); }
+function an(id) { $(id).classList.add('an'); }
+
+function veDanhSach(oId, ds, tenNhom) {
+  var h = ds.map(function (x, i) {
+    var id = tenNhom + '_' + i;
+    return '<label><input type="checkbox" id="' + id + '" value="' +
+      thoat(x) + '">' + thoat(x) + '</label>';
+  }).join('');
+  $(oId).innerHTML = h || '<span class="meo">Chưa có dữ liệu</span>';
+}
+
+function thoat(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function daChon(oId) {
+  var out = [];
+  var os = $(oId).querySelectorAll('input[type=checkbox]');
+  for (var i = 0; i < os.length; i++) if (os[i].checked) out.push(os[i].value);
+  return out;
+}
+
+function datKhoang(tu, den) { $('tuNgay').value = tu; $('denNgay').value = den; }
+
+// Cảnh báo lọc thợ làm mất phiếu dừng máy — hiện ngay lúc tick, không đợi tới
+// khi người dùng mở file ra mới thấy thiếu.
+function capNhatCanhBao() {
+  if (daChon('dsTho').length) hien('canhTho'); else an('canhTho');
+}
+
+google.script.run
+  .withSuccessHandler(function (dl) {
+    DL = dl;
+    veDanhSach('dsBoPhan', dl.boPhan, 'bp');
+    veDanhSach('dsTho', dl.tho, 'th');
+    datKhoang(dl.thangNay.tu, dl.homNay);
+    $('dsTho').addEventListener('change', capNhatCanhBao);
+    $('nutXuat').disabled = false;
+    $('nutXuat').textContent = 'Xuất báo cáo';
+  })
+  .withFailureHandler(function (e) {
+    $('oLoi').textContent = 'Không tải được danh mục: ' + e.message;
+  })
+  .layDuLieuHopXuat();
+
+$('nThangNay').addEventListener('click', function () {
+  if (DL) datKhoang(DL.thangNay.tu, DL.homNay);
+});
+$('nThangTruoc').addEventListener('click', function () {
+  if (DL) datKhoang(DL.thangTruoc.tu, DL.thangTruoc.den);
+});
+$('n7Ngay').addEventListener('click', function () {
+  if (DL) datKhoang(DL.bayNgayTruoc, DL.homNay);
+});
+
+$('nutXuat').addEventListener('click', function () {
+  var tu = $('tuNgay').value;
+  var den = $('denNgay').value;
+  $('oLoi').textContent = '';
+
+  if (!tu || !den) { $('oLoi').textContent = 'Chọn đủ hai mốc ngày.'; return; }
+  if (den < tu) { $('oLoi').textContent = '"Đến ngày" phải sau "Từ ngày".'; return; }
+
+  $('nutXuat').disabled = true;
+  $('nutXuat').textContent = 'Đang xuất…';
+
+  google.script.run
+    .withSuccessHandler(function (kq) {
+      if (!kq || !kq.ok) {
+        $('nutXuat').disabled = false;
+        $('nutXuat').textContent = 'Xuất báo cáo';
+        $('oLoi').textContent = (kq && kq.error) || 'Không xuất được.';
+        return;
+      }
+      $('kqTom').innerHTML =
+        '<p style="margin:0 0 6px">Đã xuất <b>' + thoat(kq.nhanKy) + '</b>:</p>' +
+        '<p style="margin:0">' + kq.soPhieu + ' phiếu' +
+        (kq.soDet ? ' · ' + kq.soDet + ' phiếu sự cố bộ phận Dệt' : '') + '</p>' +
+        '<p class="phu" style="margin:10px 0 0">Tên file: <b>' +
+        thoat(kq.tenFile) + '</b></p>';
+      $('kqLink').href = kq.url;
+      an('manNhap'); an('thanhDay'); hien('manKq');
+    })
+    .withFailureHandler(function (e) {
+      $('nutXuat').disabled = false;
+      $('nutXuat').textContent = 'Xuất báo cáo';
+      $('oLoi').textContent = 'Lỗi: ' + e.message;
+    })
+    .chayXuatBaoCao({
+      tuNgay: tu,
+      denNgay: den,
+      dsBoPhan: daChon('dsBoPhan'),
+      dsTho: daChon('dsTho'),
+      kemViecChung: $('kemViecChung').checked,
+    });
+});
+</script>
+</body>
+</html>

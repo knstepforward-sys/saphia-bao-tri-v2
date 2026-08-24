@@ -1,0 +1,180 @@
+# SAPHIA — App nhập nhanh báo cáo sửa chữa hư hỏng đột xuất (BM01/QTSCBT-05)
+
+Hệ thống nội bộ cho công ty dệt may Việt Nam: kỹ thuật viên quét QR trên máy →
+mở app mobile → nhập báo cáo sự cố/sửa chữa → lưu thẳng vào Google Sheets.
+
+> ## ⚠️ Thư mục này chứa HAI hệ thống riêng biệt
+>
+> | Thư mục | Hệ thống | Tài liệu |
+> |---|---|---|
+> | `apps-script/` | **SAPHIA** — app nhập nhanh báo cáo sửa chữa (mô tả ở file này) | file này |
+> | `bao-tri-v2/` | **Bảo trì Toàn nhà máy v2** — công nhân báo sự cố → gọi thợ trực → thợ nhận việc → hoàn thành | [`bao-tri-v2/CLAUDE.md`](bao-tri-v2/CLAUDE.md) |
+>
+> Hai hệ **khác Spreadsheet, khác Apps Script project, không chia sẻ dữ liệu**. Chạy song
+> song. Liên hệ duy nhất: `importMayTuSaphia()` bên v2 đọc một lần danh mục máy từ SAPHIA.
+>
+> **Trước khi sửa bất cứ thứ gì trong `bao-tri-v2/`, đọc `bao-tri-v2/CLAUDE.md`** — ở đó có
+> kiến trúc, lý do đằng sau các quyết định, và danh sách bẫy đã trả giá (tab editor ghi đè
+> file, scriptlet rỗng trong comment, `insertCheckboxes` xoá dữ liệu, biến che tham số…).
+
+## Bối cảnh & ràng buộc quan trọng (KHÔNG tự đổi các giá trị này)
+
+- **Spreadsheet ID**: `ID_DA_GO_KHOI_KHO_CONG_KHAI`
+- **Apps Script ID** (từ `.clasp.json`): `ID_DA_GO_KHOI_KHO_CONG_KHAI`
+- **Web app exec URL hiện tại**:
+  `https://script.google.com/macros/s/MA_TRIEN_KHAI_DA_GO_KHOI_KHO_CONG_KHAI/exec`
+  (đổi mỗi lần deploy version mới → phải cập nhật lại trong `baocao-saphia/index_fullscreen.html`)
+- **GitHub Pages repo wrapper**: `github.com/khangdang0703-lab/baocao-saphia` (thư mục `baocao-saphia/`)
+- Quy mô dữ liệu: **98 máy** thuộc các bộ phận SOI, DET, TRANG, CMTX, MTX, CO (có thể có thêm ICM, Chung
+  theo dữ liệu thực tế tháng 7/2026); **15 kỹ thuật viên**.
+- Nguyên tắc thiết kế:
+  - Ưu tiên giải pháp **miễn phí** (Google Workspace free tier, GitHub Pages free).
+  - **Tính KPI ở server-side (Apps Script)**, không dùng công thức Sheets, để tránh lỗi locale/#ERROR!.
+  - Người dùng thích **review từng phần trước khi duyệt code** — không tự động sửa file khi chưa được
+    đồng ý rõ ràng.
+- Đã sửa các lỗi biết trước:
+  - **Timezone**: ép cứng `+07:00` khi tạo `Date` trong Apps Script (`timeToDate_`), không phụ thuộc
+    timeZone của project (dù `appsscript.json` đã set `Asia/Ho_Chi_Minh`).
+  - **Viewport height mobile Chrome/Safari**: `index_fullscreen.html` dùng `100dvh` + JS fallback đo
+    `window.innerHeight` để né lỗi thanh địa chỉ trình duyệt che mất phần dưới màn hình.
+- Đang chuẩn bị (chưa làm): thêm logic **"thời gian đáp ứng"** và **"phát hiện chồng lịch kỹ thuật
+  viên"** — tham khảo công thức mẫu từ file Excel `BC_HH_T7_2026.xlsx` (sẽ cung cấp riêng khi bắt đầu
+  task đó).
+
+## Kiến trúc tổng quan
+
+```
+QR code trên máy → mở URL exec (?) → Apps Script doGet() → render index.html (mobile form)
+                                                                     │
+                                                    google.script.run (client ↔ server RPC)
+                                                                     │
+                                                    Mã.js (Code.gs) đọc/ghi Google Sheets
+```
+
+Ngoài ra có một **wrapper GitHub Pages** (`baocao-saphia/index_fullscreen.html`) nhúng web app Apps
+Script trong `<iframe>` toàn màn hình — dùng khi muốn có domain/URL riêng thân thiện hơn URL
+`script.google.com` dài, hoặc để né một số hạn chế hiển thị của Apps Script khi mở trực tiếp.
+
+## Cấu trúc thư mục
+
+```
+SAPHIA-project/
+├── apps-script/                  # Container-bound Apps Script project (đẩy qua clasp)
+│   ├── Mã.js                     # = Code.gs, toàn bộ backend logic
+│   ├── index.html                # Form nhập liệu mobile (HTML+CSS+JS inline)
+│   ├── appsscript.json           # Manifest: timezone, webapp exec-as, access
+│   └── .clasp.json               # scriptId để clasp push/pull
+└── baocao-saphia/                # Repo GitHub riêng (đã git init, có remote)
+    └── index_fullscreen.html     # Wrapper iframe fullscreen trỏ tới URL /exec
+```
+
+## `apps-script/Mã.js` — Backend (Code.gs)
+
+### Hằng số tên sheet
+| Hằng số | Tên sheet | Vai trò |
+|---|---|---|
+| `SHEET_BAOCAO` | `BaoCao` | Bảng chính lưu mỗi báo cáo sự cố (1 dòng/phiếu) |
+| `SHEET_BAOCAO_VATTU` | `BaoCao_VatTu` | Chi tiết vật tư đã dùng cho từng phiếu (1-n dòng/phiếu, join theo `id`) |
+| `SHEET_DM_MAY` | `DM_May` | Danh mục máy: `ma, ten, boPhan` |
+| `SHEET_DM_VITRI` | `DM_ViTriMay` | Danh mục vị trí/công đoạn máy (chỉ 1 cột `ten`) |
+| `SHEET_DM_VATTU` | `DM_VatTu` | Danh mục vật tư: `ma, ten, dvt, nhom, ton` |
+| `SHEET_DM_NHANSU` | `DM_NhanSu` | Danh mục kỹ thuật viên (chỉ 1 cột `ten`) |
+| `SHEET_DM_CONGVIEC` | `DM_LoaiCongViec` | Danh mục loại công việc/phân loại sự cố (chỉ 1 cột `ten`) |
+
+### Hàm chính
+- **`doGet(e)`** — entry point web app, render `index.html` qua `HtmlService.createTemplateFromFile`,
+  cho phép nhúng iframe (`XFrameOptionsMode.ALLOWALL`) — đây là lý do wrapper GitHub Pages nhúng được.
+- **`include(filename)`** — helper include file phụ (chưa dùng, dự phòng tách CSS/JS riêng).
+- **`ss_()`** — shortcut `SpreadsheetApp.getActiveSpreadsheet()`. Script **bắt buộc phải container-bound**
+  (tạo từ trong chính Google Sheet) để hàm này trỏ đúng file.
+- **`sheetToObjects_(sheetName, cols)`** — đọc 1 sheet danh mục thành mảng object theo tên cột chỉ định,
+  bỏ dòng trống (cột A rỗng).
+- **`getDanhMuc()`** — RPC được client gọi lúc load trang: trả về TẤT CẢ danh mục
+  (`machines, vitri, parts, staff, congviec`) trong **1 lần gọi duy nhất** để giảm round-trip
+  (được gọi từ `google.script.run...getDanhMuc()` trong `index.html`).
+- **`pad_(n)`** — pad số về 2 chữ số.
+- **`genId_()`** — sinh mã phiếu dạng `BC` + `yyyyMMddHHmmss` (giờ `Asia/Ho_Chi_Minh`) + 3 số ngẫu nhiên
+  chống trùng.
+- **`minutesBetween_(dateStr, startHHMM, endHHMM)`** — tính số phút giữa 2 mốc giờ trong cùng payload,
+  tự cộng thêm 24h nếu `end < start` (qua ngày hôm sau).
+- **`timeToDate_(dateStr, hhmm)`** — tạo `Date` bằng cách nối chuỗi ISO với hậu tố `+07:00` cứng, **né
+  hoàn toàn phụ thuộc vào timezone của Apps Script project/server** (đây chính là fix lỗi timezone đã
+  ghi nhận).
+- **`submitBaoCao(payload)`** — RPC ghi dữ liệu, được gọi từ nút "Lưu báo cáo" trong `index.html`:
+  1. Lấy `LockService.getScriptLock()` (chờ tối đa 20s) để tránh ghi đè khi nhiều người submit cùng lúc.
+  2. Sinh `id` qua `genId_()`, tính `thang` (MM/YYYY) từ `payload.ngay`.
+  3. Tính `tgDungMay` = phút từ `gioHu` → `gioKetThuc`, `tgSuaChua` = phút từ `gioSua` → `gioKetThuc`
+     (dùng `minutesBetween_`).
+  4. Gộp danh sách vật tư thành chuỗi tóm tắt `vatTuTomTat` (dạng `"Tên xSL; Tên xSL"`).
+  5. `appendRow` vào `BaoCao` với thứ tự cột: `id, timestamp(now), thang, stt, maMay, tenMay, boPhan,
+     viTri, noiDung, ngay, gioHu, gioSua, gioKetThuc, tgDungMay, tgSuaChua, tenKyThuat, loaiCongViec,
+     vatTuTomTat, ghiChu`.
+  6. Set number format cho các cột ngày/giờ vừa ghi (cột 2, 10, 11-13).
+  7. Ghi từng dòng vật tư (có `ten`) vào `BaoCao_VatTu`: `[id, ma, ten, dvt, soLuong]`.
+  8. Trả `{ ok:true, id }` hoặc `{ ok:false, error }`; luôn `releaseLock()` trong `finally`.
+
+⚠️ **Lưu ý cấu trúc cột `BaoCao`** — nếu sau này thêm KPI "thời gian đáp ứng" / "chồng lịch kỹ thuật
+viên", cần cộng thêm logic tại đây (server-side, đúng nguyên tắc dự án) chứ không phải công thức Sheets.
+`stt = sheet.getLastRow()` (lấy trước khi appendRow) dùng số dòng hiện có làm STT tăng dần — cần để ý
+nếu có xoá dòng thủ công sẽ làm STT không còn khớp tuyệt đối với "lần nhập thứ mấy".
+
+## `apps-script/index.html` — Form nhập liệu mobile
+
+SPA nhỏ gọn, không framework, toàn bộ CSS + HTML + JS trong 1 file, tối ưu cho màn hình điện thoại
+(dùng làm target khi quét QR).
+
+### Luồng dữ liệu client
+1. Load trang → `google.script.run...getDanhMuc()` → nhận `DATA = {machines, vitri, parts, staff,
+   congviec}` → ẩn overlay loading, render `appRoot`.
+2. Đổ dữ liệu vào: dropdown kỹ thuật viên (`#tenKyThuat`), dropdown loại công việc (`#loaiCongViec`),
+   datalist vị trí máy (`#viTriList`), ngày mặc định = hôm nay.
+3. **Autocomplete tên máy** (`initMachineAutocomplete`): gõ vào `#tenMayInput`, lọc theo `ten`/`ma`
+   (normalize NFC, lowercase), chọn từ panel → set `selectedMachine`, hiện badge mã + bộ phận.
+4. **Vật tư động** (`addVatTuRow`, template `#vtRowTpl`): mỗi dòng có chip lọc theo nhóm (`NHOM_ORDER`),
+   autocomplete riêng, số lượng; có thể thêm/xoá nhiều dòng.
+5. **Nút "Now"** trên mỗi ô giờ (`gioHu/gioSua/gioKetThuc`) tự điền giờ hiện tại; `updateDurationHint()`
+   tính nhanh phút dừng máy / phút sửa chữa hiển thị client-side (chỉ mang tính preview, giá trị thật
+   tính lại ở server trong `submitBaoCao`).
+6. **Submit** (`bindSubmit`): validate bắt buộc (máy, nội dung, kỹ thuật viên, đủ 3 mốc giờ) → build
+   `payload` đúng shape mà `submitBaoCao(payload)` phía server mong đợi → gọi
+   `google.script.run...submitBaoCao(payload)` → hiện thông báo thành công/lỗi → reset form (giữ lại
+   không reset kỹ thuật viên đã chọn — theo tên hàm `resetFormKeepStaff`, nhưng thực tế hiện tại code
+   không giữ giá trị `#tenKyThuat`, cần xác nhận lại nếu đây là hành vi mong muốn).
+
+### Payload gửi lên `submitBaoCao`
+```js
+{
+  maMay, tenMay, boPhan, viTri, noiDung,
+  ngay,        // 'YYYY-MM-DD'
+  gioHu, gioSua, gioKetThuc,  // 'HH:MM'
+  tenKyThuat, loaiCongViec, ghiChu,
+  vatTu: [{ ma, ten, dvt, soLuong }, ...]
+}
+```
+
+## `apps-script/appsscript.json`
+
+- `timeZone: Asia/Ho_Chi_Minh`
+- `webapp.executeAs: USER_DEPLOYING` — chạy bằng quyền người deploy (không phải người dùng ẩn danh) →
+  script luôn có quyền ghi Sheet dù người quét QR không có tài khoản Google truy cập được Sheet.
+- `webapp.access: ANYONE_ANONYMOUS` — ai có link cũng mở được form, không cần đăng nhập Google.
+
+## `baocao-saphia/index_fullscreen.html` — Wrapper GitHub Pages
+
+- Repo Git riêng (`github.com/khangdang0703-lab/baocao-saphia`), deploy qua GitHub Pages.
+- Chỉ là 1 `<iframe>` full màn hình trỏ tới URL `/exec` của Apps Script ở trên.
+- Fix viewport mobile: CSS dùng `100dvh`/`100dvw` (có fallback `100vh`/`100vw` cho trình duyệt cũ), cộng
+  thêm JS `fixHeight()` đo `window.innerHeight` thực tế và set trực tiếp vào style của iframe — bù cho
+  các trình duyệt mobile (đặc biệt Safari/Chrome cũ) không tính đúng chiều cao khi thanh địa chỉ
+  ẩn/hiện.
+- Có comment nhắc: nếu deploy lại Apps Script và URL `/exec` đổi (mỗi lần "New deployment" tạo version
+  mới sẽ đổi URL, trừ khi dùng chung 1 deployment ID và chỉ "Manage deployments → Edit"), phải sửa lại
+  `src` trong file này.
+
+## Việc tiếp theo đã biết trước (chưa bắt đầu)
+
+- Thêm KPI **"thời gian đáp ứng"** (có thể là thời gian từ lúc hư đến lúc kỹ thuật viên bắt đầu sửa,
+  `gioSua - gioHu`) và **"phát hiện chồng lịch kỹ thuật viên"** (kỹ thuật viên có 2 phiếu trùng khung
+  giờ sửa chữa). Sẽ tham khảo công thức mẫu từ `BC_HH_T7_2026.xlsx` khi được cung cấp. Theo nguyên tắc
+  dự án, nên implement ở Apps Script (server-side), khả năng là thêm cột tính toán trong `submitBaoCao`
+  hoặc một hàm riêng chạy trên toàn bộ sheet `BaoCao`.

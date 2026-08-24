@@ -1,0 +1,463 @@
+<style>
+  :root{
+    --primary:#1F4E78; --primary-light:#2f6ba3; --accent:#e8a33d;
+    --bg:#f4f6f8; --card:#ffffff; --border:#dfe3e8; --text:#1f2937; --muted:#6b7280;
+    --danger:#c0392b; --ok:#1a7f37;
+  }
+  *{box-sizing:border-box;}
+  body{
+    font-family: Arial, "Segoe UI", sans-serif; margin:0; background:var(--bg); color:var(--text);
+    padding-bottom:90px;
+  }
+  header{
+    background:var(--primary); color:#fff; padding:16px 18px; position:sticky; top:0; z-index:20;
+    box-shadow:0 2px 6px rgba(0,0,0,.15);
+  }
+  header h1{margin:0; font-size:17px; font-weight:700;}
+  header p{margin:2px 0 0; font-size:12px; opacity:.85;}
+  .wrap{max-width:640px; margin:0 auto; padding:14px;}
+  .card{
+    background:var(--card); border:1px solid var(--border); border-radius:10px;
+    padding:14px; margin-bottom:14px;
+  }
+  .card h2{
+    font-size:13px; text-transform:uppercase; letter-spacing:.04em; color:var(--primary);
+    margin:0 0 10px; border-bottom:2px solid var(--bg); padding-bottom:6px;
+  }
+  label{display:block; font-size:13px; font-weight:600; margin:10px 0 4px; color:#374151;}
+  label.req::after{content:' *'; color:var(--danger);}
+  input[type=text], input[type=date], input[type=time], input[type=number], textarea, select{
+    width:100%; padding:10px 12px; border:1px solid var(--border); border-radius:8px;
+    font-size:15px; font-family:inherit; background:#fff; color:var(--text);
+  }
+  textarea{resize:vertical; min-height:56px;}
+  input:focus, textarea:focus, select:focus{outline:none; border-color:var(--primary-light); box-shadow:0 0 0 3px rgba(47,107,163,.15);}
+  .row2{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+  .row3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px;}
+  .timebtn{display:flex; gap:6px; align-items:center;}
+  .timebtn input{flex:1;}
+  .nowbtn{
+    border:1px solid var(--border); background:#f0f3f6; border-radius:8px; padding:9px 10px;
+    font-size:12px; color:var(--primary); cursor:pointer; white-space:nowrap;
+  }
+  .nowbtn:active{background:var(--border);}
+
+  .autocomplete{position:relative;}
+  .ac-panel{
+    position:absolute; left:0; right:0; top:100%; background:#fff; border:1px solid var(--border);
+    border-top:none; border-radius:0 0 8px 8px; max-height:260px; overflow-y:auto; z-index:30;
+    box-shadow:0 8px 18px rgba(0,0,0,.12); display:none;
+  }
+  .ac-panel.open{display:block;}
+  .ac-item{padding:10px 12px; font-size:14px; cursor:pointer; border-bottom:1px solid #f1f1f1;}
+  .ac-item:last-child{border-bottom:none;}
+  .ac-item:hover, .ac-item.hi{background:#eaf1f8;}
+  .ac-item small{display:block; color:var(--muted); font-size:11.5px; margin-top:1px;}
+  .ac-empty{padding:10px 12px; font-size:13px; color:var(--muted);}
+  .chip-row{display:flex; gap:6px; overflow-x:auto; padding:2px 0 8px; -webkit-overflow-scrolling:touch;}
+  .chip{
+    flex:0 0 auto; padding:6px 12px; border-radius:999px; border:1px solid var(--border);
+    background:#f0f3f6; font-size:12.5px; color:#374151; cursor:pointer; white-space:nowrap;
+  }
+  .chip.active{background:var(--primary); color:#fff; border-color:var(--primary);}
+  .badge{
+    display:inline-block; font-size:11.5px; background:#eef3f8; color:var(--primary);
+    padding:3px 9px; border-radius:6px; margin-top:6px; font-weight:600;
+  }
+
+  .vt-item{
+    border:1px solid var(--border); border-radius:8px; padding:10px; margin-bottom:10px; background:#fbfcfd;
+  }
+  .vt-item .top{display:flex; justify-content:space-between; align-items:center; gap:8px;}
+  .vt-item .top strong{font-size:12px; color:var(--muted);}
+  .vt-remove{
+    border:none; background:none; color:var(--danger); font-size:13px; cursor:pointer; padding:4px 6px;
+  }
+  .vt-sub{display:grid; grid-template-columns:2fr 1fr; gap:8px; margin-top:8px;}
+  .add-vt-btn{
+    width:100%; padding:11px; border:1.5px dashed var(--primary-light); border-radius:8px;
+    background:#f4f8fb; color:var(--primary); font-size:14px; font-weight:600; cursor:pointer;
+  }
+
+  footer{
+    position:fixed; left:0; right:0; bottom:0; background:#fff; border-top:1px solid var(--border);
+    padding:10px 14px; z-index:25; box-shadow:0 -3px 10px rgba(0,0,0,.08);
+  }
+  .footer-inner{max-width:640px; margin:0 auto; display:flex; gap:10px; align-items:center;}
+  #submitBtn{
+    flex:1; padding:14px; background:var(--primary); color:#fff; border:none; border-radius:9px;
+    font-size:15.5px; font-weight:700; cursor:pointer;
+  }
+  #submitBtn:active{background:var(--primary-light);}
+  #submitBtn:disabled{opacity:.6;}
+  .msg{font-size:12.5px; text-align:center; margin-top:6px; min-height:16px;}
+  .msg.ok{color:var(--ok);}
+  .msg.err{color:var(--danger);}
+  .hint{font-size:11.5px; color:var(--muted); margin-top:3px;}
+  .loading-overlay{
+    position:fixed; inset:0; background:rgba(244,246,248,.9); z-index:50;
+    display:flex; align-items:center; justify-content:center; flex-direction:column; gap:10px;
+  }
+  .spin{width:34px; height:34px; border:4px solid var(--border); border-top-color:var(--primary); border-radius:50%; animation:sp 0.8s linear infinite;}
+  @keyframes sp{to{transform:rotate(360deg);}}
+</style>
+
+<div id="loading" class="loading-overlay"><div class="spin"></div><div style="font-size:13px;color:var(--muted)">Đang tải danh mục...</div></div>
+
+<header>
+  <h1>Báo cáo sửa chữa hư hỏng đột xuất</h1>
+  <p>BM01/QTSCBT-05 — SAPHIA</p>
+</header>
+
+<div class="wrap" id="appRoot" style="display:none;">
+
+  <div class="card">
+    <h2>Thông tin chung</h2>
+    <label class="req">Tên kỹ thuật</label>
+    <select id="tenKyThuat"></select>
+  </div>
+
+  <div class="card">
+    <h2>Máy &amp; vị trí hư hỏng</h2>
+
+    <label class="req">Tên máy</label>
+    <div class="autocomplete">
+      <input type="text" id="tenMayInput" placeholder="Gõ tên hoặc mã máy..." autocomplete="off">
+      <div class="ac-panel" id="mayPanel"></div>
+    </div>
+    <div id="mayBadge"></div>
+
+    <label>Công đoạn / Ký hiệu máy</label>
+    <input type="text" list="viTriList" id="viTriInput" placeholder="VD: Hông, Đáy, Quai...">
+    <datalist id="viTriList"></datalist>
+
+    <label class="req">Nội dung hư hỏng đột xuất</label>
+    <textarea id="noiDung" placeholder="VD: Bung chỉ thuyền, tuột chỉ, cục lăn kẹt..."></textarea>
+
+    <label>Phân loại sự cố</label>
+    <select id="loaiCongViec"><option value="">-- Không chọn --</option></select>
+  </div>
+
+  <div class="card">
+    <h2>Thời gian sửa chữa</h2>
+
+    <label class="req">Ca làm việc</label>
+    <div class="chip-row" id="caChips">
+      <span class="chip" data-ca="Ngày">Ca Ngày</span>
+      <span class="chip" data-ca="Đêm">Ca Đêm</span>
+    </div>
+
+    <label class="req">Ngày</label>
+    <input type="date" id="ngay">
+
+    <div class="row3" style="margin-top:10px;">
+      <div>
+        <label>Bắt đầu hư</label>
+        <div class="timebtn"><input type="time" id="gioHu"><button type="button" class="nowbtn" data-t="gioHu">Now</button></div>
+      </div>
+      <div>
+        <label class="req">Bắt đầu sửa</label>
+        <div class="timebtn"><input type="time" id="gioSua"><button type="button" class="nowbtn" data-t="gioSua">Now</button></div>
+      </div>
+      <div>
+        <label class="req">Kết thúc</label>
+        <div class="timebtn"><input type="time" id="gioKetThuc"><button type="button" class="nowbtn" data-t="gioKetThuc">Now</button></div>
+      </div>
+    </div>
+    <div class="hint" id="durationHint"></div>
+  </div>
+
+  <div class="card">
+    <h2>Vật tư phụ tùng thay thế</h2>
+    <div id="vtList"></div>
+    <button type="button" class="add-vt-btn" id="addVtBtn">+ Thêm vật tư</button>
+  </div>
+
+  <div class="card">
+    <h2>Ghi chú</h2>
+    <textarea id="ghiChu" placeholder="(không bắt buộc)"></textarea>
+  </div>
+
+</div>
+
+<footer>
+  <div class="footer-inner">
+    <button id="submitBtn">Lưu báo cáo</button>
+  </div>
+  <div class="msg" id="msg"></div>
+</footer>
+
+<template id="vtRowTpl">
+  <div class="vt-item">
+    <div class="top">
+      <strong>Vật tư</strong>
+      <button type="button" class="vt-remove">Xoá</button>
+    </div>
+    <div class="chip-row vt-chips"></div>
+    <div class="autocomplete">
+      <input type="text" class="vt-search" placeholder="Gõ tên hoặc mã vật tư..." autocomplete="off">
+      <div class="ac-panel vt-panel"></div>
+    </div>
+    <div class="vt-sub">
+      <div>
+        <label style="margin-top:8px;">Đã chọn</label>
+        <input type="text" class="vt-selected" readonly placeholder="Chưa chọn">
+      </div>
+      <div>
+        <label style="margin-top:8px;">Số lượng</label>
+        <input type="number" class="vt-soluong" min="0" step="1" value="1">
+      </div>
+    </div>
+  </div>
+</template>
+
+<script>
+  let DATA = { machines: [], vitri: [], parts: [], staff: [], congviec: [] };
+  let selectedMachine = null;
+  let selectedCa = null;
+
+  function $(id){ return document.getElementById(id); }
+  function todayStr(){
+    const d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  }
+  function nowHHMM(){
+    const d = new Date();
+    return String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+  }
+  function norm(s){ return (s||'').toString().toLowerCase().normalize('NFC'); }
+
+  google.script.run.withSuccessHandler(onData).withFailureHandler(onDataError).getDanhMuc();
+
+  function onDataError(err){
+    $('loading').innerHTML = '<div style="color:#c0392b;font-size:13px;text-align:center;padding:0 20px;">Lỗi tải danh mục: ' + (err.message||err) + '<br>Kiểm tra lại các tab DM_* trong Google Sheet.</div>';
+  }
+
+  function onData(data){
+    DATA = data;
+    $('loading').style.display = 'none';
+    $('appRoot').style.display = 'block';
+
+    // Tên kỹ thuật
+    const tk = $('tenKyThuat');
+    tk.innerHTML = '<option value="">-- Chọn --</option>' + DATA.staff.map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join('');
+
+    // Loại công việc
+    const lcv = $('loaiCongViec');
+    lcv.innerHTML += DATA.congviec.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
+
+    // Vị trí máy (datalist)
+    $('viTriList').innerHTML = DATA.vitri.map(v => `<option value="${esc(v)}">`).join('');
+
+    // Ngày mặc định hôm nay
+    $('ngay').value = todayStr();
+
+    initMachineAutocomplete();
+    addVatTuRow(); // 1 dòng vật tư mặc định
+    bindNowButtons();
+    bindDurationHint();
+    bindCaChips();
+    bindSubmit();
+  }
+
+  /* ---------------- Ca làm việc ---------------- */
+  function bindCaChips(){
+    $('caChips').addEventListener('click', (e) => {
+      const chip = e.target.closest('.chip'); if (!chip) return;
+      $('caChips').querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      selectedCa = chip.getAttribute('data-ca');
+    });
+  }
+
+  function esc(s){
+    return (s===undefined||s===null?'':String(s)).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  }
+
+  /* ---------------- Autocomplete: Tên máy ---------------- */
+  function initMachineAutocomplete(){
+    const input = $('tenMayInput');
+    const panel = $('mayPanel');
+
+    function render(list){
+      if (!list.length){ panel.innerHTML = '<div class="ac-empty">Không tìm thấy máy phù hợp</div>'; panel.classList.add('open'); return; }
+      panel.innerHTML = list.slice(0,60).map(m =>
+        `<div class="ac-item" data-ma="${esc(m.ma)}"><b>${esc(m.ten)}</b><small>${esc(m.ma)} · ${esc(m.boPhan)}</small></div>`
+      ).join('');
+      panel.classList.add('open');
+    }
+
+    input.addEventListener('focus', () => filterAndRender());
+    input.addEventListener('input', () => { selectedMachine=null; renderMachineBadge(); filterAndRender(); });
+    function filterAndRender(){
+      const q = norm(input.value);
+      const list = !q ? DATA.machines : DATA.machines.filter(m => norm(m.ten).includes(q) || norm(m.ma).includes(q));
+      render(list);
+    }
+    panel.addEventListener('click', (e) => {
+      const item = e.target.closest('.ac-item');
+      if (!item) return;
+      const ma = item.getAttribute('data-ma');
+      selectedMachine = DATA.machines.find(m => m.ma === ma);
+      input.value = selectedMachine.ten;
+      panel.classList.remove('open');
+      renderMachineBadge();
+    });
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('#tenMayInput') && !e.target.closest('#mayPanel')) panel.classList.remove('open');
+    });
+  }
+  function renderMachineBadge(){
+    const b = $('mayBadge');
+    if (selectedMachine) b.innerHTML = `<span class="badge">Mã: ${esc(selectedMachine.ma)} · Bộ phận: ${esc(selectedMachine.boPhan)}</span>`;
+    else b.innerHTML = '';
+  }
+
+  /* ---------------- Vật tư: dòng động ---------------- */
+  const NHOM_ORDER = ['Tất cả','Bạc đạn','Dây curoa','Điện - khí nén','Máy may','Linh kiện máy dệt',
+                       'Phụ tùng cơ khí (ốc vít, lông đền...)','Vỏ bạc đạn','Băng keo','Nhông sên','Ti răng',
+                       'Vật tư đóng gói','Vật tư in ấn','Thiết bị khác','Khác'];
+
+  function addVatTuRow(){
+    const tpl = $('vtRowTpl').content.cloneNode(true);
+    const item = tpl.querySelector('.vt-item');
+    const chips = item.querySelector('.vt-chips');
+    const search = item.querySelector('.vt-search');
+    const panel = item.querySelector('.vt-panel');
+    const selected = item.querySelector('.vt-selected');
+    const removeBtn = item.querySelector('.vt-remove');
+
+    let activeGroup = 'Tất cả';
+    chips.innerHTML = NHOM_ORDER.map(g => `<span class="chip ${g==='Tất cả'?'active':''}" data-g="${esc(g)}">${esc(g)}</span>`).join('');
+
+    function currentList(){
+      const q = norm(search.value);
+      return DATA.parts.filter(p => (activeGroup==='Tất cả' || p.nhom===activeGroup) &&
+        (!q || norm(p.ten).includes(q) || norm(p.ma).includes(q)));
+    }
+    function render(){
+      const list = currentList();
+      if (!list.length){ panel.innerHTML = '<div class="ac-empty">Không tìm thấy vật tư phù hợp</div>'; panel.classList.add('open'); return; }
+      panel.innerHTML = list.slice(0,60).map(p =>
+        `<div class="ac-item" data-ma="${esc(p.ma)}"><b>${esc(p.ten)}</b><small>${esc(p.ma)} · ĐVT: ${esc(p.dvt)} · ${esc(p.nhom)}</small></div>`
+      ).join('');
+      panel.classList.add('open');
+    }
+    chips.addEventListener('click', (e) => {
+      const chip = e.target.closest('.chip'); if (!chip) return;
+      chips.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      activeGroup = chip.getAttribute('data-g');
+      render();
+    });
+    search.addEventListener('focus', render);
+    search.addEventListener('input', render);
+    panel.addEventListener('click', (e) => {
+      const el = e.target.closest('.ac-item'); if (!el) return;
+      const ma = el.getAttribute('data-ma');
+      const p = DATA.parts.find(x => x.ma === ma);
+      item.dataset.selMa = p.ma; item.dataset.selTen = p.ten; item.dataset.selDvt = p.dvt;
+      selected.value = p.ten + ' (' + p.dvt + ')';
+      search.value = '';
+      panel.classList.remove('open');
+    });
+    document.addEventListener('click', (e) => {
+      if (!item.contains(e.target)) panel.classList.remove('open');
+    });
+    removeBtn.addEventListener('click', () => {
+      if ($('vtList').children.length > 1) item.remove();
+      else { item.dataset.selMa=''; item.dataset.selTen=''; item.dataset.selDvt=''; selected.value=''; search.value=''; }
+    });
+
+    $('vtList').appendChild(item);
+  }
+  $('addVtBtn').addEventListener('click', addVatTuRow);
+
+  /* ---------------- Giờ hiện tại + tính thời gian ---------------- */
+  function bindNowButtons(){
+    document.querySelectorAll('.nowbtn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        $(btn.getAttribute('data-t')).value = nowHHMM();
+        updateDurationHint();
+      });
+    });
+  }
+  function bindDurationHint(){
+    ['gioHu','gioSua','gioKetThuc'].forEach(id => $(id).addEventListener('change', updateDurationHint));
+  }
+  function diffMin(a,b){
+    if(!a||!b) return null;
+    const [ah,am]=a.split(':').map(Number), [bh,bm]=b.split(':').map(Number);
+    let d = (bh*60+bm)-(ah*60+am);
+    if(d<0) d+=1440;
+    return d;
+  }
+  function updateDurationHint(){
+    const hu=$('gioHu').value, sua=$('gioSua').value, kt=$('gioKetThuc').value;
+    const dDung = diffMin(hu,kt), dSua = diffMin(sua,kt);
+    const parts = [];
+    if(dDung!==null) parts.push('Dừng máy: ' + dDung + ' phút');
+    if(dSua!==null) parts.push('Sửa chữa: ' + dSua + ' phút');
+    $('durationHint').textContent = parts.join(' · ');
+  }
+
+  /* ---------------- Submit ---------------- */
+  function bindSubmit(){
+    $('submitBtn').addEventListener('click', () => {
+      const msg = $('msg');
+      msg.textContent=''; msg.className='msg';
+
+      if (!selectedMachine){ msg.textContent='Vui lòng chọn Tên máy từ danh sách.'; msg.className='msg err'; return; }
+      if (!$('noiDung').value.trim()){ msg.textContent='Vui lòng nhập Nội dung hư hỏng.'; msg.className='msg err'; return; }
+      if (!$('tenKyThuat').value){ msg.textContent='Vui lòng chọn Tên kỹ thuật.'; msg.className='msg err'; return; }
+      if (!selectedCa){ msg.textContent='Vui lòng chọn Ca làm việc.'; msg.className='msg err'; return; }
+      if (!$('gioSua').value || !$('gioKetThuc').value){ msg.textContent='Vui lòng nhập đủ Bắt đầu sửa / Kết thúc.'; msg.className='msg err'; return; }
+
+      const vatTu = Array.from(document.querySelectorAll('.vt-item')).map(item => ({
+        ma: item.dataset.selMa || '', ten: item.dataset.selTen || '',
+        dvt: item.dataset.selDvt || '', soLuong: Number(item.querySelector('.vt-soluong').value) || 0
+      })).filter(v => v.ten);
+
+      const payload = {
+        maMay: selectedMachine.ma, tenMay: selectedMachine.ten, boPhan: selectedMachine.boPhan,
+        viTri: $('viTriInput').value.trim(), noiDung: $('noiDung').value.trim(),
+        ngay: $('ngay').value, gioHu: $('gioHu').value, gioSua: $('gioSua').value, gioKetThuc: $('gioKetThuc').value,
+        ca: selectedCa,
+        tenKyThuat: $('tenKyThuat').value, loaiCongViec: $('loaiCongViec').value,
+        ghiChu: $('ghiChu').value.trim(), vatTu: vatTu
+      };
+
+      $('submitBtn').disabled = true; $('submitBtn').textContent = 'Đang lưu...';
+      google.script.run.withSuccessHandler(res => onSubmitDone(res)).withFailureHandler(err => onSubmitFail(err)).submitBaoCao(payload);
+    });
+  }
+  function onSubmitDone(res){
+    const msg = $('msg');
+    $('submitBtn').disabled=false; $('submitBtn').textContent='Lưu báo cáo';
+    if (res && res.ok){
+      msg.textContent = 'Đã lưu thành công! Mã phiếu: ' + res.id;
+      msg.className='msg ok';
+      resetFormKeepStaff();
+    } else {
+      msg.textContent = 'Lỗi khi lưu: ' + (res && res.error ? res.error : 'không xác định');
+      msg.className='msg err';
+    }
+  }
+  function onSubmitFail(err){
+    $('submitBtn').disabled=false; $('submitBtn').textContent='Lưu báo cáo';
+    $('msg').textContent = 'Lỗi kết nối: ' + (err.message||err);
+    $('msg').className='msg err';
+  }
+  function resetFormKeepStaff(){
+    selectedMachine = null; renderMachineBadge();
+    selectedCa = null;
+    $('caChips').querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+    $('tenMayInput').value=''; $('viTriInput').value=''; $('noiDung').value='';
+    $('loaiCongViec').value=''; $('ghiChu').value='';
+    $('gioHu').value=''; $('gioSua').value=''; $('gioKetThuc').value='';
+    $('ngay').value = todayStr();
+    $('durationHint').textContent='';
+    $('vtList').innerHTML=''; addVatTuRow();
+    $('tenMayInput').focus();
+  }
+</script>

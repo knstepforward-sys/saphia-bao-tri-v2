@@ -1,0 +1,834 @@
+/**
+ * HỆ THỐNG BẢO TRÌ TOÀN NHÀ MÁY — v2
+ * ============================================================================
+ * BƯỚC 3: Luồng THỢ — mở link cá nhân → nhận việc → (sửa nhóm lỗi) → hoàn thành.
+ *
+ * Mọi hàm ghi đều theo 3 nguyên tắc ổn định ở đầu Code.gs:
+ *   1. Đổi trạng thái = đọc cả dòng → sửa trong bộ nhớ → ĐÚNG MỘT setValues.
+ *   2. Nằm trong LockService + kiểm Request_ID chống double-tap.
+ *   3. Không dùng PropertiesService cho dữ liệu tăng dần.
+ */
+
+// ============================================================================
+// 1. XÁC THỰC
+// ============================================================================
+
+/**
+ * Kiểm tra cặp mã thợ + token của link cá nhân.
+ * Trả về object thợ, hoặc null nếu sai/không còn hoạt động.
+ */
+function xacThucTho_(maTho, token) {
+  const ma = String(maTho || '').trim();
+  const tk = String(token || '').trim();
+  if (!ma || !tk) return null;
+
+  const ds = docSheet_(SHEET.THO, HEADER_THO);
+  for (let i = 0; i < ds.length; i++) {
+    if (String(ds[i].Ma_Tho).trim() === ma &&
+        String(ds[i].Token).trim() === tk &&
+        laTrue_(ds[i].Hoat_Dong)) {
+      return ds[i];
+    }
+  }
+  return null;
+}
+
+// ============================================================================
+// 2. TÌM DÒNG PHIẾU
+// ============================================================================
+
+/** Tìm dòng của một phiếu trong Su_Co. Trả { dong, v } hoặc null. */
+function timDongSuCo_(maSuCo, dsGanDay) {
+  const ma = String(maSuCo || '').trim();
+  if (!ma) return null;
+  const ds = dsGanDay || docSuCoGanDay_();
+  for (let i = ds.length - 1; i >= 0; i--) {
+    if (String(ds[i].v[COT.Ma_Su_Co]).trim() === ma) return ds[i];
+  }
+  return null;
+}
+
+/**
+ * Tách thời gian tiếp nhận thành "chờ vì thợ bận" và "đáp ứng thực".
+ *
+ * Lý do tồn tại: nếu 2 máy cùng hỏng lúc 9h, thợ sửa máy 1 tới 9h30 rồi mới nhận
+ * máy 2, thì 30 phút đó KHÔNG phải là thợ chậm — nhưng nếu chỉ đo
+ * Phut_Tiep_Nhan thì KPI của thợ bị kéo xuống oan.
+ *
+ *   Phut_Cho_Tho_Ban  = min(giờ nhận, giờ thợ rảnh) − giờ báo   → tính cho nhà máy
+ *   Phut_Dap_Ung_Thuc = giờ nhận − max(giờ báo, giờ thợ rảnh)   → tính cho thợ
+ *   Cộng lại luôn bằng Phut_Tiep_Nhan, nên số tổng không đổi.
+ *
+ * "Giờ thợ rảnh" = giờ hoàn thành muộn nhất trong các phiếu khác của chính thợ đó
+ * còn chồng lên khoảng máy này phải chờ. Nếu thợ đang giữ dở phiếu khác ngay lúc
+ * bấm nhận thì coi như bận tới tận lúc đó.
+ *
+ * @param {Array}  ds       kết quả docSuCoGanDay_()
+ * @param {string} maTho
+ * @param {string} maSuCoNay mã phiếu đang nhận (tự loại khỏi phép so)
+ * @param {Date}   baoLuc   Thoi_Gian_Bao của phiếu đang nhận
+ * @param {Date}   nhanLuc  thời điểm bấm nhận
+ */
+function tinhDapUng_(ds, maTho, maSuCoNay, baoLuc, nhanLuc) {
+  const ma = String(maTho).trim();
+  let ranhLuc = null;
+  let dangGiu = 0;
+
+  ds.forEach(function (r) {
+    const v = r.v;
+    if (String(v[COT.Ma_Tho]).trim() !== ma) return;
+    if (String(v[COT.Ma_Su_Co]).trim() === String(maSuCoNay).trim()) return;
+
+    // Phiếu thợ này còn đang giữ dở → đang bận ngay tại thời điểm nhận.
+    if (v[COT.Trang_Thai] === TRANG_THAI.DANG_XU_LY) { dangGiu++; return; }
+
+    const nhan = v[COT.Thoi_Gian_Nhan];
+    const xong = v[COT.Thoi_Gian_Hoan_Thanh];
+    if (!(nhan instanceof Date) || !(xong instanceof Date)) return;
+
+    // Việc đó có chiếm mất thời gian của thợ trong lúc máy này đang chờ không?
+    if (nhan < nhanLuc && xong > baoLuc) {
+      if (!ranhLuc || xong > ranhLuc) ranhLuc = xong;
+    }
+  });
+
+  // Đang giữ việc dở → bận liên tục cho tới lúc bấm nhận.
+  if (dangGiu > 0 && (!ranhLuc || nhanLuc > ranhLuc)) ranhLuc = nhanLuc;
+
+  const phut = function (a, b) { return Math.max(0, Math.round((a - b) / 60000)); };
+  const moc = ranhLuc && ranhLuc > baoLuc ? ranhLuc : baoLuc;
+
+  return {
+    cho: ranhLuc ? phut(Math.min(nhanLuc.getTime(), ranhLuc.getTime()), baoLuc.getTime()) : 0,
+    thuc: phut(nhanLuc.getTime(), moc.getTime()),
+    chongViec: dangGiu,
+  };
+}
+
+/** Rút gọn một dòng Su_Co để gửi về client. */
+function gonPhieu_(v) {
+  return {
+    maSuCo: v[COT.Ma_Su_Co],
+    maMay: v[COT.Ma_May],
+    tenMay: v[COT.Ten_May],
+    boPhan: v[COT.Bo_Phan],
+    trangThaiMay: v[COT.Trang_Thai_May],
+    nhomLoi: v[COT.Nhom_Loi],
+    moTa: v[COT.Mo_Ta],
+    trangThai: v[COT.Trang_Thai],
+    thoiGianBao: dinhDangThoiGian_(v[COT.Thoi_Gian_Bao]),
+    thoiGianNhan: dinhDangThoiGian_(v[COT.Thoi_Gian_Nhan]),
+    thoiGianHoanThanh: dinhDangThoiGian_(v[COT.Thoi_Gian_Hoan_Thanh]),
+    tenTho: v[COT.Ten_Tho],
+    phutTiepNhan: v[COT.Phut_Tiep_Nhan],
+    phutXuLy: v[COT.Phut_Xu_Ly],
+    ca: v[COT.Ca],
+    laCongViec: laCongViec_(v),
+    // Số phút phiếu đã chờ, để client tô đỏ phiếu chờ lâu.
+    phutDaCho: v[COT.Thoi_Gian_Bao] instanceof Date
+      ? Math.round((Date.now() - v[COT.Thoi_Gian_Bao].getTime()) / 60000) : '',
+  };
+}
+
+// ============================================================================
+// 3. RPC — KHỞI TẠO TRANG THỢ
+// ============================================================================
+
+/**
+ * Dữ liệu mở trang thợ:
+ *   - choNhan : phiếu CHO_NHAN thuộc bộ phận thợ phụ trách.
+ *               KHÔNG lọc theo chuyên môn — vì ban đêm thợ điện phải nhận được
+ *               cả việc cơ khí (thang fallback nấc 2 ở CongNhan.gs). Thay vào đó
+ *               đánh dấu `dungChuyenMon` và xếp việc đúng chuyên môn lên trước.
+ *   - cuaToi  : phiếu DANG_XU_LY của chính thợ này.
+ *   - lichSu  : 5 phiếu gần nhất thợ đã hoàn thành.
+ */
+function getTechnicianBootstrap(maTho, token) {
+  try {
+    const tho = xacThucTho_(maTho, token);
+    if (!tho) {
+      return { ok: false, error: 'Link không hợp lệ hoặc tài khoản đã ngừng hoạt động. Liên hệ quản lý để lấy link mới.' };
+    }
+
+    const ma = String(tho.Ma_Tho).trim();
+    const luc = nowVN_();
+    const caTho = xacDinhCa_(tho.Nhom_Ca, luc);
+    const ds = docSuCoGanDay_();
+    const choNhan = [];
+    const cuaToi = [];
+    const lichSu = [];
+
+    // Có thợ ĐÚNG chuyên môn đang trực cho (bộ phận, nhóm lỗi) này không?
+    // Dùng lại đúng điều kiện nấc 1 của danh bạ để trang thợ và danh bạ công nhân
+    // không nói hai đằng. Cache theo cặp khoá vì getOnDutyContacts_ đọc cả sheet.
+    const cacheTruc = {};
+    function coNguoiDungChuyenMon_(boPhan, nhomLoi) {
+      const khoa = boPhan + '|' + nhomLoi;
+      if (!(khoa in cacheTruc)) {
+        cacheTruc[khoa] =
+          getOnDutyContacts_(boPhan, nhomLoi, luc).mucCanhBao === MUC_CANH_BAO.BINH_THUONG;
+      }
+      return cacheTruc[khoa];
+    }
+
+    ds.forEach(function (r) {
+      const v = r.v;
+      // Phiếu dừng máy không do hư hỏng không phải việc của thợ — công nhân tự
+      // mở và tự đóng bằng cách quét lại QR.
+      if (laDungMay_(v)) return;
+
+      const tt = v[COT.Trang_Thai];
+      const cuaMinh = String(v[COT.Ma_Tho]).trim() === ma;
+
+      if (tt === TRANG_THAI.CHO_NHAN) {
+        if (!phuTrachBoPhan_(tho.Bo_Phan_Phu_Trach, v[COT.Bo_Phan])) return;
+        const p = gonPhieu_(v);
+        p.dungChuyenMon = hopChuyenMon_(tho.Chuyen_Mon, v[COT.Nhom_Loi]);
+        // Phiếu ngoài chuyên môn: ẩn bớt khi đã có người đúng nghề đang trực,
+        // chỉ nổi lên khi không còn ai — đúng tình huống "gọi thợ điện ban đêm".
+        p.anBotDi = !p.dungChuyenMon &&
+          coNguoiDungChuyenMon_(v[COT.Bo_Phan], v[COT.Nhom_Loi]);
+        choNhan.push(p);
+      } else if (tt === TRANG_THAI.DANG_XU_LY && cuaMinh) {
+        cuaToi.push(gonPhieu_(v));
+      } else if (tt === TRANG_THAI.HOAN_THANH && cuaMinh && !laBaoTri_(v)) {
+        // Bảo trì hằng ngày không vào lịch sử — mỗi ca có thể vài chục dòng,
+        // sẽ đè mất các phiếu sự cố thật. Chỉ hiện dạng con số đếm.
+        lichSu.push(chiTietPhieu_(v));
+      }
+    });
+
+    // Việc đúng chuyên môn lên trước, trong mỗi nhóm thì phiếu chờ lâu lên trước.
+    choNhan.sort(function (a, b) {
+      if (a.dungChuyenMon !== b.dungChuyenMon) return a.dungChuyenMon ? -1 : 1;
+      return (b.phutDaCho || 0) - (a.phutDaCho || 0);
+    });
+
+    return {
+      ok: true,
+      tho: {
+        maTho: ma,
+        tenTho: String(tho.Ten_Tho).trim(),
+        chuyenMon: String(tho.Chuyen_Mon).trim(),
+        nhomCa: String(tho.Nhom_Ca).trim(),
+      },
+      caHienTai: caTho,
+      dsBaoTri: dsBaoTriTrongCa_(ds, ma, caTho.ngayCa),
+      choNhan: choNhan,
+      cuaToi: cuaToi.reverse(),
+      lichSu: lichSu.reverse().slice(0, 10),
+      capNhatLuc: fmtGio_(nowVN_()),
+    };
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
+}
+
+// ============================================================================
+// 4. RPC — NHẬN VIỆC
+// ============================================================================
+
+/**
+ * Thợ nhận một phiếu CHO_NHAN.
+ * Chặn 2 thợ cùng nhận: kiểm Trang_Thai + cột Ma_Tho còn trống, bên trong lock.
+ */
+function acceptIncident(maSuCo, maTho, token, requestId) {
+  const lock = LockService.getScriptLock();
+  try {
+    if (!lock.tryLock(CONFIG.KHOA_CHO_GIAY * 1000)) {
+      return { ok: false, error: 'Hệ thống đang bận, thử lại sau vài giây.' };
+    }
+
+    const tho = xacThucTho_(maTho, token);
+    if (!tho) return { ok: false, error: 'Link không hợp lệ.' };
+    if (!String(requestId || '').trim()) return { ok: false, error: 'Thiếu mã request.' };
+
+    const dsGanDay = docSuCoGanDay_();
+    const r = timDongSuCo_(maSuCo, dsGanDay);
+    if (!r) return { ok: false, error: 'Không tìm thấy phiếu ' + maSuCo + '.' };
+    const v = r.v;
+
+    // Double-tap: chính request này đã ghi rồi.
+    if (String(v[COT.Request_ID_Cuoi]).trim() === String(requestId).trim()) {
+      return { ok: true, trung: true, phieu: gonPhieu_(v) };
+    }
+
+    if (v[COT.Trang_Thai] !== TRANG_THAI.CHO_NHAN || String(v[COT.Ma_Tho]).trim()) {
+      return {
+        ok: false,
+        error: 'Phiếu ' + maSuCo + ' đã được ' +
+          (String(v[COT.Ten_Tho]).trim() || 'người khác') + ' nhận rồi.',
+      };
+    }
+
+    const luc = nowVN_();
+    // KHÔNG đặt tên biến này là `maTho`: trùng tên tham số của hàm, mà khai bằng
+    // const trong khối try sẽ che tham số và làm dòng xacThucTho_(maTho, ...) ở
+    // trên chạm vào biến chưa khởi tạo → "Cannot access 'maTho' before initialization".
+    const maThoNhan = String(tho.Ma_Tho).trim();
+    const dapUng = tinhDapUng_(dsGanDay, maThoNhan, maSuCo, v[COT.Thoi_Gian_Bao], luc);
+
+    v[COT.Trang_Thai] = TRANG_THAI.DANG_XU_LY;
+    v[COT.Ma_Tho] = maThoNhan;
+    v[COT.Ten_Tho] = String(tho.Ten_Tho).trim();
+    v[COT.Thoi_Gian_Nhan] = luc;
+    v[COT.Phut_Tiep_Nhan] = soPhut_(v[COT.Thoi_Gian_Bao], luc);
+    v[COT.Phut_Cho_Tho_Ban] = dapUng.cho;
+    v[COT.Phut_Dap_Ung_Thuc] = dapUng.thuc;
+    v[COT.So_Chong_Viec] = dapUng.chongViec;
+    v[COT.Cap_Nhat_Luc] = luc;
+    v[COT.Request_ID_Cuoi] = String(requestId).trim();
+    v[COT.Phien_Ban] = (Number(v[COT.Phien_Ban]) || 0) + 1;
+
+    ghiCaDong_(r.dong, v);
+    ghiNhatKy_(v[COT.Ma_Su_Co], v[COT.Ma_May], v[COT.Ma_Tho], 'NHAN_VIEC', {
+      phutTiepNhan: v[COT.Phut_Tiep_Nhan],
+      phutChoThoBan: dapUng.cho,
+      phutDapUngThuc: dapUng.thuc,
+      soChongViec: dapUng.chongViec,
+    }, requestId);
+
+    return { ok: true, phieu: gonPhieu_(v) };
+  } catch (err) {
+    return { ok: false, error: err.message };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/** Ghi lại toàn bộ một dòng Su_Co bằng ĐÚNG MỘT setValues (nguyên tắc 1). */
+function ghiCaDong_(dong, v) {
+  sheet_(SHEET.SU_CO).getRange(dong, 1, 1, HEADER_SU_CO.length).setValues([v]);
+}
+
+// ============================================================================
+// 5. RPC — SỬA LẠI NHÓM LỖI
+// ============================================================================
+
+/**
+ * Thợ cập nhật hiện trạng phiếu khi tới nơi thấy khác với lúc công nhân báo:
+ * sửa NHÓM LỖI (báo "điện" nhưng thật ra hỏng cơ khí) và/hoặc TRẠNG THÁI MÁY
+ * (báo "còn chạy" nhưng thực tế phải dừng mới sửa được).
+ *
+ * Thay cho `reclassifyIncident` của bản thiết kế — gộp hai thao tác vào một lần
+ * ghi thay vì hai, đúng nguyên tắc "một setValues cho một thay đổi".
+ *
+ * Mốc `Thoi_Gian_Dung_May` được ghi đúng lúc lật sang DA_DUNG (nếu chưa có), và
+ * xoá nếu lật ngược lại — để downtime không tính oan từ lúc báo.
+ *
+ * payload = { incidentId, techId, token, requestId, nhomLoiMoi, trangThaiMayMoi }
+ * Trường nào bỏ trống thì giữ nguyên giá trị cũ.
+ */
+function updateIncidentState(payload) {
+  const p = payload || {};
+  const lock = LockService.getScriptLock();
+
+  try {
+    if (!lock.tryLock(CONFIG.KHOA_CHO_GIAY * 1000)) {
+      return { ok: false, error: 'Hệ thống đang bận, thử lại sau vài giây.' };
+    }
+
+    const tho = xacThucTho_(p.techId, p.token);
+    if (!tho) return { ok: false, error: 'Link không hợp lệ.' };
+
+    const nhomMoi = String(p.nhomLoiMoi || '').trim().toUpperCase();
+    const mayMoi = String(p.trangThaiMayMoi || '').trim().toUpperCase();
+    if (nhomMoi && NHOM_LOI.indexOf(nhomMoi) === -1) {
+      return { ok: false, error: 'Nhóm lỗi không hợp lệ.' };
+    }
+    if (mayMoi && TRANG_THAI_MAY.indexOf(mayMoi) === -1) {
+      return { ok: false, error: 'Trạng thái máy không hợp lệ.' };
+    }
+    if (!nhomMoi && !mayMoi) return { ok: false, error: 'Không có gì để cập nhật.' };
+
+    const r = timDongSuCo_(p.incidentId);
+    if (!r) return { ok: false, error: 'Không tìm thấy phiếu ' + p.incidentId + '.' };
+    const v = r.v;
+
+    const requestId = String(p.requestId || '').trim();
+    if (requestId && String(v[COT.Request_ID_Cuoi]).trim() === requestId) {
+      return { ok: true, trung: true, phieu: gonPhieu_(v) };
+    }
+    if (v[COT.Trang_Thai] === TRANG_THAI.HOAN_THANH) {
+      return { ok: false, error: 'Phiếu đã đóng, không sửa được nữa.' };
+    }
+    const nguoiGiu = String(v[COT.Ma_Tho]).trim();
+    if (nguoiGiu && nguoiGiu !== String(tho.Ma_Tho).trim()) {
+      return { ok: false, error: 'Phiếu đang do ' + v[COT.Ten_Tho] + ' xử lý.' };
+    }
+
+    const luc = nowVN_();
+    const truoc = { nhomLoi: v[COT.Nhom_Loi], trangThaiMay: v[COT.Trang_Thai_May] };
+
+    if (nhomMoi) v[COT.Nhom_Loi] = nhomMoi;
+    if (mayMoi) {
+      v[COT.Trang_Thai_May] = mayMoi;
+      if (mayMoi === 'DA_DUNG') {
+        if (!(v[COT.Thoi_Gian_Dung_May] instanceof Date)) v[COT.Thoi_Gian_Dung_May] = luc;
+      } else {
+        v[COT.Thoi_Gian_Dung_May] = '';
+      }
+    }
+    v[COT.Cap_Nhat_Luc] = luc;
+    if (requestId) v[COT.Request_ID_Cuoi] = requestId;
+    v[COT.Phien_Ban] = (Number(v[COT.Phien_Ban]) || 0) + 1;
+
+    ghiCaDong_(r.dong, v);
+    ghiNhatKy_(v[COT.Ma_Su_Co], v[COT.Ma_May], String(tho.Ma_Tho).trim(), 'CAP_NHAT_HIEN_TRANG',
+      { truoc: truoc, sau: { nhomLoi: v[COT.Nhom_Loi], trangThaiMay: v[COT.Trang_Thai_May] } },
+      requestId);
+
+    return { ok: true, phieu: gonPhieu_(v) };
+  } catch (err) {
+    return { ok: false, error: err.message };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+// ============================================================================
+// 6. RPC — TẠO CÔNG VIỆC CHUNG
+// ============================================================================
+
+/**
+ * Thợ tự tạo phiếu cho việc KHÔNG gắn với máy nào: lắp camera, sửa điện văn
+ * phòng, kéo dây nhà kho… Phiếu vào thẳng DANG_XU_LY mang tên người tạo, vì
+ * loại việc này thường được giao miệng rồi thợ chỉ ghi nhận lại.
+ *
+ * Khác phiếu sự cố:
+ *   - Ma_May trống, Ten_May = tên công việc, Bo_Phan = khu vực (gõ tự do).
+ *   - Không có Trang_Thai_May, không có Phut_Tiep_Nhan / Phut_Dap_Ung_Thuc —
+ *     không ai "báo hỏng" nên đo thời gian đáp ứng là vô nghĩa.
+ *   - VẪN có Thoi_Gian_Nhan → Thoi_Gian_Hoan_Thanh, nên vẫn được tinhDapUng_
+ *     tính là thợ đang bận. Đây chính là lý do để chung sheet Su_Co: thợ lắp
+ *     camera 2 tiếng thì máy hỏng trong lúc đó không bị trừ vào KPI của họ.
+ *
+ * payload = { techId, token, requestId, tenCongViec, khuVuc, nhomLoi, moTa }
+ */
+function createGeneralTask(payload) {
+  const p = payload || {};
+  const lock = LockService.getScriptLock();
+
+  try {
+    if (!lock.tryLock(CONFIG.KHOA_CHO_GIAY * 1000)) {
+      return { ok: false, error: 'Hệ thống đang bận, thử lại sau vài giây.' };
+    }
+
+    const tho = xacThucTho_(p.techId, p.token);
+    if (!tho) return { ok: false, error: 'Link không hợp lệ.' };
+
+    const requestId = String(p.requestId || '').trim();
+    if (!requestId) return { ok: false, error: 'Thiếu mã request.' };
+
+    const ten = String(p.tenCongViec || '').trim().slice(0, CONFIG.MAX_MO_TA);
+    if (!ten) return { ok: false, error: 'Vui lòng nhập tên công việc.' };
+
+    const nhomLoi = String(p.nhomLoi || 'KHONG_RO').trim().toUpperCase();
+    if (NHOM_LOI.indexOf(nhomLoi) === -1) return { ok: false, error: 'Nhóm việc không hợp lệ.' };
+
+    const dsGanDay = docSuCoGanDay_();
+    for (let i = dsGanDay.length - 1; i >= 0; i--) {
+      if (String(dsGanDay[i].v[COT.Request_ID_Cuoi]).trim() === requestId) {
+        return { ok: true, trung: true, phieu: gonPhieu_(dsGanDay[i].v) };
+      }
+    }
+
+    const luc = nowVN_();
+    const maTho = String(tho.Ma_Tho).trim();
+    const khuVuc = String(p.khuVuc || '').trim().slice(0, 100);
+    const caTho = xacDinhCa_(tho.Nhom_Ca, luc);
+    const ma = sinhMaPhieu_(luc, 'CV');
+
+    // Ten_May để TRỐNG: việc chung không gắn với máy nào, mà cột đó chỉ được
+    // chứa tên máy thật — nếu không mọi phép gom nhóm theo máy về sau sẽ ăn nhầm.
+    // Tên công việc thuộc về cột mô tả.
+    const dong = new Array(HEADER_SU_CO.length).fill('');
+    dong[COT.Ma_Su_Co] = ma;
+    dong[COT.Ten_May] = '';
+    dong[COT.Bo_Phan] = khuVuc;       // khu vực
+    dong[COT.Nhom_Loi] = nhomLoi;
+    dong[COT.Mo_Ta] = (ten + (p.moTa ? ' — ' + String(p.moTa).trim() : ''))
+      .slice(0, CONFIG.MAX_MO_TA);
+    dong[COT.Trang_Thai] = TRANG_THAI.DANG_XU_LY;
+    dong[COT.Thoi_Gian_Bao] = luc;
+    dong[COT.Ma_Tho] = maTho;
+    dong[COT.Ten_Tho] = String(tho.Ten_Tho).trim();
+    dong[COT.Thoi_Gian_Nhan] = luc;   // tạo là nhận luôn → đáp ứng bằng 0, không ghi
+    dong[COT.Ngay_Ca] = caTho.ngayCa;
+    dong[COT.Ca] = caTho.ca || 'NGOAI_GIO';
+    dong[COT.Cap_Nhat_Luc] = luc;
+    dong[COT.Request_ID_Cuoi] = requestId;
+    dong[COT.Phien_Ban] = 1;
+    dong[COT.Loai_Phieu] = LOAI_PHIEU.CONG_VIEC;
+
+    const sh = sheet_(SHEET.SU_CO);
+    sh.getRange(sh.getLastRow() + 1, 1, 1, HEADER_SU_CO.length).setValues([dong]);
+
+    ghiNhatKy_(ma, '', maTho, 'TAO_CONG_VIEC', { ten: ten, khuVuc: khuVuc }, requestId);
+
+    return { ok: true, phieu: gonPhieu_(dong) };
+  } catch (err) {
+    return { ok: false, error: err.message };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+// ============================================================================
+// 7. RPC — GHI BẢO TRÌ HẰNG NGÀY
+// ============================================================================
+
+/**
+ * Ghi một việc bảo trì hằng ngày. Thợ làm rải rác trong ca (tra dầu, siết ốc,
+ * vệ sinh, chỉnh vặt…), không gây dừng máy, không cần đo giờ — chỉ cần ĐẾM.
+ *
+ * Vì vậy phiếu được tạo ở trạng thái HOAN_THANH ngay, và cố ý ĐỂ TRỐNG
+ * Thoi_Gian_Nhan cùng toàn bộ cột Phut_*:
+ *   - tinhDapUng_ đòi cả Thoi_Gian_Nhan lẫn Thoi_Gian_Hoan_Thanh mới tính là bận
+ *     → loại này tự động không ảnh hưởng KPI đáp ứng của ai.
+ *   - Thoi_Gian_Hoan_Thanh vẫn ghi để archiveOldTickets dọn được về sau.
+ *
+ * payload = { techId, token, requestId, noiDung, doiTuong, phuTung }
+ * phuTung: [{ten, soLuong, dvt}] — tối đa CONFIG.MAX_PHU_TUNG dòng, không bắt buộc.
+ * Bảo trì không đo giờ nhưng VẪN tốn vật tư (dầu, ốc, dây đai…), nên vẫn khai được.
+ */
+function createDailyMaintenance(payload) {
+  const p = payload || {};
+  const lock = LockService.getScriptLock();
+
+  try {
+    if (!lock.tryLock(CONFIG.KHOA_CHO_GIAY * 1000)) {
+      return { ok: false, error: 'Hệ thống đang bận, thử lại sau vài giây.' };
+    }
+
+    const tho = xacThucTho_(p.techId, p.token);
+    if (!tho) return { ok: false, error: 'Link không hợp lệ.' };
+
+    const requestId = String(p.requestId || '').trim();
+    if (!requestId) return { ok: false, error: 'Thiếu mã request.' };
+
+    const noiDung = String(p.noiDung || '').trim().slice(0, CONFIG.MAX_MO_TA);
+    if (!noiDung) return { ok: false, error: 'Vui lòng nhập nội dung bảo trì.' };
+
+    const dsGanDay = docSuCoGanDay_();
+    for (let i = dsGanDay.length - 1; i >= 0; i--) {
+      if (String(dsGanDay[i].v[COT.Request_ID_Cuoi]).trim() === requestId) {
+        return { ok: true, trung: true, phieu: gonPhieu_(dsGanDay[i].v) };
+      }
+    }
+
+    const luc = nowVN_();
+    const maTho = String(tho.Ma_Tho).trim();
+    const caTho = xacDinhCa_(tho.Nhom_Ca, luc);
+    const ma = sinhMaPhieu_(luc, 'BT');
+
+    const dong = new Array(HEADER_SU_CO.length).fill('');
+    dong[COT.Ma_Su_Co] = ma;
+    dong[COT.Ten_May] = '';                                        // không gắn máy cụ thể
+    dong[COT.Mo_Ta] = noiDung;                                     // nội dung bảo trì
+    dong[COT.Bo_Phan] = String(p.doiTuong || '').trim().slice(0, 100); // máy / khu vực
+    dong[COT.Trang_Thai] = TRANG_THAI.HOAN_THANH;
+    dong[COT.Thoi_Gian_Bao] = luc;
+    dong[COT.Thoi_Gian_Hoan_Thanh] = luc;   // để archive dọn được; KHÔNG có Thoi_Gian_Nhan
+    dong[COT.Ma_Tho] = maTho;
+    dong[COT.Ten_Tho] = String(tho.Ten_Tho).trim();
+    dong[COT.Noi_Dung_Xu_Ly] = noiDung;
+    dong[COT.Phu_Tung_Tom_Tat] = gopPhuTung_(p.phuTung);
+    dong[COT.Ngay_Ca] = caTho.ngayCa;
+    dong[COT.Ca] = caTho.ca || 'NGOAI_GIO';
+    dong[COT.Cap_Nhat_Luc] = luc;
+    dong[COT.Request_ID_Cuoi] = requestId;
+    dong[COT.Phien_Ban] = 1;
+    dong[COT.Loai_Phieu] = LOAI_PHIEU.BAO_TRI;
+
+    const sh = sheet_(SHEET.SU_CO);
+    sh.getRange(sh.getLastRow() + 1, 1, 1, HEADER_SU_CO.length).setValues([dong]);
+
+    ghiNhatKy_(ma, '', maTho, 'GHI_BAO_TRI', {
+      noiDung: noiDung,
+      doiTuong: dong[COT.Bo_Phan],
+      phuTung: dong[COT.Phu_Tung_Tom_Tat],
+    }, requestId);
+
+    // Trả luôn mục vừa ghi để client chèn thẳng vào danh sách, khỏi phải gọi
+    // lại server sau mỗi lần ghi — thợ nhập liên tục nhiều hạng mục trong ca.
+    return { ok: true, muc: mucBaoTri_(dong) };
+  } catch (err) {
+    return { ok: false, error: err.message };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/** Đếm số việc bảo trì thợ đã ghi trong ngày ca đang xét. */
+function demBaoTriTrongCa_(ds, maTho, ngayCa) {
+  return dsBaoTriTrongCa_(ds, maTho, ngayCa).length;
+}
+
+/**
+ * Danh sách việc bảo trì thợ đã ghi trong ca, mới nhất lên đầu.
+ * Dùng để thợ xem lại và xoá nếu gõ nhầm — phiếu BT- không vào mục "Đã xong gần
+ * đây" (mỗi ca vài chục dòng sẽ đè mất phiếu sự cố), nên phải có chỗ xem riêng.
+ */
+function dsBaoTriTrongCa_(ds, maTho, ngayCa) {
+  const ma = String(maTho).trim();
+  const kq = [];
+  ds.forEach(function (r) {
+    const v = r.v;
+    if (!laBaoTri_(v)) return;
+    if (String(v[COT.Ma_Tho]).trim() !== ma) return;
+    if (String(v[COT.Ngay_Ca]).trim() !== ngayCa) return;
+    kq.push(mucBaoTri_(v));
+  });
+  return kq.reverse();
+}
+
+/**
+ * Bản đầy đủ của một phiếu, cho màn hình xem chi tiết bên trang thợ.
+ * Chỉ dùng cho danh sách lịch sử (tối đa 10 phiếu) — nhét thêm ngần này trường
+ * vào mọi phiếu trong hàng chờ thì payload phình ra vô ích.
+ */
+function chiTietPhieu_(v) {
+  const p = gonPhieu_(v);
+  p.noiDungXuLy = v[COT.Noi_Dung_Xu_Ly];
+  p.phuTung = v[COT.Phu_Tung_Tom_Tat];
+  p.ghiChu = v[COT.Ghi_Chu];
+  p.phutChoThoBan = v[COT.Phut_Cho_Tho_Ban];
+  p.phutDapUngThuc = v[COT.Phut_Dap_Ung_Thuc];
+  p.soChongViec = v[COT.So_Chong_Viec];
+  p.ngayCa = v[COT.Ngay_Ca];
+  return p;
+}
+
+/** Rút gọn một phiếu bảo trì cho danh sách trên app. */
+function mucBaoTri_(v) {
+  return {
+    maSuCo: v[COT.Ma_Su_Co],
+    // Ưu tiên Mo_Ta; lùi về Ten_May cho những phiếu ghi trước khi đổi cách lưu.
+    noiDung: v[COT.Mo_Ta] || v[COT.Ten_May],
+    doiTuong: v[COT.Bo_Phan],     // máy / khu vực
+    phuTung: v[COT.Phu_Tung_Tom_Tat],
+    gio: v[COT.Thoi_Gian_Bao] instanceof Date
+      ? Utilities.formatDate(v[COT.Thoi_Gian_Bao], CONFIG.MUI_GIO, 'HH:mm') : '',
+  };
+}
+
+/**
+ * Sửa lại nội dung một phiếu ĐÃ ĐÓNG — cho trường hợp bấm nhầm nút Hoàn thành
+ * khi chưa kịp khai phụ tùng, hoặc gõ sót nội dung.
+ *
+ * CHỈ sửa được 3 trường chữ: nội dung xử lý, phụ tùng, ghi chú.
+ * TUYỆT ĐỐI không đụng tới các mốc thời gian, các cột phút, hay trạng thái —
+ * sửa được những thứ đó là mở đường viết lại lịch sử và làm hỏng mọi chỉ số.
+ *
+ * Giới hạn: phiếu của chính thợ đó, và trong vòng CONFIG.GIO_CHO_SUA_PHIEU giờ
+ * kể từ lúc đóng. Quá hạn thì quản trị sửa thẳng trên Sheet.
+ *
+ * payload = { incidentId, techId, token, requestId, noiDungXuLy, phuTung, ghiChu }
+ */
+function updateCompletedIncident(payload) {
+  const p = payload || {};
+  const lock = LockService.getScriptLock();
+
+  try {
+    if (!lock.tryLock(CONFIG.KHOA_CHO_GIAY * 1000)) {
+      return { ok: false, error: 'Hệ thống đang bận, thử lại sau vài giây.' };
+    }
+
+    const tho = xacThucTho_(p.techId, p.token);
+    if (!tho) return { ok: false, error: 'Link không hợp lệ.' };
+
+    const noiDung = String(p.noiDungXuLy || '').trim().slice(0, CONFIG.MAX_NOI_DUNG);
+    if (!noiDung) return { ok: false, error: 'Nội dung đã xử lý không được để trống.' };
+
+    const r = timDongSuCo_(p.incidentId);
+    if (!r) return { ok: false, error: 'Không tìm thấy phiếu ' + p.incidentId + '.' };
+    const v = r.v;
+
+    const requestId = String(p.requestId || '').trim();
+    if (requestId && String(v[COT.Request_ID_Cuoi]).trim() === requestId) {
+      return { ok: true, trung: true, phieu: chiTietPhieu_(v) };
+    }
+
+    if (v[COT.Trang_Thai] !== TRANG_THAI.HOAN_THANH) {
+      return { ok: false, error: 'Phiếu này chưa đóng — dùng nút Hoàn thành.' };
+    }
+    if (laBaoTri_(v) || laDungMay_(v)) {
+      return { ok: false, error: 'Loại phiếu này không sửa được ở đây.' };
+    }
+    if (String(v[COT.Ma_Tho]).trim() !== String(tho.Ma_Tho).trim()) {
+      return { ok: false, error: 'Đây không phải phiếu của bạn.' };
+    }
+
+    const xong = v[COT.Thoi_Gian_Hoan_Thanh];
+    if (!(xong instanceof Date)) {
+      return { ok: false, error: 'Phiếu thiếu mốc hoàn thành, nhờ quản lý sửa giúp.' };
+    }
+    const gioDaQua = (Date.now() - xong.getTime()) / 3600000;
+    if (gioDaQua > CONFIG.GIO_CHO_SUA_PHIEU) {
+      return {
+        ok: false,
+        error: 'Phiếu đã đóng quá ' + CONFIG.GIO_CHO_SUA_PHIEU +
+          ' giờ nên không tự sửa được nữa. Báo quản lý sửa giúp trên bảng tính.',
+      };
+    }
+
+    const truoc = {
+      noiDung: v[COT.Noi_Dung_Xu_Ly],
+      phuTung: v[COT.Phu_Tung_Tom_Tat],
+      ghiChu: v[COT.Ghi_Chu],
+    };
+
+    v[COT.Noi_Dung_Xu_Ly] = noiDung;
+    v[COT.Phu_Tung_Tom_Tat] = gopPhuTung_(p.phuTung);
+    v[COT.Ghi_Chu] = String(p.ghiChu || '').trim().slice(0, CONFIG.MAX_NOI_DUNG);
+    v[COT.Cap_Nhat_Luc] = nowVN_();
+    if (requestId) v[COT.Request_ID_Cuoi] = requestId;
+    v[COT.Phien_Ban] = (Number(v[COT.Phien_Ban]) || 0) + 1;
+
+    ghiCaDong_(r.dong, v);
+    ghiNhatKy_(v[COT.Ma_Su_Co], v[COT.Ma_May], String(tho.Ma_Tho).trim(), 'SUA_PHIEU_DA_XONG',
+      { truoc: truoc, sau: {
+        noiDung: v[COT.Noi_Dung_Xu_Ly],
+        phuTung: v[COT.Phu_Tung_Tom_Tat],
+        ghiChu: v[COT.Ghi_Chu],
+      } }, requestId);
+
+    return { ok: true, phieu: chiTietPhieu_(v) };
+  } catch (err) {
+    return { ok: false, error: err.message };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/**
+ * Xoá một việc bảo trì thợ vừa ghi nhầm.
+ *
+ * Giới hạn chặt: chỉ xoá được phiếu BAO_TRI, của CHÍNH thợ đó, và trong ĐÚNG ca
+ * hiện tại. Không cho đụng vào phiếu sự cố hay việc chung — những loại đó có
+ * lịch sử trạng thái và số liệu đáp ứng, xoá đi là mất dấu vết.
+ *
+ * Xoá hẳn dòng chứ không đánh dấu huỷ, vì loại này chỉ để đếm; và mã phiếu đã
+ * chuyển sang lấy số lớn nhất +1 (sinhMaPhieu_) nên xoá không gây trùng mã.
+ */
+function deleteDailyMaintenance(maSuCo, techId, token, requestId) {
+  const lock = LockService.getScriptLock();
+  try {
+    if (!lock.tryLock(CONFIG.KHOA_CHO_GIAY * 1000)) {
+      return { ok: false, error: 'Hệ thống đang bận, thử lại sau vài giây.' };
+    }
+
+    const tho = xacThucTho_(techId, token);
+    if (!tho) return { ok: false, error: 'Link không hợp lệ.' };
+
+    const r = timDongSuCo_(maSuCo);
+    if (!r) return { ok: false, error: 'Không tìm thấy phiếu ' + maSuCo + '.' };
+    const v = r.v;
+
+    if (!laBaoTri_(v)) {
+      return { ok: false, error: 'Chỉ xoá được việc bảo trì hằng ngày.' };
+    }
+    if (String(v[COT.Ma_Tho]).trim() !== String(tho.Ma_Tho).trim()) {
+      return { ok: false, error: 'Đây không phải việc bạn ghi.' };
+    }
+
+    const caTho = xacDinhCa_(tho.Nhom_Ca, nowVN_());
+    if (String(v[COT.Ngay_Ca]).trim() !== caTho.ngayCa) {
+      return { ok: false, error: 'Chỉ xoá được việc ghi trong ca hiện tại.' };
+    }
+
+    ghiNhatKy_(v[COT.Ma_Su_Co], '', String(tho.Ma_Tho).trim(), 'XOA_BAO_TRI',
+      { noiDung: v[COT.Ten_May], doiTuong: v[COT.Bo_Phan] }, requestId);
+
+    sheet_(SHEET.SU_CO).deleteRow(r.dong);
+    return { ok: true, maSuCo: v[COT.Ma_Su_Co] };
+  } catch (err) {
+    return { ok: false, error: err.message };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+// ============================================================================
+// 8. RPC — HOÀN THÀNH
+// ============================================================================
+
+/**
+ * Thợ báo sửa xong → phiếu đóng NGAY, không có bước trung gian.
+ *
+ * payload = {
+ *   incidentId, techId, token, requestId,
+ *   noiDungXuLy,                       // bắt buộc
+ *   phuTung: [{ten, soLuong, dvt}],    // tối đa CONFIG.MAX_PHU_TUNG dòng
+ *   ghiChu
+ * }
+ */
+function completeIncident(payload) {
+  const p = payload || {};
+  const lock = LockService.getScriptLock();
+
+  try {
+    if (!lock.tryLock(CONFIG.KHOA_CHO_GIAY * 1000)) {
+      return { ok: false, error: 'Hệ thống đang bận, thử lại sau vài giây.' };
+    }
+
+    const tho = xacThucTho_(p.techId, p.token);
+    if (!tho) return { ok: false, error: 'Link không hợp lệ.' };
+
+    const requestId = String(p.requestId || '').trim();
+    if (!requestId) return { ok: false, error: 'Thiếu mã request.' };
+
+    const noiDung = String(p.noiDungXuLy || '').trim().slice(0, CONFIG.MAX_NOI_DUNG);
+    if (!noiDung) return { ok: false, error: 'Vui lòng nhập nội dung đã xử lý.' };
+
+    const r = timDongSuCo_(p.incidentId);
+    if (!r) return { ok: false, error: 'Không tìm thấy phiếu ' + p.incidentId + '.' };
+    const v = r.v;
+
+    if (String(v[COT.Request_ID_Cuoi]).trim() === requestId) {
+      return { ok: true, trung: true, phieu: gonPhieu_(v) };
+    }
+    if (v[COT.Trang_Thai] === TRANG_THAI.HOAN_THANH) {
+      return { ok: false, error: 'Phiếu ' + p.incidentId + ' đã được đóng trước đó.' };
+    }
+    if (String(v[COT.Ma_Tho]).trim() !== String(tho.Ma_Tho).trim()) {
+      return { ok: false, error: 'Phiếu này không phải việc của bạn. Hãy bấm "Nhận việc" trước.' };
+    }
+
+    const luc = nowVN_();
+    v[COT.Trang_Thai] = TRANG_THAI.HOAN_THANH;
+    v[COT.Noi_Dung_Xu_Ly] = noiDung;
+    v[COT.Phu_Tung_Tom_Tat] = gopPhuTung_(p.phuTung);
+    v[COT.Ghi_Chu] = String(p.ghiChu || '').trim().slice(0, CONFIG.MAX_NOI_DUNG);
+    v[COT.Thoi_Gian_Hoan_Thanh] = luc;
+    v[COT.Phut_Xu_Ly] = soPhut_(v[COT.Thoi_Gian_Nhan], luc);
+    v[COT.Cap_Nhat_Luc] = luc;
+    v[COT.Request_ID_Cuoi] = requestId;
+    v[COT.Phien_Ban] = (Number(v[COT.Phien_Ban]) || 0) + 1;
+
+    ghiCaDong_(r.dong, v);
+    ghiNhatKy_(v[COT.Ma_Su_Co], v[COT.Ma_May], String(tho.Ma_Tho).trim(), 'HOAN_THANH',
+      { phutXuLy: v[COT.Phut_Xu_Ly], phuTung: v[COT.Phu_Tung_Tom_Tat] }, requestId);
+
+    return { ok: true, phieu: gonPhieu_(v) };
+  } catch (err) {
+    return { ok: false, error: err.message };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/** [{ten, soLuong, dvt}] → "Vòng bi 6204 x2 cái; Dây curoa x1 sợi". */
+function gopPhuTung_(ds) {
+  if (!ds || !ds.length) return '';
+  return ds.slice(0, CONFIG.MAX_PHU_TUNG)
+    .filter(function (x) { return x && String(x.ten || '').trim(); })
+    .map(function (x) {
+      const ten = String(x.ten).trim();
+      const sl = String(x.soLuong || '').trim();
+      const dvt = String(x.dvt || '').trim();
+      return ten + (sl ? ' x' + sl : '') + (dvt ? ' ' + dvt : '');
+    })
+    .join('; ');
+}

@@ -1,0 +1,201 @@
+<style>
+/* ==========================================================================
+   Style dùng chung cho trang công nhân và trang thợ.
+   Tối ưu cho điện thoại — người dùng chủ yếu quét QR rồi thao tác 1 tay.
+   ========================================================================== */
+
+:root {
+  --xanh: #1a73e8;
+  --xanh-dam: #1557b0;
+  --do: #d93025;
+  --cam: #e37400;
+  --luc: #188038;
+  --chu: #202124;
+  --chu-nhat: #5f6368;
+  --vien: #dadce0;
+  --nen: #f8f9fa;
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  /* 100dvh + fallback: né lỗi thanh địa chỉ Chrome/Safari mobile che mất đáy màn hình. */
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--nen);
+  color: var(--chu);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 16px;
+  line-height: 1.45;
+}
+
+/*
+ * Khoảng hở đáy phải LỚN hơn chiều cao thanh nút cố định khá nhiều.
+ * .thanh-duoi là position:fixed nên luôn đè lên nội dung đang ở đáy màn hình.
+ * Hở ít thì ô nhập cuối cùng nằm ngay dưới nút "Xác nhận" — với tay xuống định
+ * gõ ô đó là bấm trúng nút. Trên Android còn tệ hơn: bàn phím mở làm màn hình
+ * co lại, thanh nút nhảy lên nằm đúng vùng ngón tay đang với.
+ */
+.boc { max-width: 560px; margin: 0 auto; padding: 12px 14px 150px; }
+
+/* --- Thẻ ------------------------------------------------------------------ */
+.the {
+  background: #fff;
+  border: 1px solid var(--vien);
+  border-radius: 12px;
+  padding: 14px;
+  margin-bottom: 12px;
+}
+.the-tieu-de {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--chu-nhat);
+  text-transform: uppercase;
+  letter-spacing: .4px;
+  margin-bottom: 10px;
+}
+
+/* --- Đầu trang: thông tin máy --------------------------------------------- */
+.may-ten { font-size: 20px; font-weight: 700; line-height: 1.25; }
+.may-phu { margin-top: 6px; display: flex; gap: 6px; flex-wrap: wrap; }
+.nhan {
+  display: inline-block;
+  background: #e8f0fe;
+  color: var(--xanh-dam);
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.nhan.xam { background: #f1f3f4; color: var(--chu-nhat); }
+
+/* --- Chip chọn ------------------------------------------------------------ */
+.chips { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.chip {
+  border: 1.5px solid var(--vien);
+  background: #fff;
+  border-radius: 10px;
+  padding: 12px 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--chu);
+  cursor: pointer;
+  text-align: center;
+  transition: background .12s, border-color .12s;
+}
+.chip .icon { display: block; font-size: 20px; margin-bottom: 3px; }
+.chip[aria-pressed="true"] {
+  border-color: var(--xanh);
+  background: #e8f0fe;
+  color: var(--xanh-dam);
+}
+
+/* --- Nhập liệu ------------------------------------------------------------ */
+textarea {
+  width: 100%;
+  min-height: 84px;
+  border: 1.5px solid var(--vien);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font: inherit;
+  resize: vertical;
+}
+textarea:focus { outline: none; border-color: var(--xanh); }
+.dem-ky-tu { text-align: right; font-size: 12px; color: var(--chu-nhat); margin-top: 4px; }
+
+/* --- Nút ------------------------------------------------------------------ */
+.nut {
+  display: block;
+  width: 100%;
+  border: none;
+  border-radius: 12px;
+  padding: 15px;
+  font-size: 17px;
+  font-weight: 700;
+  color: #fff;
+  background: var(--xanh);
+  cursor: pointer;
+}
+.nut:disabled { background: #b9c4d0; cursor: default; }
+.nut.phu { background: #fff; color: var(--xanh); border: 1.5px solid var(--vien); }
+.nut.do { background: var(--do); }
+
+.thanh-duoi {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  padding: 12px 14px calc(12px + env(safe-area-inset-bottom));
+  background: rgba(248,249,250,.96);
+  border-top: 1px solid var(--vien);
+}
+.thanh-duoi .boc-nut { max-width: 560px; margin: 0 auto; }
+
+/* --- Banner cảnh báo ------------------------------------------------------ */
+.bao {
+  border-radius: 10px;
+  padding: 11px 13px;
+  font-size: 14.5px;
+  margin-bottom: 12px;
+  border-left: 4px solid;
+}
+.bao.vang { background: #fef7e0; border-color: var(--cam); color: #7a4f01; }
+.bao.do   { background: #fce8e6; border-color: var(--do); color: #a50e0b; }
+.bao.luc  { background: #e6f4ea; border-color: var(--luc); color: #0d652d; }
+.bao.xanh { background: #e8f0fe; border-color: var(--xanh); color: var(--xanh-dam); }
+
+/* --- Danh bạ thợ ---------------------------------------------------------- */
+.tho-dong {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--vien);
+}
+.tho-dong:last-child { border-bottom: none; }
+.tho-tt { flex: 1; min-width: 0; }
+.tho-ten { font-weight: 600; }
+.tho-mo-ta { font-size: 13px; color: var(--chu-nhat); margin-top: 2px; }
+.nut-goi.khan { background: var(--cam); }
+.nut-goi {
+  flex-shrink: 0;
+  background: var(--luc);
+  color: #fff;
+  text-decoration: none;
+  border-radius: 999px;
+  padding: 10px 20px;
+  font-weight: 700;
+  font-size: 15px;
+}
+
+/* --- Trạng thái ----------------------------------------------------------- */
+.phu-kin {
+  position: fixed; inset: 0;
+  background: var(--nen);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 14px; z-index: 50;
+  color: var(--chu-nhat);
+}
+.quay {
+  width: 34px; height: 34px;
+  border: 3px solid var(--vien);
+  border-top-color: var(--xanh);
+  border-radius: 50%;
+  animation: xoay .8s linear infinite;
+}
+@keyframes xoay { to { transform: rotate(360deg); } }
+
+.an { display: none !important; }
+
+.ma-phieu {
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: .5px;
+  color: var(--luc);
+  text-align: center;
+  margin: 4px 0 2px;
+}
+.giua { text-align: center; }
+.nho { font-size: 13.5px; color: var(--chu-nhat); }
+</style>

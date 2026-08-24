@@ -1,0 +1,532 @@
+<!-- ==========================================================================
+     TRANG CÔNG NHÂN — quét QR trên máy → báo sự cố → gọi thợ đang trực.
+     Toàn bộ giao diện nằm trong 1 file, không framework, tối ưu điện thoại.
+     ========================================================================== -->
+<?!= include('Style') ?>
+
+<body>
+
+<!-- Mã máy truyền qua data-attribute của một div (không phải thẻ body, vì
+     HtmlService bọc lại trang trong sandbox và không đảm bảo giữ thuộc tính
+     của thẻ body). Cú pháp in ra của template tự escape nên chuỗi lấy từ URL
+     không chèn được HTML/JS vào trang.
+     LƯU Ý: tuyệt đối không viết scriptlet rỗng trong comment HTML — engine
+     template vẫn dịch nó và làm hỏng cả trang. -->
+<div id="goc" data-may="<?= maMay ?>" hidden></div>
+
+<!-- Màn hình chờ ---------------------------------------------------------- -->
+<div class="phu-kin" id="manCho">
+  <div class="quay"></div>
+  <div>Đang tải thông tin máy…</div>
+</div>
+
+<!-- Màn hình lỗi ---------------------------------------------------------- -->
+<div class="phu-kin an" id="manLoi">
+  <div style="font-size:42px">⚠️</div>
+  <div id="loiND" class="giua" style="padding:0 24px"></div>
+</div>
+
+<!-- ======================= MÀN HÌNH NHẬP ================================= -->
+<div class="boc an" id="manNhap">
+
+  <div class="the">
+    <div class="may-ten" id="tenMay"></div>
+    <div class="may-phu">
+      <span class="nhan" id="maMay"></span>
+      <span class="nhan xam" id="boPhan"></span>
+    </div>
+  </div>
+
+  <div class="bao vang an" id="baoPhieuMo"></div>
+
+  <!-- Máy đang có phiếu dừng chưa đóng: việc duy nhất cần làm là báo chạy lại. -->
+  <div class="the an" id="theChayLai" style="border-color:#e37400;background:#fff8ec">
+    <div class="the-tieu-de" style="color:#7a4f01">Máy này đang dừng</div>
+    <div id="chayLaiTt" style="font-size:15px;line-height:1.5"></div>
+    <button class="nut" id="nutChayLai" type="button"
+      style="margin-top:12px;background:#188038">▶️ Máy đã chạy lại</button>
+  </div>
+
+  <div class="the" id="theCheDo">
+    <div class="the-tieu-de">Báo việc gì?</div>
+    <div class="chips" id="nhomCheDo" style="grid-template-columns:repeat(2,1fr)">
+      <button class="chip" type="button" data-gt="HU_HONG"><span class="icon">🔧</span>Máy hư hỏng</button>
+      <button class="chip" type="button" data-gt="DUNG_MAY"><span class="icon">⏸️</span>Dừng máy<br>(không hư)</button>
+    </div>
+  </div>
+
+  <div id="khuHuHong">
+    <div class="the">
+      <div class="the-tieu-de">Tình trạng máy</div>
+      <div class="chips" id="nhomTinhTrang">
+        <button class="chip" type="button" data-gt="DA_DUNG"><span class="icon">🛑</span>Đã dừng</button>
+        <button class="chip" type="button" data-gt="DANG_CHAY"><span class="icon">⚙️</span>Còn chạy</button>
+        <button class="chip" type="button" data-gt="KHONG_RO"><span class="icon">❓</span>Không rõ</button>
+      </div>
+    </div>
+
+    <div class="the">
+      <div class="the-tieu-de">Nhóm lỗi</div>
+      <div class="chips" id="nhomLoi">
+        <button class="chip" type="button" data-gt="DIEN"><span class="icon">⚡</span>Điện</button>
+        <button class="chip" type="button" data-gt="CO_KHI"><span class="icon">🔩</span>Cơ khí</button>
+        <button class="chip" type="button" data-gt="KHONG_RO"><span class="icon">❓</span>Không rõ</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="the an" id="khuDungMay">
+    <div class="the-tieu-de">Lý do dừng máy *</div>
+    <textarea id="lyDoDung" maxlength="120" style="min-height:52px"
+      placeholder="Ví dụ: thiếu chỉ, chờ kho cấp"></textarea>
+    <!-- Gõ tự do là chính; các nút dưới chỉ để bấm cho nhanh những lý do hay gặp,
+         bấm xong vẫn sửa được. Danh sách lấy từ sheet Cau_Hinh. -->
+    <div id="goYLyDo" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px"></div>
+    <div class="nho" style="margin-top:10px">
+      Không cần chọn điện hay cơ khí, không gọi thợ. Hệ thống bắt đầu tính thời gian dừng
+      từ lúc bạn bấm gửi. Khi máy chạy lại, quét QR máy này rồi bấm “Máy đã chạy lại”.
+    </div>
+  </div>
+
+  <div class="the" id="theMoTa">
+    <div class="the-tieu-de">Mô tả thêm (không bắt buộc)</div>
+    <textarea id="moTa" maxlength="300" placeholder="Ví dụ: máy kêu to bất thường, dừng đột ngột…"></textarea>
+    <div class="dem-ky-tu"><span id="demKyTu">0</span>/300</div>
+  </div>
+
+  <div class="thanh-duoi" id="thanhGui">
+    <div class="boc-nut">
+      <button class="nut" id="nutGui" type="button">Gửi báo sự cố</button>
+    </div>
+  </div>
+</div>
+
+<!-- ======================= MÀN HÌNH KẾT QUẢ ============================== -->
+<div class="boc an" id="manXong">
+
+  <div class="the giua">
+    <div style="font-size:40px" id="xongIcon">✅</div>
+    <div class="nho" id="xongNhan">Đã ghi nhận sự cố</div>
+    <div class="ma-phieu" id="maPhieu"></div>
+    <div class="nho" id="tomTatMay"></div>
+  </div>
+
+  <div class="bao an" id="baoDanhBa"></div>
+
+  <div class="the" id="theDanhBa">
+    <div class="the-tieu-de">Gọi thợ — đọc mã máy cho thợ</div>
+    <div id="dsTho"></div>
+  </div>
+
+  <div class="thanh-duoi">
+    <div class="boc-nut">
+      <button class="nut phu" id="nutBaoTiep" type="button">➕ Báo cáo thêm sự cố khác</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===========================================================================
+// Trạng thái client
+// ===========================================================================
+var MA_MAY = (document.getElementById('goc').dataset.may || '').trim();
+var MAY = null;
+var chon = { trangThaiMay: '', nhomLoi: '' };
+var cheDo = 'HU_HONG';   // 'HU_HONG' = máy hỏng cần thợ | 'DUNG_MAY' = dừng không do hư
+var PHIEU_DANG_MO = null; // phiếu chưa đóng của máy này, giữ lại để khỏi gọi server thêm
+var requestId = '';       // đổi mỗi lần bắt đầu một phiếu mới
+var dangGui = false;
+var xacNhanTrung = false; // true sau khi công nhân đồng ý tạo phiếu dù máy đang có phiếu mở
+
+function $(id) { return document.getElementById(id); }
+function hien(id) { $(id).classList.remove('an'); }
+function an(id) { $(id).classList.add('an'); }
+
+/** requestId chống double-tap: giữ nguyên khi bấm gửi lại, chỉ đổi khi sang phiếu mới. */
+function moiRequestId() {
+  requestId = 'RQ-' + Date.now() + '-' + Math.random().toString(36).slice(2, 10);
+}
+
+// ===========================================================================
+// Khởi tạo
+// ===========================================================================
+window.addEventListener('load', function () {
+  if (!MA_MAY) return baoLoi('Đường dẫn thiếu mã máy. Vui lòng quét lại mã QR trên máy.');
+  google.script.run
+    .withSuccessHandler(nhanBootstrap)
+    .withFailureHandler(function (e) { baoLoi('Không kết nối được máy chủ: ' + e.message); })
+    .getWorkerBootstrap(MA_MAY);
+});
+
+function nhanBootstrap(kq) {
+  if (!kq || !kq.ok) return baoLoi((kq && kq.error) || 'Không đọc được thông tin máy.');
+
+  MAY = kq.may;
+  $('tenMay').textContent = MAY.tenMay || MAY.maMay;
+  $('maMay').textContent = MAY.maMay;
+  $('boPhan').textContent = MAY.boPhan || '—';
+
+  veLyDo(kq.lyDoDungMay || []);
+  datCheDo('HU_HONG');
+
+  moiRequestId();
+  an('manCho');
+
+  // Máy đang dừng thì việc duy nhất cần làm là báo chạy lại — ẩn hẳn form báo mới
+  // để công nhân không phải nghĩ, và để không mở chồng thêm một khoảng dừng nữa.
+  if (kq.phieuDangMo && kq.phieuDangMo.laDungMay) {
+    veChayLai(kq.phieuDangMo);
+    hien('manNhap');
+    return;
+  }
+
+  // Máy đang có phiếu sự cố chưa đóng → mở thẳng màn hình danh bạ, không mở form.
+  // Người quét lại QR gần như luôn là người vừa gọi mà không ai bắt máy; thứ họ
+  // cần ngay là số của người tiếp theo. Muốn báo thêm sự cố thì có nút riêng.
+  if (kq.phieuDangMo) {
+    veDangCho(kq.phieuDangMo, kq.danhBa);
+    return;
+  }
+
+  hien('manNhap');
+}
+
+/** Màn hình cho máy đang có phiếu sự cố chưa đóng: nhắc phiếu + danh bạ để gọi tiếp. */
+function veDangCho(p, danhBa) {
+  PHIEU_DANG_MO = p;
+  var tt = p.trangThai === 'DANG_XU_LY'
+    ? 'Đang được ' + (p.tenTho || 'thợ') + ' xử lý'
+    : 'Đang chờ thợ nhận việc';
+
+  $('xongIcon').textContent = '⏳';
+  $('xongNhan').textContent = 'Máy này đã được báo, chưa đóng';
+  $('maPhieu').textContent = p.maSuCo;
+  $('maPhieu').style.color = '#e37400';
+  $('tomTatMay').textContent = tt + ' · báo lúc ' + p.thoiGianBao +
+    (p.moTa ? ' · “' + p.moTa + '”' : '');
+
+  veDanhBa(danhBa);
+
+  // veDanhBa chỉ hiện banner khi có cảnh báo. Ở màn hình này luôn cần một dòng
+  // giải thích vì sao lại thấy danh bạ khi chưa báo gì.
+  if (!danhBa || !danhBa.thongDiep) {
+    $('baoDanhBa').className = 'bao xanh';
+    $('baoDanhBa').textContent =
+      'Gọi chưa được? Bấm gọi người tiếp theo trong danh sách.';
+  }
+
+  hien('manXong');
+  window.scrollTo(0, 0);
+}
+
+// --- Chế độ báo ------------------------------------------------------------
+function datCheDo(gt) {
+  cheDo = gt;
+  Array.prototype.forEach.call($('nhomCheDo').querySelectorAll('.chip'), function (c) {
+    c.setAttribute('aria-pressed', String(c.dataset.gt === gt));
+  });
+  var laDung = gt === 'DUNG_MAY';
+  $('khuHuHong').classList.toggle('an', laDung);
+  $('khuDungMay').classList.toggle('an', !laDung);
+  $('nutGui').textContent = laDung ? 'Gửi báo dừng máy' : 'Gửi báo sự cố';
+  $('moTa').placeholder = laDung
+    ? 'Ví dụ: chờ chỉ từ kho, dự kiến 30 phút'
+    : 'Ví dụ: máy kêu to bất thường, dừng đột ngột…';
+}
+
+$('nhomCheDo').addEventListener('click', function (ev) {
+  var nut = ev.target.closest('.chip');
+  if (nut) datCheDo(nut.dataset.gt);
+});
+
+function veLyDo(ds) {
+  $('goYLyDo').innerHTML = ds.map(function (x) {
+    return '<button class="chip" type="button" data-gt="' + thoat(x) + '" ' +
+      'style="padding:7px 12px;font-size:13px">' + thoat(x) + '</button>';
+  }).join('');
+}
+
+// Bấm gợi ý là điền vào ô, không phải chọn cứng — vẫn sửa lại được sau đó.
+$('goYLyDo').addEventListener('click', function (ev) {
+  var nut = ev.target.closest('.chip');
+  if (!nut) return;
+  $('lyDoDung').value = nut.dataset.gt;
+  $('lyDoDung').focus();
+});
+
+// --- Máy đang dừng ---------------------------------------------------------
+function veChayLai(p) {
+  PHIEU_DANG_MO = p;
+  $('chayLaiTt').innerHTML =
+    '<b>' + thoat(p.maSuCo) + '</b><br>' +
+    thoat(p.moTa || 'Không ghi lý do') + '<br>' +
+    '<span class="nho">Dừng từ ' + thoat(p.thoiGianBao) + '</span>';
+  hien('theChayLai');
+  ['theCheDo', 'khuHuHong', 'khuDungMay', 'theMoTa', 'thanhGui'].forEach(an);
+}
+
+$('nutChayLai').addEventListener('click', function () {
+  if (dangGui) return;
+  dangGui = true;
+  this.disabled = true;
+  this.textContent = 'Đang gửi…';
+
+  google.script.run
+    .withSuccessHandler(function (kq) {
+      dangGui = false;
+      $('nutChayLai').disabled = false;
+      $('nutChayLai').textContent = '▶️ Máy đã chạy lại';
+      if (!kq || !kq.ok) return alert((kq && kq.error) || 'Không ghi nhận được.');
+      PHIEU_DANG_MO = null; // máy đã chạy lại, không còn phiếu nào mở
+      veKetQuaDung('Đã ghi nhận máy chạy lại', kq.maSuCo,
+        'Máy dừng tổng cộng ' + kq.phutDung + ' phút.');
+    })
+    .withFailureHandler(function (e) {
+      dangGui = false;
+      $('nutChayLai').disabled = false;
+      $('nutChayLai').textContent = '▶️ Máy đã chạy lại';
+      alert('Lỗi: ' + e.message + '\nBấm lại để thử tiếp.');
+    })
+    .reportMachineRestart({ machineCode: MA_MAY, requestId: requestId });
+});
+
+/** Màn hình kết quả cho luồng dừng máy — không có danh bạ thợ. */
+function veKetQuaDung(tieuDe, maPhieu, dong2) {
+  datDauManXong('⏸️', 'Dừng máy không do hư hỏng', '#e37400');
+  $('maPhieu').textContent = maPhieu;
+  $('tomTatMay').textContent = dong2;
+  $('theDanhBa').classList.add('an');
+  $('baoDanhBa').className = 'bao luc';
+  $('baoDanhBa').textContent = tieuDe;
+  an('manNhap');
+  hien('manXong');
+  window.scrollTo(0, 0);
+}
+
+function baoLoi(td) {
+  $('loiND').textContent = td;
+  an('manCho');
+  hien('manLoi');
+}
+
+function veBaoPhieuMo(p) {
+  var tt = p.trangThai === 'DANG_XU_LY'
+    ? 'đang được ' + (p.tenTho || 'thợ') + ' xử lý'
+    : 'đang chờ thợ nhận';
+  $('baoPhieuMo').innerHTML =
+    '<b>Máy này đã có phiếu ' + thoat(p.maSuCo) + '</b> ' + thoat(tt) +
+    ' (báo lúc ' + thoat(p.thoiGianBao) + ').<br>Chỉ gửi thêm nếu đây là sự cố khác.';
+  hien('baoPhieuMo');
+}
+
+function thoat(s) {
+  return String(s === null || s === undefined ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+// ===========================================================================
+// Chọn chip
+// ===========================================================================
+['nhomTinhTrang', 'nhomLoi'].forEach(function (idNhom) {
+  $(idNhom).addEventListener('click', function (ev) {
+    var nut = ev.target.closest('.chip');
+    if (!nut) return;
+    Array.prototype.forEach.call(this.querySelectorAll('.chip'), function (c) {
+      c.setAttribute('aria-pressed', String(c === nut));
+    });
+    if (idNhom === 'nhomTinhTrang') chon.trangThaiMay = nut.dataset.gt;
+    else chon.nhomLoi = nut.dataset.gt;
+  });
+});
+
+$('moTa').addEventListener('input', function () {
+  $('demKyTu').textContent = this.value.length;
+});
+
+// ===========================================================================
+// Gửi
+// ===========================================================================
+$('nutGui').addEventListener('click', function () {
+  if (dangGui) return;
+
+  if (cheDo === 'DUNG_MAY') {
+    if (!$('lyDoDung').value.trim()) return alert('Vui lòng nhập lý do dừng máy.');
+    guiDungMay();
+    return;
+  }
+
+  if (!chon.trangThaiMay) return alert('Vui lòng chọn tình trạng máy.');
+  if (!chon.nhomLoi) return alert('Vui lòng chọn nhóm lỗi.');
+  gui();
+});
+
+function guiDungMay() {
+  dangGui = true;
+  $('nutGui').disabled = true;
+  $('nutGui').textContent = 'Đang gửi…';
+
+  google.script.run
+    .withSuccessHandler(function (kq) {
+      moKhoaNut();
+      $('nutGui').textContent = 'Gửi báo dừng máy';
+      if (!kq || !kq.ok) return alert((kq && kq.error) || 'Không ghi nhận được.');
+      PHIEU_DANG_MO = {
+        maSuCo: kq.maSuCo, trangThai: 'DANG_XU_LY', laDungMay: true,
+        thoiGianBao: kq.gioDung, moTa: kq.lyDo, tenTho: '',
+      };
+      veKetQuaDung('Đã bắt đầu tính thời gian dừng máy', kq.maSuCo,
+        kq.lyDo + ' · dừng từ ' + kq.gioDung +
+        '. Khi máy chạy lại, quét QR máy này rồi bấm "Máy đã chạy lại".');
+    })
+    .withFailureHandler(function (e) {
+      moKhoaNut();
+      $('nutGui').textContent = 'Gửi báo dừng máy';
+      alert('Gửi thất bại: ' + e.message + '\nVui lòng bấm gửi lại.');
+    })
+    .reportMachineStop({
+      machineCode: MA_MAY,
+      lyDo: $('lyDoDung').value,
+      moTa: $('moTa').value,
+      requestId: requestId
+    });
+}
+
+function gui() {
+  dangGui = true;
+  $('nutGui').disabled = true;
+  $('nutGui').textContent = 'Đang gửi…';
+
+  google.script.run
+    .withSuccessHandler(nhanKetQua)
+    .withFailureHandler(function (e) {
+      moKhoaNut();
+      alert('Gửi thất bại: ' + e.message + '\nVui lòng bấm gửi lại.');
+    })
+    .reportIncident({
+      machineCode: MA_MAY,
+      trangThaiMay: chon.trangThaiMay,
+      nhomLoi: chon.nhomLoi,
+      moTa: $('moTa').value,
+      requestId: requestId,
+      boQuaCanhBaoTrung: xacNhanTrung
+    });
+}
+
+function moKhoaNut() {
+  dangGui = false;
+  $('nutGui').disabled = false;
+  $('nutGui').textContent = 'Gửi báo sự cố';
+}
+
+function nhanKetQua(kq) {
+  // Máy đang có phiếu mở → hỏi lại, gửi lại với cùng requestId nếu đồng ý.
+  if (kq && !kq.ok && kq.phieuDangMo) {
+    moKhoaNut();
+    var p = kq.phieuDangMo;
+    if (confirm('Máy này đang có phiếu ' + p.maSuCo + ' chưa đóng.\n\n' +
+                'Đây có phải sự cố KHÁC không?\n' +
+                'Bấm OK để vẫn tạo phiếu mới, Cancel để huỷ.')) {
+      xacNhanTrung = true;
+      gui();
+    }
+    return;
+  }
+
+  if (!kq || !kq.ok) {
+    moKhoaNut();
+    return alert('Không lưu được: ' + ((kq && kq.error) || 'lỗi không xác định'));
+  }
+
+  datDauManXong('✅', 'Đã ghi nhận sự cố', '#188038');
+  PHIEU_DANG_MO = {
+    maSuCo: kq.maSuCo, trangThai: 'CHO_NHAN', laDungMay: false,
+    thoiGianBao: 'vừa xong', moTa: $('moTa').value.trim(), tenTho: '',
+  };
+  $('maPhieu').textContent = kq.maSuCo;
+  $('tomTatMay').textContent = MAY.maMay + ' — ' + (MAY.tenMay || '');
+  veDanhBa(kq.danhBa);
+
+  an('manNhap');
+  hien('manXong');
+  window.scrollTo(0, 0);
+}
+
+/** Đặt lại phần đầu màn hình kết quả — dùng chung cho 3 tình huống khác nhau. */
+function datDauManXong(icon, nhan, mau) {
+  $('xongIcon').textContent = icon;
+  $('xongNhan').textContent = nhan;
+  $('maPhieu').style.color = mau;
+}
+
+// ===========================================================================
+// Danh bạ thợ
+// ===========================================================================
+function veDanhBa(db) {
+  db = db || { ds: [], mucCanhBao: '', thongDiep: '' };
+
+  var loaiBanner = { NGOAI_CHUYEN_MON: 'vang', THIEU_LICH: 'vang', KHONG_CO_THO: 'do' };
+  if (db.thongDiep) {
+    var b = $('baoDanhBa');
+    b.className = 'bao ' + (loaiBanner[db.mucCanhBao] || 'xanh');
+    b.textContent = db.thongDiep;
+  } else {
+    an('baoDanhBa');
+  }
+
+  if (!db.ds || !db.ds.length) { an('theDanhBa'); return; }
+  hien('theDanhBa');
+
+  var moTaCM = { DIEN: 'Thợ điện', CO_KHI: 'Thợ cơ khí', CA_HAI: 'Điện + Cơ khí' };
+  var moTaCa = { N: 'ca ngày', D: 'ca đêm' };
+
+  $('dsTho').innerHTML = db.ds.map(function (t) {
+    // Số khẩn cấp nằm ngoài lịch trực nên không mô tả ca/chuyên môn, và tô màu
+    // khác để công nhân không nhầm là thợ đang trực.
+    var phu = t.khanCap
+      ? '☎️ Luôn gọi được — ngoài lịch trực'
+      : [moTaCM[t.chuyenMon] || t.chuyenMon, moTaCa[t.ca]].filter(Boolean).join(' · ');
+    var goi = t.soDienThoai
+      ? '<a class="nut-goi' + (t.khanCap ? ' khan' : '') + '" href="tel:' +
+        thoat(t.soDienThoai) + '">Gọi</a>'
+      : '<span class="nho">chưa có SĐT</span>';
+    return '<div class="tho-dong"><div class="tho-tt">' +
+      '<div class="tho-ten">' + thoat(t.tenTho) + '</div>' +
+      '<div class="tho-mo-ta">' + thoat(phu) + '</div>' +
+      '</div>' + goi + '</div>';
+  }).join('');
+}
+
+// ===========================================================================
+// Báo phiếu tiếp cho cùng máy
+// ===========================================================================
+$('nutBaoTiep').addEventListener('click', function () {
+  chon = { trangThaiMay: '', nhomLoi: '' };
+  $('lyDoDung').value = '';
+  // Bấm nút này là đã nói rõ "tôi muốn báo thêm một sự cố KHÁC", nên không hỏi
+  // lại câu xác nhận trùng phiếu nữa.
+  xacNhanTrung = true;
+  moiRequestId();
+  Array.prototype.forEach.call(document.querySelectorAll('.chip'), function (c) {
+    c.setAttribute('aria-pressed', 'false');
+  });
+  $('moTa').value = '';
+  $('demKyTu').textContent = '0';
+  moKhoaNut();
+
+  // Trả màn hình nhập về nguyên trạng — lần trước có thể đã ẩn đi để hiện nút
+  // "Máy đã chạy lại".
+  ['theCheDo', 'theMoTa', 'thanhGui'].forEach(hien);
+  an('theChayLai');
+  datCheDo('HU_HONG');
+
+  // Nhắc lại phiếu đang mở bằng dữ liệu đã có sẵn, không gọi lại server —
+  // getWorkerBootstrap giờ dựng cả danh bạ nên tốn hơn một giây cho việc thừa.
+  if (PHIEU_DANG_MO && !PHIEU_DANG_MO.laDungMay) veBaoPhieuMo(PHIEU_DANG_MO);
+  else an('baoPhieuMo');
+
+  an('manXong');
+  hien('manNhap');
+  window.scrollTo(0, 0);
+});
+</script>
+</body>

@@ -1,0 +1,501 @@
+﻿<!-- ==========================================================================
+     BÁO CÁO TRONG NGÀY — một trang xem nhanh.
+     Ưu tiên: mở ra là thấy ngay việc còn treo, rồi mới tới số liệu.
+     ========================================================================== -->
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 14px; background: #f1f3f4; color: #202124;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-size: 14px; line-height: 1.45;
+  }
+  /* Rộng hơn 1000px vì bảng sự cố có tới 13 cột. Vẫn giới hạn để trên màn hình
+     siêu rộng chữ không bị kéo dài quá mức đọc được. */
+  .boc { max-width: 1500px; margin: 0 auto; }
+
+  /* Bảng nào quá rộng thì CUỘN NGANG trong thẻ, không đẩy tràn ra ngoài viền. */
+  .cuon { overflow-x: auto; }
+
+  .dau {
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    background: #fff; border: 1px solid #dadce0; border-radius: 10px;
+    padding: 12px 14px; margin-bottom: 12px;
+  }
+  .dau h1 { margin: 0; font-size: 19px; color: #14304f; }
+  .dau .nho { font-size: 12.5px; color: #5f6368; }
+  .dau .day { margin-left: auto; display: flex; gap: 6px; align-items: center; }
+  .dau input, .dau button {
+    font: inherit; padding: 7px 10px; border-radius: 7px; border: 1px solid #dadce0;
+    background: #fff; cursor: pointer;
+  }
+  .dau button.chinh { background: #1a73e8; color: #fff; border-color: #1a73e8; font-weight: 600; }
+
+  /* --- Ô số lớn --- */
+  .oso { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; margin-bottom: 12px; }
+  .oso .o {
+    background: #fff; border: 1px solid #dadce0; border-radius: 10px;
+    padding: 10px; text-align: center;
+  }
+  .oso b { display: block; font-size: 25px; line-height: 1.15; color: #14304f; }
+  .oso span { font-size: 11.5px; color: #5f6368; }
+  .oso .o.cam b { color: #e37400; }
+  .oso .o.do b { color: #d93025; }
+
+  /* --- Thẻ --- */
+  .the {
+    background: #fff; border: 1px solid #dadce0; border-radius: 10px;
+    padding: 12px 14px; margin-bottom: 12px; page-break-inside: avoid;
+  }
+  .the.canh { border-color: #e37400; background: #fffaf2; }
+  .the h2 {
+    margin: 0 0 8px; font-size: 14px; color: #14304f;
+    text-transform: uppercase; letter-spacing: .4px;
+  }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { border-bottom: 1px solid #e8eaed; padding: 6px 7px; text-align: left; }
+  th { color: #5f6368; font-size: 11.5px; text-transform: uppercase; letter-spacing: .3px; }
+  tr:last-child td { border-bottom: none; }
+
+  /* Ô sửa được tại chỗ. Viền đứt mờ để biết bấm vào gõ được, không làm rối bảng. */
+  td.sua {
+    min-width: 120px; border-bottom: 1px solid #e8eaed;
+    outline: none; cursor: text;
+  }
+  /* Cột giờ và mã phiếu không được xuống dòng — "CV-1008-001" vỡ làm ba dòng
+     làm cả bảng cao gấp đôi mà chẳng đọc nhanh hơn. */
+  td:first-child, th:first-child { white-space: nowrap; }
+  td.nw, th.nw { white-space: nowrap; }
+  td .nho { font-size: 12px; color: #5f6368; }
+  td.sua:hover { background: #f8f9fa; box-shadow: inset 0 0 0 1px #dadce0; }
+  td.sua:focus { background: #fff; box-shadow: inset 0 0 0 2px #1a73e8; }
+  td.sua:empty::before { content: '—'; color: #bdc1c6; }
+  td.sua.dangluu { background: #fef7e0; }
+  td.sua.daluu { background: #e6f4ea; }
+  td.sua.loi { background: #fce8e6; box-shadow: inset 0 0 0 2px #d93025; }
+
+  .nhac {
+    font-size: 12px; color: #5f6368; margin: 0 0 8px;
+    padding: 6px 9px; background: #f8f9fa; border-radius: 6px;
+  }
+  @media print { td.sua { min-width: 0; } .nhac { display: none; } }
+  td.s, th.s { text-align: right; white-space: nowrap; }
+  .trong { color: #5f6368; font-size: 13px; padding: 6px 0; }
+
+  .nhan {
+    display: inline-block; font-size: 11px; font-weight: 700; border-radius: 999px;
+    padding: 1px 8px; background: #f1f3f4; color: #5f6368;
+  }
+  /* Dòng ngăn cách giữa các bộ phận trong bảng sự cố. */
+  tr.nhombp td {
+    background: #e8f0fe; color: #174ea6; font-weight: 700;
+    font-size: 12px; letter-spacing: .3px;
+    border-top: 2px solid #aecbfa; border-bottom: 1px solid #d2e3fc;
+    padding: 7px;
+  }
+  tr.nhombp td .phu { font-weight: 400; color: #5f6368; }
+
+  /* Chip lọc bộ phận trên bảng sự cố. */
+  .locbp { display: flex; gap: 6px; flex-wrap: wrap; margin: 0 0 9px; }
+  .locbp button {
+    font: inherit; font-size: 12px; padding: 4px 11px; border-radius: 999px;
+    border: 1px solid #dadce0; background: #fff; cursor: pointer; color: #3c4043;
+  }
+  .locbp button[aria-pressed="true"] {
+    background: #1a73e8; border-color: #1a73e8; color: #fff; font-weight: 600;
+  }
+
+  .nhan.dien { background: #fef7e0; color: #7a4f01; }
+  .nhan.co { background: #e8f0fe; color: #1557b0; }
+  .nhan.lau { background: #fce8e6; color: #a50e0b; }
+  .nhan.dung { background: #fff0e0; color: #a55a00; }
+
+  @page { size: A4 landscape; margin: 10mm; }
+  @media print {
+    body { background: #fff; padding: 0; font-size: 11.5px; }
+    .day { display: none !important; }
+    .the, .dau, .oso .o { border-color: #bbb; }
+    /* Khi in không có chuyện cuộn — cho bảng trải hết ra giấy. */
+    .cuon { overflow: visible; }
+    /* Bản in chỉ chữ, bỏ hết icon. */
+    .ic { display: none; }
+    .nhan { background: none !important; color: #202124 !important; padding: 0; }
+    /* Máy in đen trắng nuốt mất nền xanh, nên dòng bộ phận giữ lại bằng đường
+       kẻ đậm và chữ in hoa — vẫn tách khối rõ trên giấy. */
+    tr.nhombp td {
+      background: none !important; color: #000 !important;
+      border-top: 2px solid #000; text-transform: uppercase;
+    }
+    .locbp { display: none; }
+  }
+</style>
+
+<body>
+<div id="goc" hidden data-json="<?= duLieu ?>" data-ngay="<?= ngay ?>" data-key="<?= key ?>"></div>
+
+<div class="boc">
+  <div class="dau">
+    <div>
+      <h1 id="tieuDe"></h1>
+      <div class="nho" id="capNhat"></div>
+    </div>
+    <div class="day">
+      <input type="date" id="chonNgay">
+      <button id="nutXem" class="chinh">Xem</button>
+      <button onclick="window.print()">🖨️ In</button>
+    </div>
+  </div>
+
+  <div class="oso" id="oso"></div>
+
+  <div class="the canh" id="theTreo">
+    <h2>⏳ Còn đang treo — cần xử lý</h2>
+    <div id="bangTreo"></div>
+  </div>
+
+  <div class="the">
+    <h2>🔧 Sự cố máy trong ngày</h2>
+    <p class="nhac">Ba cột <b>Hư hỏng</b>, <b>Đã sửa</b>, <b>Phụ tùng</b> bấm vào sửa
+      được ngay để chuẩn hoá chữ nghĩa — rời ô là tự lưu. Phụ tùng giữ đúng dạng
+      <code>Tên xSL ĐVT; Tên xSL ĐVT</code> để báo cáo tách được thành cột.</p>
+    <div class="locbp" id="locBp"></div>
+    <div id="bangSuCo"></div>
+  </div>
+
+  <div class="the">
+    <h2>⏸️ Dừng máy không do hư hỏng</h2>
+    <div id="bangDung"></div>
+  </div>
+
+  <div class="the">
+    <h2>🧰 Việc chung</h2>
+    <p class="nhac">Ở bảng này sửa được cả <b>Máy</b> và <b>Khu vực</b> — việc chung
+      do thợ tự khai nên hay thiếu. Phiếu sự cố thì hai cột đó lấy từ danh mục máy,
+      không sửa tay được; sai thì sửa trong <code>Danh_Muc_May</code>.</p>
+    <div id="bangViecChung"></div>
+  </div>
+
+  <div class="the">
+    <h2>🛠️ Bảo trì hằng ngày</h2>
+    <div id="bangBaoTri"></div>
+  </div>
+
+  <div class="the">
+    <h2>👷 Theo thợ</h2>
+    <div id="bangTho"></div>
+  </div>
+</div>
+
+<script>
+  var GOC = document.getElementById('goc');
+  var D = JSON.parse(GOC.dataset.json);
+
+  function thoat(s) {
+    return String(s === null || s === undefined ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+  function $(id) { return document.getElementById(id); }
+
+  // Icon tách riêng khỏi chữ để bản IN bỏ được icon, chỉ còn chữ — xem .ic trong
+  // phần @media print. Trên màn hình icon giúp liếc nhanh, nhưng in ra giấy gửi
+  // đi thì nhìn không nghiêm túc.
+  var ICON_LOI = { DIEN: '⚡', CO_KHI: '🔩', KHONG_RO: '❓' };
+  var TEN_LOI = { DIEN: 'Điện', CO_KHI: 'Cơ khí', KHONG_RO: 'Không rõ' };
+
+  function nhanLoi_(nl) {
+    var ic = ICON_LOI[nl];
+    return '<span class="nhan ' + (LOP_LOI[nl] || '') + '">' +
+      (ic ? '<span class="ic">' + ic + ' </span>' : '') +
+      thoat(TEN_LOI[nl] || nl) + '</span>';
+  }
+
+  var KEY = GOC.dataset.key;
+
+  /** Một ô sửa được tại chỗ. Rời ô là tự lưu. */
+  function oSua_(ma, truong, gt) {
+    return '<td class="sua" contenteditable="true" data-ma="' + thoat(ma) +
+      '" data-truong="' + truong + '">' + thoat(gt || '') + '</td>';
+  }
+
+  function luuO_(td, moi) {
+    td.className = 'sua dangluu';
+    var d = { maSuCo: td.dataset.ma, key: KEY };
+    d[td.dataset.truong] = moi;
+
+    google.script.run
+      .withSuccessHandler(function (kq) {
+        if (!kq || !kq.ok) {
+          td.className = 'sua loi';
+          alert((kq && kq.error) || 'Lưu thất bại.');
+          return;
+        }
+        td.dataset.cu = moi;
+        td.className = 'sua daluu';
+        setTimeout(function () { td.className = 'sua'; }, 1200);
+      })
+      .withFailureHandler(function (e) {
+        td.className = 'sua loi';
+        alert('Lỗi: ' + e.message + '\nNội dung chưa được lưu, sửa lại rồi rời ô.');
+      })
+      .capNhatNoiDungPhieu(d);
+  }
+
+  // Ghi lại giá trị cũ lúc bấm vào, để rời ô biết có thay đổi thật hay không —
+  // tránh gọi server mỗi lần chỉ bấm vào rồi bấm ra.
+  document.addEventListener('focusin', function (ev) {
+    var td = ev.target.closest && ev.target.closest('td.sua');
+    if (td) td.dataset.cu = td.textContent.trim();
+  });
+  document.addEventListener('focusout', function (ev) {
+    var td = ev.target.closest && ev.target.closest('td.sua');
+    if (!td) return;
+    var moi = td.textContent.trim();
+    if (moi === (td.dataset.cu || '')) return;
+    luuO_(td, moi);
+  });
+  // Enter là chốt luôn, không xuống dòng trong ô.
+  document.addEventListener('keydown', function (ev) {
+    if (ev.key !== 'Enter') return;
+    var td = ev.target.closest && ev.target.closest('td.sua');
+    if (!td) return;
+    ev.preventDefault();
+    td.blur();
+  });
+  var LOP_LOI = { DIEN: 'dien', CO_KHI: 'co' };
+  var TEN_CA = { N: 'Ngày', D: 'Đêm' };
+
+  $('tieuDe').textContent = 'Báo cáo ngày ' + D.ngay;
+  $('capNhat').textContent = 'Số liệu tính tới ' + D.capNhat +
+    ' · gom theo ngày ca, ca đêm thuộc về ngày bắt đầu';
+  $('chonNgay').value = D.ngay;
+
+  // --- Ô số lớn -------------------------------------------------------------
+  var t = D.tong;
+  var tongDung = (t.phutDungHong || 0) + (t.phutDungKhac || 0);
+  $('oso').innerHTML = [
+    ['', t.suCo, 'Sự cố máy'],
+    ['', t.dong, 'Đã đóng'],
+    [t.treo ? 'do' : '', t.treo, 'Còn treo (mọi ngày)'],
+    ['cam', tongDung, 'Phút máy dừng'],
+    ['', t.congViec, 'Việc chung'],
+    ['', t.baoTri, 'Bảo trì'],
+  ].map(function (x) {
+    return '<div class="o ' + x[0] + '"><b>' + x[1] + '</b><span>' + x[2] + '</span></div>';
+  }).join('');
+
+  // --- Bảng chung -----------------------------------------------------------
+  function veBang(idDich, cot, dong, khiTrong) {
+    if (!dong.length) { $(idDich).innerHTML = '<div class="trong">' + khiTrong + '</div>'; return; }
+    $(idDich).innerHTML = '<div class="cuon"><table><tr>' +
+      cot.map(function (c) {
+        return '<th class="' + (c.s ? 's' : '') + (c.nw ? ' nw' : '') + '">' + c.ten + '</th>';
+      }).join('') +
+      '</tr>' + dong.join('') + '</table></div>';
+  }
+
+  // --- Còn treo -------------------------------------------------------------
+  // Phiếu treo từ hôm trước là thứ nguy hiểm nhất, nên cho hẳn một cột "Mở ngày"
+  // và tô đỏ, thay vì để lẫn với phiếu vừa mở sáng nay.
+  function ngayNgan_(s) {
+    return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s.slice(8, 10) + '/' + s.slice(5, 7) : s;
+  }
+  function doTreo_(x) {
+    if (x.ngayCa && x.ngayCa < D.ngay) return ' class="nhan lau"';
+    return x.treo >= 60 ? ' class="nhan lau"' : ' class="nhan"';
+  }
+
+  veBang('bangTreo',
+    [{ ten: 'Mã' }, { ten: 'Mở ngày', nw: true }, { ten: 'Máy / nội dung' },
+     { ten: 'Loại' }, { ten: 'Ai giữ' }, { ten: 'Đã treo', s: true }],
+    D.chuaDong.map(function (x) {
+      var loai = x.loai === 'DUNG_MAY'
+        ? '<span class="nhan dung">Dừng máy</span>'
+        : nhanLoi_(x.nhomLoi);
+      var homTruoc = x.ngayCa && x.ngayCa < D.ngay;
+      var oNgay = homTruoc
+        ? '<span class="nhan lau">' + thoat(ngayNgan_(x.ngayCa)) + '</span>'
+        : '<span class="nho">hôm nay</span>';
+      var gio = homTruoc
+        ? Math.round(x.treo / 60) + ' giờ'
+        : x.treo + ' phút';
+      return '<tr><td>' + thoat(x.ma) + '</td>' +
+        '<td class="nw">' + oNgay + '</td>' +
+        '<td>' + thoat(x.may || x.moTa) + '</td>' +
+        '<td>' + loai + '</td>' +
+        '<td>' + thoat(x.tho || '— chưa ai nhận') + '</td>' +
+        '<td class="s"><span' + doTreo_(x) + '>' + gio + '</span></td></tr>';
+    }),
+    '✅ Không còn phiếu nào treo.');
+
+  // --- Sự cố ----------------------------------------------------------------
+  // Server đã sắp sẵn: gom theo bộ phận, bộ phận nào có sự cố sớm nhất đứng
+  // trước, trong mỗi bộ phận vẫn theo giờ. Ở đây chỉ việc chèn dòng ngăn cách
+  // mỗi khi đổi sang bộ phận mới.
+  var COT_SU_CO = [
+    { ten: 'Giờ' }, { ten: 'Mã' }, { ten: 'Máy' }, { ten: 'Bộ phận' }, { ten: 'Nhóm lỗi' },
+    { ten: 'Ca' }, { ten: 'Thợ' }, { ten: 'Hư hỏng' }, { ten: 'Đã sửa' },
+    { ten: 'Phụ tùng' }, { ten: 'Tiếp nhận', s: true }, { ten: 'Sửa', s: true },
+    { ten: 'Dừng máy', s: true }];
+
+  function tenBp_(x) { return (x.boPhan || '').trim() || '(không rõ bộ phận)'; }
+
+  function dongSuCo_(x) {
+    return '<tr><td>' + thoat(x.gioBao) + '</td>' +
+      '<td class="nw">' + thoat(x.ma) + '</td>' +
+      '<td>' + thoat(x.may) + '</td>' +
+      '<td>' + thoat(x.boPhan) + '</td>' +
+      '<td>' + nhanLoi_(x.nhomLoi) + '</td>' +
+      '<td>' + thoat(TEN_CA[x.ca] || x.ca) + '</td>' +
+      '<td>' + thoat(x.tho || '—') + '</td>' +
+      oSua_(x.ma, 'moTa', x.moTa) +
+      oSua_(x.ma, 'noiDungXuLy', x.noiDungXuLy) +
+      oSua_(x.ma, 'phuTung', x.phuTung) +
+      '<td class="s">' + thoat(x.tiepNhan) + '</td>' +
+      '<td class="s">' + thoat(x.xuLy) + '</td>' +
+      '<td class="s">' + thoat(x.dung) + '</td></tr>';
+  }
+
+  var bpDangLoc = '';   // '' = xem tất cả
+
+  function veSuCo_() {
+    var ds = bpDangLoc
+      ? D.suCo.filter(function (x) { return tenBp_(x) === bpDangLoc; })
+      : D.suCo;
+
+    // Đếm trước theo bộ phận để dòng ngăn cách nói luôn được số liệu của khối.
+    var gom = {};
+    ds.forEach(function (x) {
+      var bp = tenBp_(x);
+      if (!gom[bp]) gom[bp] = { so: 0, dung: 0 };
+      gom[bp].so++;
+      gom[bp].dung += Number(x.dung) || 0;
+    });
+
+    var dong = [];
+    var bpTruoc = null;
+    ds.forEach(function (x) {
+      var bp = tenBp_(x);
+      if (bp !== bpTruoc) {
+        var g = gom[bp];
+        dong.push('<tr class="nhombp"><td colspan="' + COT_SU_CO.length + '">' +
+          thoat(bp) + ' <span class="phu">— ' + g.so + ' sự cố' +
+          (g.dung ? ' · ' + g.dung + ' phút dừng máy' : '') + '</span></td></tr>');
+        bpTruoc = bp;
+      }
+      dong.push(dongSuCo_(x));
+    });
+
+    veBang('bangSuCo', COT_SU_CO, dong,
+      bpDangLoc ? 'Bộ phận này không có sự cố nào trong ngày.'
+                : 'Không có sự cố nào trong ngày.');
+  }
+
+  // Chip lọc: giữ đúng thứ tự xuất hiện của bộ phận, không sắp lại theo tên.
+  function veLocBp_() {
+    var dsBp = [];
+    D.suCo.forEach(function (x) {
+      var bp = tenBp_(x);
+      if (dsBp.indexOf(bp) === -1) dsBp.push(bp);
+    });
+    if (dsBp.length < 2) { $('locBp').innerHTML = ''; return; }
+
+    $('locBp').innerHTML = '<button type="button" data-bp="">Tất cả bộ phận</button>' +
+      dsBp.map(function (bp) {
+        return '<button type="button" data-bp="' + thoat(bp) + '">' + thoat(bp) + '</button>';
+      }).join('');
+    capNhatChip_();
+  }
+
+  function capNhatChip_() {
+    Array.prototype.forEach.call($('locBp').querySelectorAll('button'), function (b) {
+      b.setAttribute('aria-pressed', String(b.dataset.bp === bpDangLoc));
+    });
+  }
+
+  $('locBp').addEventListener('click', function (ev) {
+    var nut = ev.target.closest('button');
+    if (!nut) return;
+    bpDangLoc = nut.dataset.bp;
+    capNhatChip_();
+    veSuCo_();
+  });
+
+  veLocBp_();
+  veSuCo_();
+
+  // --- Dừng máy -------------------------------------------------------------
+  veBang('bangDung',
+    [{ ten: 'Giờ' }, { ten: 'Mã' }, { ten: 'Máy' }, { ten: 'Lý do' }, { ten: 'Trạng thái' },
+     { ten: 'Phút dừng', s: true }],
+    D.dungMay.map(function (x) {
+      var xong = x.trangThai === 'HOAN_THANH';
+      return '<tr><td>' + thoat(x.gioBao) + '</td>' +
+        '<td class="nw">' + thoat(x.ma) + '</td>' +
+        '<td>' + thoat(x.may) + '</td>' +
+        '<td>' + thoat(x.moTa) + '</td>' +
+        '<td>' + (xong ? 'Đã chạy lại' : '<b style="color:#d93025">Còn đang dừng</b>') + '</td>' +
+        '<td class="s">' + thoat(xong ? x.dung : x.treo) + '</td></tr>';
+    }),
+    'Không có máy nào dừng vì lý do ngoài hư hỏng.');
+
+  // --- Việc chung -----------------------------------------------------------
+  veBang('bangViecChung',
+    [{ ten: 'Giờ' }, { ten: 'Mã' }, { ten: 'Nội dung công việc' }, { ten: 'Máy' },
+     { ten: 'Khu vực' }, { ten: 'Thợ' }, { ten: 'Trạng thái' }, { ten: 'Đã làm' },
+     { ten: 'Phụ tùng' }, { ten: 'Phút làm', s: true }],
+    D.congViec.map(function (x) {
+      var xong = x.trangThai === 'HOAN_THANH';
+      return '<tr><td>' + thoat(x.gioBao) + '</td>' +
+        '<td class="nw">' + thoat(x.ma) + '</td>' +
+        oSua_(x.ma, 'moTa', x.moTa) +
+        oSua_(x.ma, 'tenMay', x.may) +
+        oSua_(x.ma, 'boPhan', x.boPhan) +
+        '<td>' + thoat(x.tho) + '</td>' +
+        '<td>' + (xong ? 'Xong' : '<b style="color:#e37400">Đang làm</b>') + '</td>' +
+        oSua_(x.ma, 'noiDungXuLy', x.noiDungXuLy) +
+        oSua_(x.ma, 'phuTung', x.phuTung) +
+        '<td class="s">' + thoat(xong ? x.xuLy : x.treo) + '</td></tr>';
+    }),
+    'Không có việc chung nào trong ngày.');
+
+  // --- Bảo trì hằng ngày ----------------------------------------------------
+  veBang('bangBaoTri',
+    [{ ten: 'Giờ' }, { ten: 'Mã' }, { ten: 'Nội dung bảo trì' }, { ten: 'Máy / khu vực' },
+     { ten: 'Thợ' }, { ten: 'Phụ tùng đã dùng' }],
+    D.baoTri.map(function (x) {
+      return '<tr><td>' + thoat(x.gioBao) + '</td>' +
+        '<td class="nw">' + thoat(x.ma) + '</td>' +
+        oSua_(x.ma, 'moTa', x.moTa) +
+        '<td>' + thoat(x.boPhan || '—') + '</td>' +
+        '<td>' + thoat(x.tho) + '</td>' +
+        oSua_(x.ma, 'phuTung', x.phuTung) + '</tr>';
+    }),
+    'Chưa ghi việc bảo trì nào trong ngày.');
+
+  // --- Theo thợ -------------------------------------------------------------
+  veBang('bangTho',
+    [{ ten: 'Thợ' }, { ten: 'Sự cố', s: true }, { ten: 'Việc chung', s: true },
+     { ten: 'Bảo trì', s: true }, { ten: 'TB đáp ứng thực', s: true },
+     { ten: 'Tổng thời gian sửa', s: true }],
+    D.theoTho.map(function (x) {
+      return '<tr><td>' + thoat(x.ten) + '</td>' +
+        '<td class="s">' + x.suCo + '</td>' +
+        '<td class="s">' + x.congViec + '</td>' +
+        '<td class="s">' + x.baoTri + '</td>' +
+        '<td class="s">' + thoat(x.tbDapUng) + '</td>' +
+        '<td class="s">' + thoat(x.tongXuLy) + '</td></tr>';
+    }),
+    'Chưa có ai nhận việc trong ngày.');
+
+  // --- Đổi ngày -------------------------------------------------------------
+  function xemNgay() {
+    var n = $('chonNgay').value;
+    if (!n) return;
+    var u = new URL(location.href);
+    u.searchParams.set('d', n);
+    location.href = u.toString();
+  }
+  $('nutXem').addEventListener('click', xemNgay);
+  $('chonNgay').addEventListener('change', xemNgay);
+</script>
+</body>

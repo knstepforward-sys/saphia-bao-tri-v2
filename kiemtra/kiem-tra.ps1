@@ -1,0 +1,57 @@
+# =============================================================================
+# Chạy toàn bộ kiểm tra tĩnh cho bao-tri-v2 trước khi push lên Apps Script.
+#
+#   Cách chạy:   powershell -File kiemtra\kiem-tra.ps1
+#   Hoặc:        .\kiemtra\kiem-tra.ps1
+#
+# Thoát mã 0 = sạch, an toàn để push.
+# Thoát mã 1 = có lỗi, KHÔNG push.
+#
+# Ba lớp ở đây chỉ bắt lỗi TĨNH. Lớp thứ tư — logic nghiệp vụ — nằm trong Sheet:
+# menu 🔧 Bảo trì → 🧪 Chạy test logic (~125 phép thử, chạy bằng dữ liệu giả).
+# =============================================================================
+
+$ErrorActionPreference = 'Stop'
+$goc = Split-Path -Parent $PSScriptRoot
+$duAn = Join-Path $goc 'bao-tri-v2'
+$tmp = Join-Path $env:TEMP 'kiemtra-gs'
+New-Item -ItemType Directory -Force $tmp | Out-Null
+
+$ok = $true
+
+# --- Lớp 1: cú pháp từng file .gs -------------------------------------------
+# node --check cần đuôi .js nên chép sang thư mục tạm trước.
+Write-Output "=== 1. Cu phap cac file .gs ==="
+foreach ($f in Get-ChildItem -Path $duAn -Filter *.gs) {
+  $dich = Join-Path $tmp "$($f.BaseName).js"
+  Copy-Item $f.FullName $dich -Force
+  node --check $dich
+  if ($LASTEXITCODE -ne 0) { $ok = $false; Write-Output "  LOI: $($f.Name)" }
+}
+if ($ok) { Write-Output "  OK - khong loi cu phap" }
+
+# --- Lớp 2: biến che tham số -------------------------------------------------
+Write-Output "`n=== 2. Bien che tham so ==="
+node (Join-Path $PSScriptRoot 'shadow.js') $duAn
+if ($LASTEXITCODE -ne 0) { $ok = $false }
+
+# --- Lớp 3: HTML -------------------------------------------------------------
+Write-Output "`n=== 3. HTML (scriptlet trong comment, cu phap JS, id) ==="
+$html = Get-ChildItem -Path $duAn -Filter *.html | ForEach-Object { $_.FullName }
+$html += Get-ChildItem -Path (Join-Path $goc 'baocao-saphia') -Filter *.html |
+  ForEach-Object { $_.FullName }
+node (Join-Path $PSScriptRoot 'checkhtml.js') @html
+if ($LASTEXITCODE -ne 0) { $ok = $false }
+
+# --- Kết luận ----------------------------------------------------------------
+Write-Output ""
+if ($ok) {
+  Write-Output "===> SACH. An toan de push."
+  Write-Output "     cd bao-tri-v2"
+  Write-Output "     clasp push --force"
+  Write-Output "     clasp deploy --deploymentId <ID trong CLAUDE.md> --description ""..."""
+  exit 0
+} else {
+  Write-Output "===> CO LOI. Sua xong roi chay lai, DUNG push."
+  exit 1
+}
