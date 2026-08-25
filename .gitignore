@@ -37,3 +37,8 @@ SAPHIA-project/baocao-saphia/
 
 # --- Cau hinh RIENG cua tung may (quy uoc .local = khong dua vao kho) ---
 **/.claude/settings.local.json
+
+# --- .clasp.json chua scriptId: giu tren may de clasp push chay duoc,
+#     KHONG dua len kho cong khai. Xem .clasp.json.mau de biet cau truc. ---
+.clasp.json
+**/.clasp.json
