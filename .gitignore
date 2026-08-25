@@ -42,3 +42,12 @@ SAPHIA-project/baocao-saphia/
 #     KHONG dua len kho cong khai. Xem .clasp.json.mau de biet cau truc. ---
 .clasp.json
 **/.clasp.json
+
+# --- TAI LIEU GOC cua khach/noi bo (VD5): giu TREN MAY de Codex mo duoc,
+#     KHONG dua len GitHub. Ly do:
+#       · chua TEN THAT nhan vien (nguoi soan/xem xet/phe duyet, nguoi kiem)
+#       · chua du lieu khach hang: ma hang, barcode, san luong, gia tri lo
+#       · rieng ban .doc nang 64 MB — vao git la nam vinh vien trong lich su
+#     Ban da boc tach va lam sach de dung khi lam viec:
+#     SAPHIA-project/VD5_DOI_CHIEU_2_TAI_LIEU_GOC.md
+SAPHIA-project/QC/_tai-lieu-goc-RIENG/
