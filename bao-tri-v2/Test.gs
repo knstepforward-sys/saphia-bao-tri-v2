@@ -825,6 +825,184 @@ function chayTest() {
     Math.round((mocTuChuoi_('2026-08-20 08:52').getTime() -
                 mocTuChuoi_('2026-08-18 17:27').getTime()) / 60000), 2365);
 
+  // --- 19. Tỉ lệ hiệu dụng A -------------------------------------------------
+  t.bang('Chuẩn hoá khoá bỏ dấu và đ',
+    [chuanKhoa_('CMTĐ'), chuanKhoa_('Chung'), chuanKhoa_(' Máy  kéo sợi ')],
+    ['CMTD', 'CHUNG', 'MAY KEO SOI']);
+  t.bang('Ô tick đọc được cả chữ lẫn boolean',
+    [batCauHinh_(true), batCauHinh_('TRUE'), batCauHinh_('false'),
+     batCauHinh_('', true), batCauHinh_('', false)],
+    [true, true, false, true, false]);
+  t.bang('Ngày nghỉ nhận cả hai định dạng',
+    docNgayNghi_('02/09/2026, 2026-09-03'),
+    { '2026-09-02': true, '2026-09-03': true });
+
+  // Kế hoạch giả: bộ phận TEST chạy 07:00–17:00 (600 phút), T2–T7, chủ nhật nghỉ.
+  const khGia = {
+    TEST: {
+      ten: 'TEST', tu: 420, den: 1020, caDem: false,
+      thu: { 1: true, 2: true, 3: true, 4: true, 5: true, 6: true, 0: false },
+      nghi: {},
+    },
+  };
+  const mayHD = [{ Ma_May: 'M1', Ten_May: 'Máy thử 1', Bo_Phan: 'TEST', Hoat_Dong: true }];
+  const ctGia = { suCo: true, dungMay: true, congViec: false };
+
+  t.bang('Ngày thường ra đúng một khung 600 phút',
+    tongPhutKhoang_(khungKeHoachNgay_(khGia.TEST, '2026-08-10')), 600);
+  t.bang('Chủ nhật không có khung nào',
+    khungKeHoachNgay_(khGia.TEST, '2026-08-16').length, 0);
+  t.bang('Bộ phận có ca đêm chạy trọn 24 giờ',
+    tongPhutKhoang_(khungKeHoachNgay_(
+      { tu: 420, den: 1020, caDem: true, thu: { 1: true }, nghi: {} }, '2026-08-10')), 1440);
+  t.bang('Ngày nghỉ lễ bị loại khỏi kế hoạch',
+    khungKeHoachNgay_(
+      { tu: 420, den: 1020, caDem: false, thu: { 1: true }, nghi: { '2026-08-10': true } },
+      '2026-08-10').length, 0);
+
+  const khCoNghi = {
+    tu: 420, den: 1020, caDem: false, thu: { 1: true }, nghi: {},
+    tamDung: [{ loai: 'NGHI_TRUA', tu: 690, den: 750, thu: null }],
+  };
+  t.bang('Nghỉ trưa bị loại khỏi kế hoạch',
+    tongPhutKhoang_(khungKeHoachNgay_(khCoNghi, '2026-08-10')), 540);
+  t.bang('Nghỉ trưa tách ca thành hai khung chạy',
+    khungKeHoachNgay_(khCoNghi, '2026-08-10').map(function (x) {
+      return [fmtGio_(x.tu), fmtGio_(x.den)];
+    }), [['07:00', '11:30'], ['12:30', '17:00']]);
+
+  const khCoGiaoCa = {
+    tu: 420, den: 1020, caDem: true, thu: { 1: true }, nghi: {},
+    tamDung: [
+      { loai: 'GIAO_CA', tu: 1020, den: 1035, thu: null },
+      { loai: 'GIAO_CA', tu: 410, den: 420, thu: null },
+    ],
+  };
+  t.bang('Ca 24 giờ trừ cả giao ca ngày-đêm và đêm-ngày',
+    tongPhutKhoang_(khungKeHoachNgay_(khCoGiaoCa, '2026-08-10')), 1415);
+
+  // Đại số khoảng — nền của mọi con số phía trên.
+  t.bang('Hai khoảng rời nhau thì không giao',
+    giaoKhoang_({ tu: _luc_('2026-08-10T08:00'), den: _luc_('2026-08-10T09:00') },
+                { tu: _luc_('2026-08-10T10:00'), den: _luc_('2026-08-10T11:00') }), null);
+  t.bang('Khoảng chồng nhau gộp làm một, không cộng hai lần',
+    tongPhutKhoang_(gomKhoang_([
+      { tu: _luc_('2026-08-10T08:00'), den: _luc_('2026-08-10T10:00') },
+      { tu: _luc_('2026-08-10T09:00'), den: _luc_('2026-08-10T11:00') },
+    ])), 180);
+  t.bang('Trừ một khoảng giữa tách thành hai phần',
+    truKhoang_([
+      { tu: _luc_('2026-08-10T07:00'), den: _luc_('2026-08-10T17:00') },
+    ], [
+      { tu: _luc_('2026-08-10T11:30'), den: _luc_('2026-08-10T12:30') },
+    ]).map(function (x) { return [fmtGio_(x.tu), fmtGio_(x.den)]; }),
+    [['07:00', '11:30'], ['12:30', '17:00']]);
+
+  // Sự cố mà máy VẪN CHẠY không được trừ vào A.
+  t.bang('Sự cố máy còn chạy không sinh khoảng dừng',
+    khoangDungCuaPhieu_(_phieu_({
+      Trang_Thai_May: 'DANG_CHAY',
+      Thoi_Gian_Bao: _luc_('2026-08-10T08:00'),
+      Thoi_Gian_Hoan_Thanh: _luc_('2026-08-10T09:00'),
+    }).v, _luc_('2026-08-10T12:00')), null);
+
+  function _hd_(dsPhieu, bayGio) {
+    return tinhHieuDung_('2026-08-10', '2026-08-16', {
+      bayGio: bayGio || _luc_('2026-08-17T00:00'),
+      keHoach: khGia, congTac: ctGia, dsMay: mayHD, dsPhieu: dsPhieu,
+    });
+  }
+
+  // 10–15/08 là T2–T7, 16/08 chủ nhật nghỉ → 6 ngày × 600 phút.
+  t.bang('Kế hoạch tuần bỏ chủ nhật', _hd_([]).tong.phutKeHoach, 3600);
+  t.bang('Không phiếu nào thì A = 100%', _hd_([]).tong.tiLe, 1);
+
+  const khNghiGia = {
+    TEST: {
+      ten: 'TEST', tu: 420, den: 1020, caDem: false,
+      thu: { 1: true, 2: true, 3: true, 4: true, 5: true, 6: true, 0: false },
+      nghi: {}, tamDung: [{ loai: 'NGHI_TRUA', tu: 690, den: 750, thu: null }],
+    },
+  };
+  function _hdNghi_(tu, den) {
+    return tinhHieuDung_('2026-08-10', '2026-08-10', {
+      bayGio: _luc_('2026-08-11T00:00'), keHoach: khNghiGia,
+      congTac: ctGia, dsMay: mayHD,
+      dsPhieu: [_phieu_({
+        Ma_Su_Co: 'SC-N', Ma_May: 'M1', Trang_Thai_May: 'DA_DUNG',
+        Thoi_Gian_Dung_May: _luc_(tu), Thoi_Gian_Hoan_Thanh: _luc_(den),
+      }).v],
+    });
+  }
+  t.bang('Dừng hoàn toàn trong giờ nghỉ trưa không làm giảm A',
+    _hdNghi_('2026-08-10T11:30', '2026-08-10T12:30').may[0].phutDung, 0);
+  t.bang('Dừng xuyên nghỉ trưa chỉ trừ phần thuộc giờ chạy',
+    _hdNghi_('2026-08-10T11:00', '2026-08-10T13:00').may[0].phutDung, 60);
+
+  // Ca thật của tời nâng: máy đứng từ 17:27 hôm trước tới 08:52 hai hôm sau —
+  // 39 giờ 25 đồng hồ, nhưng chỉ 712 phút rơi vào giờ kế hoạch (cả ngày 11/08
+  // là 600, sáng 12/08 từ 07:00 tới 08:52 là 112; 17:27 ngày 10/08 đã ngoài ca).
+  const toiNang = _phieu_({
+    Ma_Su_Co: 'DM-1', Ma_May: 'M1', Loai_Phieu: LOAI_PHIEU.DUNG_MAY,
+    Thoi_Gian_Dung_May: _luc_('2026-08-10T17:27'),
+    Thoi_Gian_Hoan_Thanh: _luc_('2026-08-12T08:52'),
+  }).v;
+  t.bang('Dừng 39 giờ chỉ ăn đúng phần giờ kế hoạch',
+    _hd_([toiNang]).may[0].phutDung, 712);
+  t.bang('A không bao giờ âm dù dừng vắt nhiều ngày',
+    Math.round(_hd_([toiNang]).tong.tiLe * 10000) / 10000,
+    Math.round((3600 - 712) / 3600 * 10000) / 10000);
+
+  // Phiếu sự cố và phiếu dừng máy chồng nhau của cùng một máy — đúng quy trình
+  // đem đồ ra ngoài gia công. Cộng riêng từng phiếu là đếm downtime hai lần.
+  const scChong = _phieu_({
+    Ma_Su_Co: 'SC-1', Ma_May: 'M1', Trang_Thai_May: 'DA_DUNG',
+    Thoi_Gian_Dung_May: _luc_('2026-08-10T08:00'),
+    Thoi_Gian_Hoan_Thanh: _luc_('2026-08-10T10:00'),
+  }).v;
+  const dmChong = _phieu_({
+    Ma_Su_Co: 'DM-2', Ma_May: 'M1', Loai_Phieu: LOAI_PHIEU.DUNG_MAY,
+    Thoi_Gian_Dung_May: _luc_('2026-08-10T09:00'),
+    Thoi_Gian_Hoan_Thanh: _luc_('2026-08-10T11:00'),
+  }).v;
+  t.bang('Phiếu chồng nhau chỉ tính một lần',
+    _hd_([scChong, dmChong]).may[0].phutDung, 180);
+
+  // Máy đứng nguyên chủ nhật vẫn không mất giờ nào: hôm đó không có kế hoạch.
+  t.bang('Dừng đúng ngày nghỉ không trừ vào A',
+    _hd_([_phieu_({
+      Ma_Su_Co: 'DM-3', Ma_May: 'M1', Loai_Phieu: LOAI_PHIEU.DUNG_MAY,
+      Thoi_Gian_Dung_May: _luc_('2026-08-16T00:00'),
+      Thoi_Gian_Hoan_Thanh: _luc_('2026-08-16T23:59'),
+    }).v]).may[0].phutDung, 0);
+
+  // Giữa kỳ thì kế hoạch chỉ tính tới lúc chạy báo cáo — lấy cả tuần thì sáng
+  // thứ Ba máy nào cũng trông như vừa đứng bốn ngày.
+  t.bang('Kế hoạch cắt tại thời điểm chạy báo cáo',
+    _hd_([], _luc_('2026-08-11T12:00')).tong.phutKeHoach, 900);
+
+  // Việc chung đang TẮT trong ctGia nên không được trừ, dù phiếu ghi đúng máy.
+  const cvPhieu = _phieu_({
+    Ma_Su_Co: 'CV-1', Ten_May: 'Máy thử 1', Loai_Phieu: LOAI_PHIEU.CONG_VIEC,
+    Thoi_Gian_Nhan: _luc_('2026-08-10T08:00'),
+    Thoi_Gian_Hoan_Thanh: _luc_('2026-08-10T10:00'),
+  }).v;
+  t.bang('Việc chung tắt thì không trừ', _hd_([cvPhieu]).may[0].phutDung, 0);
+  t.bang('Việc chung bật thì dò ngược theo tên máy',
+    tinhHieuDung_('2026-08-10', '2026-08-16', {
+      bayGio: _luc_('2026-08-17T00:00'), keHoach: khGia, dsMay: mayHD,
+      congTac: { suCo: true, dungMay: true, congViec: true }, dsPhieu: [cvPhieu],
+    }).may[0].phutDung, 120);
+
+  // Bộ phận chưa khai kế hoạch: A phải là null, KHÔNG phải 0 — chưa đo được và
+  // đứng cả tuần là hai chuyện khác hẳn nhau.
+  const kqThieu = tinhHieuDung_('2026-08-10', '2026-08-16', {
+    bayGio: _luc_('2026-08-17T00:00'), keHoach: {}, congTac: ctGia,
+    dsMay: mayHD, dsPhieu: [],
+  });
+  t.bang('Chưa khai kế hoạch thì A là null, không phải 0', kqThieu.may[0].tiLe, null);
+  t.bang('Và bộ phận đó được nêu tên để đi khai', kqThieu.thieuKeHoach, ['TEST']);
+
   // --- Kết quả ---------------------------------------------------------------
   const tong = kq.dat + kq.loi.length;
   const bao = kq.loi.length

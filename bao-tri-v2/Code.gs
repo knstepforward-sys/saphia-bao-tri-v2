@@ -144,6 +144,8 @@ const SHEET = {
   TONG_HOP: 'Tong_Hop',
   LUU_TRU: 'Luu_Tru',
   THUNG_RAC: 'Thung_Rac',
+  KE_HOACH: 'Ke_Hoach_Chay_May',
+  KHUNG_NGUNG: 'Khung_Ngung_Ke_Hoach',
 };
 
 const HEADER_MAY = ['Ma_May', 'Ten_May', 'Bo_Phan', 'Hoat_Dong', 'Link_QR'];
@@ -154,6 +156,55 @@ const HEADER_THO = [
 ];
 
 const HEADER_CA = ['Nhom_Ca', 'Mo_Ta', 'Ca_Ngay_Tu', 'Ca_Ngay_Den', 'Co_Ca_Dem'];
+
+/**
+ * Kế hoạch chạy máy theo BỘ PHẬN — mẫu số của tỉ lệ hiệu dụng A.
+ *
+ * Tách khỏi Ca_Lam_Viec vì hai bảng trả lời hai câu hỏi khác nhau: Ca_Lam_Viec
+ * nói THỢ trực giờ nào, bảng này nói MÁY phải chạy giờ nào. Hôm nay hai con số
+ * trùng nhau, nhưng gộp lại thì đổi kế hoạch sản xuất sẽ kéo lệch cả lịch trực.
+ *
+ * Chay_Ca_Dem theo đúng quy ước của Ca_Lam_Viec: tick = chạy liền 24 giờ tính
+ * từ Gio_Bat_Dau, không phải khai thêm một khung giờ thứ hai.
+ */
+const HEADER_KE_HOACH = [
+  'Bo_Phan', 'Mo_Ta', 'Gio_Bat_Dau', 'Gio_Ket_Thuc', 'Chay_Ca_Dem',
+  'T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN', 'Ngay_Nghi', 'Ghi_Chu',
+];
+
+/**
+ * Các khoảng máy KHÔNG phải chạy nằm bên trong ca kế hoạch.
+ *
+ * Mỗi bộ phận được khai nhiều dòng: một dòng nghỉ trưa, một hoặc hai dòng giao
+ * ca ngày/đêm. Nếu không tick thứ nào thì khoảng đó kế thừa toàn bộ ngày chạy
+ * của bộ phận trong Ke_Hoach_Chay_May; nếu có tick thì chỉ áp các ngày đã tick.
+ */
+const HEADER_KHUNG_NGUNG = [
+  'Bo_Phan', 'Loai_Khoang', 'Gio_Bat_Dau', 'Gio_Ket_Thuc',
+  'T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN', 'Ghi_Chu',
+];
+
+const LOAI_KHUNG_NGUNG = ['NGHI_TRUA', 'GIAO_CA'];
+
+/**
+ * Seed Ke_Hoach_Chay_May. Giờ lấy đúng theo Ca_Lam_Viec đang chạy để ngày đầu
+ * bật tính năng số liệu không nhảy; sửa trực tiếp trên sheet khi kế hoạch sản
+ * xuất đổi, KHÔNG cần đụng code.
+ *
+ * Chủ nhật mặc định NGHỈ. Bộ phận nào chạy chủ nhật thì tick ô CN.
+ */
+const KE_HOACH_MAC_DINH = [
+  ['DET',      'Bộ phận Dệt',                   '07:00', '18:00', true,  true, true, true, true, true, true, false, '', ''],
+  ['SOI',      'Bộ phận Sợi',                   '07:00', '17:00', true,  true, true, true, true, true, true, false, '', ''],
+  ['CMTX',     'Bộ phận CMTX',                  '07:00', '17:00', true,  true, true, true, true, true, true, false, '', ''],
+  ['CMTD',     'Bộ phận CMTĐ (chỉ ca ngày)',    '07:00', '17:00', false, true, true, true, true, true, true, false, '', ''],
+  ['TRANG',    'Bộ phận Trang',                 '07:00', '17:00', false, true, true, true, true, true, true, false, '', ''],
+  ['MTX',      'Bộ phận MTX',                   '07:00', '17:00', false, true, true, true, true, true, true, false, '', ''],
+  ['CO',       'Bộ phận CO',                    '07:00', '17:00', false, true, true, true, true, true, true, false, '', ''],
+  ['ICM',      'Bộ phận ICM',                   '07:00', '17:00', false, true, true, true, true, true, true, false, '', ''],
+  ['LT',       'Băng tải',                      '07:00', '17:00', false, true, true, true, true, true, true, false, '', ''],
+  ['CHUNG',    'Bộ phận Chung',                 '07:00', '17:00', false, true, true, true, true, true, true, false, '', ''],
+];
 
 const HEADER_CAU_HINH = ['Khoa', 'Gia_Tri', 'Ghi_Chu'];
 
@@ -174,6 +225,18 @@ const CAU_HINH_MAC_DINH = [
     'Các lý do dừng máy KHÔNG do hư hỏng, hiện thành nút bấm cho công nhân chọn. ' +
     'Cách nhau bằng dấu phẩy. Sửa ở đây là đổi ngay trên app, không cần deploy lại. ' +
     'Nên giữ danh sách ngắn và cố định để báo cáo gom nhóm được.'],
+  ['A_TINH_SU_CO', 'TRUE',
+    'TỈ LỆ HIỆU DỤNG A — có trừ thời gian máy dừng do SỰ CỐ (phiếu SC-) hay không. ' +
+    'Gõ TRUE để trừ, FALSE để bỏ qua. Chỉ trừ khi công nhân xác nhận máy ĐÃ DỪNG.'],
+  ['A_TINH_DUNG_MAY', 'TRUE',
+    'TỈ LỆ HIỆU DỤNG A — có trừ thời gian dừng máy KHÔNG do hư (phiếu DM-: thiếu chỉ, ' +
+    'thiếu nguyên liệu, chờ kế hoạch…) hay không. Gõ TRUE hoặc FALSE. ' +
+    'Để TRUE thì A phản ánh máy có thật sự ra hàng; để FALSE thì A thành thước đo riêng ' +
+    'của tổ bảo trì.'],
+  ['A_TINH_VIEC_CHUNG', 'FALSE',
+    'TỈ LỆ HIỆU DỤNG A — có trừ thời gian của phiếu VIỆC CHUNG (CV-) hay không. ' +
+    'Gõ TRUE hoặc FALSE. Chỉ những phiếu CV- đã ghi ĐÚNG TÊN MÁY (khớp Danh_Muc_May) ' +
+    'mới quy được về máy; phiếu không ghi máy vẫn bị bỏ qua dù bật TRUE.'],
   ['HUONG_DAN_KHOA_LINK_THO', '',
     'KHOÁ LINK KHI THỢ NGHỈ VIỆC: xoá trắng ô Token của người đó trong sheet ' +
     'Danh_Muc_Tho, bỏ tick Hoat_Dong, rồi chạy menu 🔧 Bảo trì → "4. Sinh lại ' +
@@ -594,7 +657,8 @@ function ghiNhatKy_(maSuCo, maMay, actor, hanhDong, duLieu, requestId) {
 // ============================================================================
 
 /**
- * Chạy MỘT LẦN sau khi push code. Tạo đủ 8 sheet, header, dropdown, seed bảng ca.
+ * Chạy MỘT LẦN sau khi push code. Tạo đủ 12 sheet, header, dropdown, seed bảng ca
+ * và bảng kế hoạch chạy máy.
  * Chạy lại nhiều lần cũng an toàn: sheet đã có thì chỉ ghi lại header, KHÔNG xoá
  * dữ liệu; Ca_Lam_Viec chỉ seed khi còn trống.
  */
@@ -630,6 +694,53 @@ function setupSystem() {
   }
   datCheckbox_(shCa, HEADER_CA.indexOf('Co_Ca_Dem') + 1);
   ketQua.push(SHEET.CA);
+
+  // --- Kế hoạch chạy máy ----------------------------------------------------
+  // Mẫu số của tỉ lệ hiệu dụng A. Chỉ seed khi sheet còn trống — người dùng đã
+  // sửa giờ theo kế hoạch sản xuất thì chạy lại setupSystem không được đạp lên.
+  const shKH = taoSheet_(SHEET.KE_HOACH, HEADER_KE_HOACH);
+  shKH.setColumnWidth(2, 240);
+  shKH.setColumnWidth(HEADER_KE_HOACH.indexOf('Ngay_Nghi') + 1, 220);
+  shKH.setColumnWidth(HEADER_KE_HOACH.indexOf('Ghi_Chu') + 1, 380);
+  if (shKH.getLastRow() < 2) {
+    // Cột giờ phải là text TRƯỚC khi ghi, nếu không Sheets đổi '07:00' thành
+    // 0.2917 ngay lúc setValues và format sau đó đã muộn.
+    shKH.getRange(2, HEADER_KE_HOACH.indexOf('Gio_Bat_Dau') + 1,
+      KE_HOACH_MAC_DINH.length, 2).setNumberFormat('@');
+    shKH.getRange(2, 1, KE_HOACH_MAC_DINH.length, HEADER_KE_HOACH.length)
+      .setValues(KE_HOACH_MAC_DINH);
+  }
+  // Ô tick: Chay_Ca_Dem + T2..CN. Dùng data validation, KHÔNG dùng
+  // insertCheckboxes — hàm đó đặt lại mọi ô thành false, chạy lại setupSystem
+  // là xoá sạch kế hoạch tuần đã khai.
+  for (let c = HEADER_KE_HOACH.indexOf('Chay_Ca_Dem') + 1;
+       c <= HEADER_KE_HOACH.indexOf('CN') + 1; c++) {
+    datCheckbox_(shKH, c);
+  }
+  shKH.getRange(2, HEADER_KE_HOACH.indexOf('Ngay_Nghi') + 1, shKH.getMaxRows() - 1, 2)
+    .setWrap(true);
+  ketQua.push(SHEET.KE_HOACH);
+
+  // --- Nghỉ trưa và giao ca -------------------------------------------------
+  // Tách thành bảng nhiều dòng để một bộ phận có thể khai đủ hai lần giao ca
+  // ngày→đêm và đêm→ngày. Không seed giờ giả: giờ giao ca là dữ liệu sản xuất,
+  // người vận hành phải khai đúng trước khi dùng A làm KPI.
+  const shNgung = taoSheet_(SHEET.KHUNG_NGUNG, HEADER_KHUNG_NGUNG);
+  shNgung.setColumnWidth(1, 120);
+  shNgung.setColumnWidth(2, 140);
+  shNgung.setColumnWidth(12, 360);
+  datDropdown_(shNgung, HEADER_KHUNG_NGUNG.indexOf('Loai_Khoang') + 1, LOAI_KHUNG_NGUNG);
+  for (let c = HEADER_KHUNG_NGUNG.indexOf('T2') + 1;
+       c <= HEADER_KHUNG_NGUNG.indexOf('CN') + 1; c++) {
+    datCheckbox_(shNgung, c);
+  }
+  shNgung.getRange(2, HEADER_KHUNG_NGUNG.indexOf('Gio_Bat_Dau') + 1,
+    shNgung.getMaxRows() - 1, 2).setNumberFormat('@');
+  shNgung.getRange(1, 1).setNote(
+    'Mỗi dòng là một khoảng dừng THEO KẾ HOẠCH của một bộ phận. ' +
+    'Loai_Khoang: NGHI_TRUA hoặc GIAO_CA. Có thể khai nhiều dòng GIAO_CA. ' +
+    'Không tick thứ nào = áp mọi ngày bộ phận có kế hoạch chạy.');
+  ketQua.push(SHEET.KHUNG_NGUNG);
 
   // --- Cấu hình chung -------------------------------------------------------
   const shCH = taoSheet_(SHEET.CAU_HINH, HEADER_CAU_HINH);
@@ -1075,11 +1186,13 @@ function onOpen() {
     .addSeparator()
     .addItem('📅 Tạo dòng lịch trực tháng này', 'menuTaoLichThang')
     .addItem('🔁 Xếp lịch luân phiên theo tuần', 'menuTaoLichLuanPhien')
+    .addItem('🕒 Khai báo giờ chạy / nghỉ / giao ca', 'menuMoKeHoachKhaDung')
     .addSeparator()
     .addItem('📋 Báo cáo trong ngày', 'menuBaoCaoNgay')
     .addItem('➕ Bù phiếu dừng máy (thợ quên quét)…', 'menuBuPhieuDungMay')
     .addItem('📊 Cập nhật báo cáo tổng hợp', 'menuBaoCao')
     .addItem('📤 Xuất báo cáo (chọn ngày, bộ phận, thợ)…', 'menuXuatBaoCao')
+    .addItem('📈 Báo cáo tỉ lệ khả dụng máy…', 'menuBaoCaoKhaDung')
     .addItem('🗄️ Dọn phiếu cũ sang Lưu trữ', 'menuLuuTru')
     .addItem('⏰ Cài trigger tự chạy', 'menuCaiTrigger')
     .addSeparator()
@@ -1117,6 +1230,22 @@ function menuNhapMay() { chayVaBao_('Nhập danh mục máy', importMayTuSaphia)
 function menuChuanBiDanhMuc() { chayVaBao_('Chuẩn bị danh mục', chuanBiDanhMuc); }
 function menuSinhLink() { chayVaBao_('Sinh link', refreshPersonalLinks); }
 function menuTaoLichThang() { chayVaBao_('Tạo lịch trực', function () { return createMonthSchedule(); }); }
+
+/** Mở thẳng hai sheet cấu hình A; không sinh lại QR hay đụng dữ liệu phiếu. */
+function menuMoKeHoachKhaDung() {
+  const ssx = ss_();
+  const sh = ssx.getSheetByName(SHEET.KE_HOACH);
+  if (!sh || !ssx.getSheetByName(SHEET.KHUNG_NGUNG)) {
+    SpreadsheetApp.getUi().alert('Chưa có bảng cấu hình',
+      'Chạy “1. Cài đặt hệ thống” một lần để tạo Ke_Hoach_Chay_May và ' +
+      'Khung_Ngung_Ke_Hoach.', SpreadsheetApp.getUi().ButtonSet.OK);
+    return;
+  }
+  ssx.setActiveSheet(sh);
+  SpreadsheetApp.getActive().toast(
+    'Khai giờ chạy ở Ke_Hoach_Chay_May; nghỉ trưa và giao ca ở Khung_Ngung_Ke_Hoach.',
+    'Tỉ lệ khả dụng A', 8);
+}
 
 function menuLuuTru() { chayVaBao_('Dọn phiếu cũ', archiveOldTickets); }
 function menuCaiTrigger() { chayVaBao_('Cài trigger', caiDatTrigger); }

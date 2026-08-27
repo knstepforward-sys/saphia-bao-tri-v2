@@ -135,9 +135,45 @@ function duLieuBaoCaoNgay_(ngay) {
 
   function theoGio_(a, b) { return (a.tsBao || 0) - (b.tsBao || 0); }
 
+  // --- Tỉ lệ hiệu dụng A của đúng ngày này ---------------------------------
+  // Dùng lại `tatCa` đã đọc ở trên thay vì đọc sheet lần nữa: trang này mở nhiều
+  // lần mỗi ca, mà đọc Su_Co + Luu_Tru là phần đắt nhất của cả hàm.
+  //
+  // Bọc try/catch vì sheet kế hoạch có thể chưa được tạo (hệ đang chạy thật, bản
+  // deploy cũ chưa có nó). Thiếu A thì trang vẫn phải mở được như trước.
+  let hieuDung = null;
+  try {
+    const kq = tinhHieuDung_(ngay, ngay, { bayGio: bayGio, dsPhieu: tatCa });
+    hieuDung = {
+      tiLe: kq.tong.tiLe,
+      gioKeHoach: phutSangGio_(kq.tong.phutKeHoach),
+      gioChay: phutSangGio_(kq.tong.phutChay),
+      gioDung: phutSangGio_(kq.tong.phutDung),
+      soMay: kq.tong.soMay,
+      soMayDu: kq.tong.soMayDu,
+      thieuKeHoach: kq.thieuKeHoach,
+      // Chỉ gửi máy có dừng. Ngày bình thường chỉ vài máy, gửi cả 176 dòng
+      // xuống điện thoại của tổ trưởng là phí băng thông cho toàn số 100%.
+      may: sapTheoHieuDung_(kq.may.filter(function (m) {
+        return m.phutDung > 0 || m.tiLe === null;
+      })).map(function (m) {
+        return {
+          maMay: m.maMay, tenMay: m.tenMay, boPhan: m.boPhan,
+          gioKeHoach: phutSangGio_(m.phutKeHoach),
+          gioDung: phutSangGio_(m.phutDung),
+          gioChay: phutSangGio_(m.phutChay),
+          tiLe: m.tiLe,
+        };
+      }),
+    };
+  } catch (err) {
+    hieuDung = { loi: err.message };
+  }
+
   return {
     ngay: ngay,
     capNhat: Utilities.formatDate(bayGio, CONFIG.MUI_GIO, 'HH:mm dd/MM/yyyy'),
+    hieuDung: hieuDung,
     tong: {
       suCo: suCo.length,
       dong: suCo.filter(function (v) { return v[COT.Trang_Thai] === TRANG_THAI.HOAN_THANH; }).length,

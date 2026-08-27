@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html>
+<head>
+<base target="_top">
+<meta charset="utf-8">
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 18px 20px 88px; color: #202124;
+    font: 13.5px/1.5 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  }
+  h3 { margin: 0 0 4px; font-size: 16px; color: #17324d; }
+  .phu { margin: 0 0 16px; color: #5f6368; font-size: 12px; }
+  .khoi { margin-bottom: 17px; }
+  .nhan { display: block; margin-bottom: 7px; font-weight: 650; }
+  .chedo { display: flex; gap: 18px; padding: 10px 12px; background: #f5faff;
+    border: 1px solid #d7e8f7; border-radius: 8px; }
+  .chedo label, .ds label { cursor: pointer; }
+  input[type=date], input[type=month] {
+    width: 100%; padding: 8px 10px; border: 1px solid #cbd5df;
+    border-radius: 7px; font: inherit; background: #fff;
+  }
+  .ds {
+    max-height: 190px; overflow-y: auto; padding: 8px 11px;
+    border: 1px solid #d7e0e8; border-radius: 8px; background: #fff;
+  }
+  .ds label { display: block; padding: 3px 0; }
+  .ds input { margin-right: 7px; vertical-align: -1px; }
+  .meo { color: #5f6368; font-size: 11.5px; margin-top: 5px; }
+  .an { display: none; }
+  .day {
+    position: fixed; left: 0; right: 0; bottom: 0; display: flex; align-items: center;
+    gap: 10px; padding: 12px 20px; background: #fff; border-top: 1px solid #dadce0;
+  }
+  .chinh {
+    border: 0; border-radius: 7px; padding: 10px 22px; background: #1a73e8;
+    color: #fff; font: 600 13.5px system-ui, sans-serif; cursor: pointer;
+  }
+  .chinh:disabled { background: #9aa0a6; cursor: default; }
+  .loi { color: #c5221f; font-size: 12px; }
+  #manKq { text-align: center; padding: 28px 8px; }
+  .so { font-size: 30px; font-weight: 700; color: #17324d; }
+  .link {
+    display: inline-block; margin-top: 15px; padding: 10px 20px; color: #fff;
+    background: #1a73e8; border-radius: 8px; text-decoration: none; font-weight: 650;
+  }
+  .canh { margin-top: 12px; padding: 8px 10px; background: #fff4ce;
+    border-radius: 6px; color: #7a4d00; font-size: 12px; text-align: left; }
+</style>
+</head>
+<body>
+
+<div id="manNhap">
+  <h3>Báo cáo tỉ lệ khả dụng máy</h3>
+  <p class="phu">Tạo file mới, độc lập với báo cáo bảo trì. Chỉ lấy máy đang bật hoạt động.</p>
+
+  <div class="khoi">
+    <span class="nhan">Dạng báo cáo</span>
+    <div class="chedo">
+      <label><input type="radio" name="cheDo" value="NGAY" checked> Theo ngày</label>
+      <label><input type="radio" name="cheDo" value="THANG"> Theo tháng</label>
+    </div>
+  </div>
+
+  <div class="khoi" id="khoiNgay">
+    <label class="nhan" for="ngay">Ngày báo cáo</label>
+    <input type="date" id="ngay">
+    <div class="meo">Ngày hiện tại chỉ tính phần kế hoạch đã trôi qua tới lúc xuất.</div>
+  </div>
+
+  <div class="khoi an" id="khoiThang">
+    <label class="nhan" for="thang">Tháng báo cáo</label>
+    <input type="month" id="thang">
+    <div class="meo">Tháng hiện tại chỉ tính tới thời điểm xuất báo cáo.</div>
+  </div>
+
+  <div class="khoi">
+    <span class="nhan">Bộ phận</span>
+    <div class="ds" id="dsBoPhan"><span class="meo">Đang tải…</span></div>
+    <div class="meo">Không tick ô nào = toàn bộ bộ phận.</div>
+  </div>
+</div>
+
+<div id="manKq" class="an">
+  <div class="so" id="kqSo"></div>
+  <div id="kqTom"></div>
+  <div id="kqCanh" class="canh an"></div>
+  <a id="kqLink" class="link" href="#" target="_blank" rel="noopener">Mở báo cáo</a>
+  <p class="meo">Có thể tải xuống Excel hoặc PDF từ menu Tệp của Google Sheets.</p>
+</div>
+
+<div class="day" id="thanhDay">
+  <button type="button" class="chinh" id="nutXuat" disabled>Đang tải…</button>
+  <span class="loi" id="oLoi"></span>
+</div>
+
+<script>
+var DL = null;
+function $(id) { return document.getElementById(id); }
+function thoat(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+function cheDo() {
+  var o = document.querySelector('input[name=cheDo]:checked');
+  return o ? o.value : 'NGAY';
+}
+function doiCheDo() {
+  var laNgay = cheDo() === 'NGAY';
+  $('khoiNgay').classList.toggle('an', !laNgay);
+  $('khoiThang').classList.toggle('an', laNgay);
+  $('oLoi').textContent = '';
+}
+function dsDaChon() {
+  var out = [];
+  var os = $('dsBoPhan').querySelectorAll('input[type=checkbox]');
+  for (var i = 0; i < os.length; i++) if (os[i].checked) out.push(os[i].value);
+  return out;
+}
+function napXong(dl) {
+  DL = dl;
+  $('ngay').value = dl.homNay;
+  $('thang').value = dl.thangNay;
+  $('dsBoPhan').innerHTML = dl.boPhan.map(function (x, i) {
+    return '<label><input type="checkbox" id="bp_' + i + '" value="' +
+      thoat(x) + '">' + thoat(x) + '</label>';
+  }).join('') || '<span class="meo">Chưa có bộ phận đang hoạt động.</span>';
+  $('nutXuat').disabled = false;
+  $('nutXuat').textContent = 'Xuất báo cáo';
+}
+function napLoi(e) {
+  $('nutXuat').textContent = 'Xuất báo cáo';
+  $('oLoi').textContent = 'Không tải được dữ liệu: ' + e.message;
+}
+function xuat() {
+  var cd = cheDo();
+  var payload = { cheDo: cd, dsBoPhan: dsDaChon() };
+  if (cd === 'NGAY') {
+    if (!$('ngay').value) return baoLoi('Vui lòng chọn ngày.');
+    payload.ngay = $('ngay').value;
+  } else {
+    if (!$('thang').value) return baoLoi('Vui lòng chọn tháng.');
+    payload.thang = $('thang').value;
+  }
+  $('oLoi').textContent = '';
+  $('nutXuat').disabled = true;
+  $('nutXuat').textContent = 'Đang tạo báo cáo…';
+  google.script.run.withSuccessHandler(xuatXong).withFailureHandler(function (e) {
+    baoLoi('Không tạo được báo cáo: ' + e.message);
+  }).chayXuatBaoCaoKhaDung(payload);
+}
+function baoLoi(s) {
+  $('oLoi').textContent = s;
+  $('nutXuat').disabled = false;
+  $('nutXuat').textContent = 'Xuất báo cáo';
+}
+function xuatXong(kq) {
+  if (!kq || !kq.ok) return baoLoi((kq && kq.error) || 'Không tạo được báo cáo.');
+  $('manNhap').classList.add('an');
+  $('thanhDay').classList.add('an');
+  $('manKq').classList.remove('an');
+  $('kqSo').textContent = kq.soMay + ' máy';
+  $('kqTom').textContent = kq.nhanKy + ' · ' + kq.soMayGiam + ' máy có A dưới 100%';
+  $('kqLink').href = kq.url;
+  if (kq.thieuKeHoach && kq.thieuKeHoach.length) {
+    $('kqCanh').textContent = 'Chưa khai kế hoạch: ' + kq.thieuKeHoach.join(', ');
+    $('kqCanh').classList.remove('an');
+  }
+}
+
+var radios = document.querySelectorAll('input[name=cheDo]');
+for (var i = 0; i < radios.length; i++) radios[i].addEventListener('change', doiCheDo);
+$('nutXuat').addEventListener('click', xuat);
+google.script.run.withSuccessHandler(napXong).withFailureHandler(napLoi).layDuLieuHopKhaDung();
+</script>
+</body>
+</html>

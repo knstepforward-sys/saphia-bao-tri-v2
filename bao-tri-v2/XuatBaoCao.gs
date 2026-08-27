@@ -76,6 +76,16 @@ function xuatBaoCao(opts) {
   ghiTheoNgay_(ssMoi, ds, ctx);
   ghiDanhMucXuat_(ssMoi, ctx);
   ghiDashboard_(ssMoi, ds, ctx);
+
+  // Tỉ lệ hiệu dụng A. Bọc try/catch: file xuất là thứ sếp đang chờ, thiếu sheet
+  // kế hoạch hay khai sai giờ thì mất đúng sheet này, sáu sheet kia vẫn phải ra.
+  let loiHieuDung = '';
+  try {
+    ghiHieuDung_(ssMoi, ctx);
+  } catch (err) {
+    loiHieuDung = err.message;
+  }
+
   ghiHuongDan_(ssMoi, ctx);
 
   // Sheet "Nhật ký bảo trì" là form riêng của bộ phận Dệt. Kỳ nào không có phiếu
@@ -100,6 +110,7 @@ function xuatBaoCao(opts) {
     soPhieu: ds.length,
     soDet: dsDet.length,
     nhanKy: nhanKy,
+    loiHieuDung: loiHieuDung,
   };
 }
 

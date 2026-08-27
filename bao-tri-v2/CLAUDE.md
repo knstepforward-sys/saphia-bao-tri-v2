@@ -9,7 +9,8 @@ trên link cá nhân → sửa xong bấm hoàn thành. Toàn bộ mốc thời 
 
 Quy mô: **~162 máy**, **13 thợ**, các bộ phận SOI, DET, TRANG, CMTX, CMTD, MTX, CO, ICM.
 
-**Đang chạy thật.** Bản deploy hiện tại: **@45**.
+**Đang chạy thật.** Đã chuyển sang tài khoản công ty (25/08/2026) — project Apps Script
+mới, bản deploy hiện tại: **@1**. Số @45 là của project cũ trên tài khoản cá nhân.
 
 ---
 
@@ -20,7 +21,7 @@ Quy mô: **~162 máy**, **13 thợ**, các bộ phận SOI, DET, TRANG, CMTX, CM
 | Spreadsheet ID | `ID_DA_GO_KHOI_KHO_CONG_KHAI` |
 | Apps Script ID | `ID_DA_GO_KHOI_KHO_CONG_KHAI` |
 | Deployment ID | `MA_TRIEN_KHAI_DA_GO_KHOI_KHO_CONG_KHAI` |
-| Tài khoản sở hữu | `EMAIL_DA_GO_KHOI_KHO_CONG_KHAI` (cùng tài khoản clasp đang đăng nhập) |
+| Tài khoản sở hữu | `EMAIL_DA_GO_KHOI_KHO_CONG_KHAI` — `EMAIL_DA_GO_KHOI_KHO_CONG_KHAI` (tài khoản clasp) có quyền sửa |
 | Wrapper công khai | `https://khangdang0703-lab.github.io/baocao-saphia/baotri.html` |
 
 Script là **container-bound** (tạo từ trong Sheet) để `ss_()` trỏ đúng file.
@@ -46,7 +47,7 @@ người dùng để hiện cửa sổ đăng nhập.
 
 ---
 
-## 2. Cấu trúc file — 18 file
+## 2. Cấu trúc file — 21 file
 
 | File | Vai trò |
 |---|---|
@@ -55,6 +56,8 @@ người dùng để hiện cửa sổ đăng nhập.
 | `LuongTho.gs` | Xác thực thợ, nhận việc, cập nhật hiện trạng, hoàn thành, sửa phiếu đã đóng, việc chung, bảo trì |
 | `BaoCao.gs` | `refreshReports` (sheet `Tong_Hop`), `archiveOldTickets`, `caiDatTrigger` |
 | `BaoCaoNgay.gs` | Báo cáo trong ngày một trang + sửa nội dung tại chỗ |
+| `HieuDung.gs` | Tỉ lệ hiệu dụng A: đọc kế hoạch chạy máy, cắt/hợp khoảng dừng, khối cho `Tong_Hop` và sheet `Hieu_Dung` |
+| `BaoCaoKhaDung.gs` | Chức năng báo cáo khả dụng độc lập: xuất ngày/tháng, đủ máy hoạt động, chia theo bộ phận |
 | `XuatBaoCao.gs` | Xuất file theo form Excel `BC_HH` và `Nhật ký bảo trì` KPI Dệt, lọc theo khoảng ngày / bộ phận / thợ |
 | `MaQR.gs` | Trang in mã QR cho máy và thợ, có khoá |
 | `DanhMuc.gs` | Đồng bộ danh mục máy theo bộ phận, thêm máy lẻ |
@@ -66,6 +69,7 @@ người dùng để hiện cửa sổ đăng nhập.
 | `InQr.html` | Trang in QR |
 | `TrangNgay.html` | Trang báo cáo trong ngày |
 | `HopXuat.html` | Hộp thoại chọn kỳ / bộ phận / thợ khi xuất báo cáo (modal trong Sheet) |
+| `HopKhaDung.html` | Hộp thoại xuất báo cáo khả dụng mới theo ngày hoặc tháng |
 | `Style.html` | CSS dùng chung cho trang công nhân + thợ, nạp qua `include()` |
 | `appsscript.json` | Manifest |
 
@@ -77,10 +81,11 @@ thì `clasp push` sẽ đẩy nhầm chúng lên Apps Script.
 
 ---
 
-## 3. Schema — 10 sheet
+## 3. Schema — 11 sheet
 
-`Danh_Muc_May` · `Danh_Muc_Tho` · `Ca_Lam_Viec` · `Cau_Hinh` · `Lich_Truc_Thang` ·
-`Su_Co` · `Nhat_Ky_Su_Co` · `Tong_Hop` · `Luu_Tru` · `Thung_Rac`
+`Danh_Muc_May` · `Danh_Muc_Tho` · `Ca_Lam_Viec` · `Ke_Hoach_Chay_May` ·
+`Khung_Ngung_Ke_Hoach` · `Cau_Hinh` ·
+`Lich_Truc_Thang` · `Su_Co` · `Nhat_Ky_Su_Co` · `Tong_Hop` · `Luu_Tru` · `Thung_Rac`
 
 Tất cả do `setupSystem()` tạo. Chạy lại **an toàn**: không xoá dữ liệu, chỉ ghi lại header,
 và bổ sung khoá cấu hình còn thiếu.
@@ -426,6 +431,90 @@ sẽ báo thiếu đúng những ca dừng lâu nhất, ví dụ máy tháo moto
 
 ---
 
+### Tỉ lệ hiệu dụng A (`HieuDung.gs`)
+
+```
+A = thời gian máy chạy thực tế / thời gian máy phải chạy theo kế hoạch
+```
+
+Kế hoạch khai theo **bộ phận** ở sheet `Ke_Hoach_Chay_May`; mọi máy trong cùng bộ phận
+dùng chung khung giờ. Kết quả tính và hiển thị theo **từng máy**.
+
+| Cột | Nghĩa |
+|---|---|
+| `Gio_Bat_Dau` / `Gio_Ket_Thuc` | Khung ca ngày. Kết thúc ≤ bắt đầu thì hiểu là vắt qua nửa đêm |
+| `Chay_Ca_Dem` | Tick = chạy liền **24 giờ** tính từ `Gio_Bat_Dau`, đúng quy ước "ca đêm = phần bù của ca ngày" |
+| `T2`…`CN` | Ngày nào trong tuần có kế hoạch. Chủ nhật mặc định nghỉ |
+| `Ngay_Nghi` | Ngày lễ, cách nhau dấu phẩy, nhận cả `dd/MM/yyyy` lẫn `yyyy-MM-dd` |
+
+Nghỉ trưa và giao ca khai ở sheet `Khung_Ngung_Ke_Hoach`, mỗi khoảng một dòng:
+
+| Cột | Nghĩa |
+|---|---|
+| `Bo_Phan` | Bộ phận áp dụng, khớp với `Danh_Muc_May.Bo_Phan` |
+| `Loai_Khoang` | `NGHI_TRUA` hoặc `GIAO_CA` |
+| `Gio_Bat_Dau` / `Gio_Ket_Thuc` | Khoảng máy dừng theo kế hoạch; được phép vắt qua nửa đêm |
+| `T2`…`CN` | Không tick ô nào = kế thừa mọi ngày chạy của bộ phận; có tick = chỉ áp ngày đã tick |
+
+Một bộ phận có thể khai nhiều dòng `GIAO_CA`, thường là giao ca ngày→đêm và
+đêm→ngày. Các khoảng này bị loại khỏi mẫu số trước khi giao với downtime: máy hỏng
+trọn trong giờ nghỉ/giao ca không bị giảm A; hỏng vắt qua chỉ trừ phần nằm trong giờ phải chạy.
+
+**Tách khỏi `Ca_Lam_Viec` là cố ý.** Hai bảng trả lời hai câu hỏi khác nhau: `Ca_Lam_Viec`
+nói **thợ** trực giờ nào, bảng này nói **máy** phải chạy giờ nào. Hôm nay hai con số trùng
+nhau, nhưng gộp lại thì đổi kế hoạch sản xuất sẽ kéo lệch cả lịch trực.
+
+Ba công tắc trong `Cau_Hinh` quyết định loại phiếu nào bị trừ: `A_TINH_SU_CO` (mặc định
+TRUE) · `A_TINH_DUNG_MAY` (TRUE) · `A_TINH_VIEC_CHUNG` (FALSE).
+
+#### Hai phép bắt buộc, thiếu là ra số vô nghĩa
+
+1. **Cắt khoảng dừng theo khung kế hoạch.** `tongPhutDung_` đo bằng giờ thực trôi qua —
+   phiếu tời nâng 18/08 ra 39 giờ liền, gồm cả đêm và chủ nhật. Trừ thẳng vào kế hoạch một
+   ngày là **A ra âm**. Nên mỗi khoảng dừng được **giao** với khung kế hoạch của đúng những
+   ngày nó vắt qua rồi mới cộng. Có test canh: 39 giờ đồng hồ chỉ ăn **712 phút** kế hoạch.
+2. **Hợp nhất khoảng trước khi cộng.** Một máy có thể cùng lúc mang `SC-` (đang sửa) và
+   `DM-` (chờ phụ tùng) chồng nhau — đúng quy trình gia công ngoài ở mục 4. Cộng riêng từng
+   phiếu là **đếm downtime hai lần**, đúng cái bẫy mà `buPhieuDungMay` đã phải chặn.
+
+**Kế hoạch cắt tại thời điểm chạy báo cáo.** Giữa tháng mà lấy kế hoạch cả tháng thì máy nào
+cũng thấp giả tạo, càng đầu tháng càng sai.
+
+**Bộ phận chưa khai kế hoạch → `tiLe = null`, KHÔNG phải 0.** Chưa đo được và máy đứng cả
+tháng là hai chuyện khác hẳn nhau; báo cáo hiện `—` và nêu tên bộ phận để đi khai.
+
+#### Việc chung chỉ quy được về máy khi có TÊN MÁY
+
+`createGeneralTask` cố ý **để trống `Ma_May` và `Ten_May`** — việc chung không gắn với máy
+nào. Thợ điền tên máy tay được qua bảng Việc chung trên trang báo cáo ngày, và chỉ khi đó
+`mayCuaPhieu_` mới dò ngược được theo tên đã chuẩn hoá. Bật `A_TINH_VIEC_CHUNG` mà phiếu
+không ghi máy thì phiếu đó vẫn bị bỏ qua — **không phải lỗi**, là giới hạn của dữ liệu.
+Muốn đếm đủ thì phải thêm ô chọn máy vào màn hình tạo việc chung của thợ (chưa làm).
+
+#### Xem A ở ba nơi
+
+| Nơi | Phạm vi | Cần deploy? |
+|---|---|---|
+| `Tong_Hop` | Cả tháng, chỉ liệt kê máy **có dừng** | Không |
+| Sheet `Hieu_Dung` trong file xuất | Cả kỳ: tổng → theo bộ phận → **đủ mọi máy** | Không |
+| Trang `?page=ngay` | Đúng ngày đó, chỉ máy có dừng | **Có** |
+
+Ngoài ba khối cũ trên còn có chức năng **📈 Báo cáo tỉ lệ khả dụng máy** hoàn toàn
+độc lập. Chức năng tạo file Google Sheet mới theo ngày hoặc tháng, luôn liệt kê đủ
+mọi máy `Hoat_Dong = TRUE`, chia chi tiết dưới đề mục bộ phận. Máy có A < 100% được
+in đậm tên bằng màu đen. Báo cáo này cố định tính `SC-` làm máy dừng + `DM-`, không
+phụ thuộc bộ lọc thợ hay ba công tắc của báo cáo bảo trì cũ.
+
+Sheet `Hieu_Dung` **không dùng tập phiếu đã lọc của file xuất**: bộ lọc thợ làm rụng sạch
+phiếu `DM-` (không gắn thợ nào), lọc rồi mới tính là máy đứng cả tuần vì thiếu nguyên liệu
+vẫn hiện A = 100%. Nó tính trên toàn bộ phiếu của kỳ, chỉ áp bộ lọc **bộ phận** vào danh
+sách máy được liệt kê.
+
+Cả ba nơi đều bọc `try/catch`: thiếu sheet kế hoạch hay khai sai giờ thì mất đúng khối A,
+phần còn lại của báo cáo vẫn phải dựng được.
+
+---
+
 ## 9. Trang web có khoá
 
 | Route | Trang |
@@ -493,10 +582,12 @@ nghỉ việc còn sống thêm vài phút.
 | 7. Thêm máy mới vào danh mục | Sửa `MAY_THEM_MOI` rồi chạy. Chỉ thêm, không xoá |
 | 📅 Tạo dòng lịch trực tháng này | Đầu mỗi tháng |
 | 🔁 Xếp lịch luân phiên theo tuần | Đầu mỗi tháng, sau mục trên |
+| 🕒 Khai báo giờ chạy / nghỉ / giao ca | Mở hai sheet cấu hình kế hoạch dùng làm mẫu số A |
 | 📋 Báo cáo trong ngày | Hằng ngày |
 | ➕ Bù phiếu dừng máy | Khi thợ quên quét "Dừng máy" lúc đem đồ ra ngoài gia công |
 | 📊 Cập nhật báo cáo tổng hợp | Trigger tự chạy 12h và 23h |
 | 📤 Xuất báo cáo (chọn ngày, bộ phận, thợ) | Cuối tháng, hoặc khi sếp hỏi một khoảng ngày |
+| 📈 Báo cáo tỉ lệ khả dụng máy | Xuất báo cáo A độc lập theo ngày hoặc tháng, đủ máy hoạt động |
 | 🗄️ Dọn phiếu cũ sang Lưu trữ | Trigger tự chạy ngày 1 hằng tháng |
 | ⏰ Cài trigger tự chạy | **Một lần duy nhất**, phải chạy tay |
 | 🧹 Dọn dữ liệu (Admin) | Xoá phiếu theo mã · Dọn sạch dữ liệu thử · Mở thùng rác |

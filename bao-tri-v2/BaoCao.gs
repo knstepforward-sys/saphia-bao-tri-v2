@@ -67,6 +67,21 @@ function refreshReports(thang) {
   them_([dtHong, dtKhac, dtHong + dtKhac, Math.round((dtHong + dtKhac) / 6) / 10]);
   them_([]);
 
+  // --- Tỉ lệ hiệu dụng A ----------------------------------------------------
+  // Đặt ngay dưới khối downtime vì hai con số nói cùng một chuyện ở hai thang đo:
+  // trên là số phút tuyệt đối, dưới là phần trăm so với kế hoạch. Sếp đọc số phút
+  // không biết nhiều hay ít; đọc phần trăm mới biết.
+  //
+  // Bọc try/catch: thiếu sheet kế hoạch hoặc khai sai giờ thì chỉ mất đúng khối
+  // này, phần còn lại của Tong_Hop vẫn phải dựng được.
+  try {
+    khoiHieuDungThang_(thangCan, SO_COT_TONG_HOP).forEach(function (r) { out.push(r); });
+  } catch (err) {
+    them_(['TỈ LỆ HIỆU DỤNG A']);
+    them_(['Chưa tính được: ' + err.message]);
+  }
+  them_([]);
+
   // --- Theo bộ phận ---------------------------------------------------------
   them_(['THEO BỘ PHẬN']);
   them_(['Bộ phận', 'Tổng phiếu', 'Chờ nhận', 'Đang xử lý', 'Hoàn thành',

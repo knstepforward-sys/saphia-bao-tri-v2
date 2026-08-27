@@ -81,6 +81,13 @@
   @media print { td.sua { min-width: 0; } .nhac { display: none; } }
   td.s, th.s { text-align: right; white-space: nowrap; }
   .trong { color: #5f6368; font-size: 13px; padding: 6px 0; }
+  /* Tỉ lệ hiệu dụng A: một con số to đứng cạnh phần diễn giải. */
+  .adau { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; margin-bottom: 8px; }
+  .aso { font-size: 40px; font-weight: 700; line-height: 1; color: #14304f; }
+  .aso.kem { color: #d93025; }
+  .aso.vua { color: #e37400; }
+  .agiai { font-size: 13px; color: #5f6368; }
+  .acanh { color: #d93025; font-size: 13px; margin: 6px 0 0; }
 
   .nhan {
     display: inline-block; font-size: 11px; font-weight: 700; border-radius: 999px;
@@ -147,6 +154,12 @@
   </div>
 
   <div class="oso" id="oso"></div>
+
+  <div class="the" id="theA">
+    <h2>📈 Tỉ lệ hiệu dụng A</h2>
+    <div id="aTom"></div>
+    <div id="aBang"></div>
+  </div>
 
   <div class="the canh" id="theTreo">
     <h2>⏳ Còn đang treo — cần xử lý</h2>
@@ -292,6 +305,52 @@
       }).join('') +
       '</tr>' + dong.join('') + '</table></div>';
   }
+
+  // --- Tỉ lệ hiệu dụng A ----------------------------------------------------
+  // A = giờ máy chạy thật / giờ máy phải chạy theo kế hoạch, chỉ tính phần kế
+  // hoạch đã trôi qua tính tới lúc mở trang — giữa ca mà lấy kế hoạch cả ngày
+  // thì sáng nào A cũng thấp giả tạo.
+  function phanTram_(t) {
+    return t === null || t === undefined ? '—' : (Math.round(t * 1000) / 10) + '%';
+  }
+
+  (function veHieuDung() {
+    var H = D.hieuDung;
+    if (!H || H.loi) {
+      $('aTom').innerHTML = '<div class="trong">Chưa tính được tỉ lệ hiệu dụng' +
+        (H && H.loi ? ': ' + thoat(H.loi) : '. Chạy menu 🔧 Bảo trì → "1. Cài đặt hệ thống" ' +
+          'để tạo sheet Ke_Hoach_Chay_May, rồi khai giờ chạy cho từng bộ phận.') + '</div>';
+      $('aBang').innerHTML = '';
+      return;
+    }
+
+    var lop = H.tiLe === null ? '' : (H.tiLe < 0.8 ? ' kem' : (H.tiLe < 0.9 ? ' vua' : ''));
+    $('aTom').innerHTML =
+      '<div class="adau"><div class="aso' + lop + '">' + phanTram_(H.tiLe) + '</div>' +
+      '<div class="agiai">' + H.gioChay + ' giờ chạy thật / ' + H.gioKeHoach +
+      ' giờ kế hoạch · mất ' + H.gioDung + ' giờ · ' + H.soMayDu + '/' + H.soMay +
+      ' máy chạy đủ kế hoạch</div></div>' +
+      (H.thieuKeHoach && H.thieuKeHoach.length
+        ? '<p class="acanh">⚠ Chưa khai kế hoạch cho bộ phận: ' +
+          thoat(H.thieuKeHoach.join(', ')) + ' — máy các bộ phận này không có A.</p>'
+        : '');
+
+    veBang('aBang',
+      [{ ten: 'Mã máy' }, { ten: 'Tên máy' }, { ten: 'Bộ phận' },
+       { ten: 'Kế hoạch (giờ)', s: true }, { ten: 'Dừng (giờ)', s: true },
+       { ten: 'Chạy thật (giờ)', s: true }, { ten: 'A', s: true }],
+      H.may.map(function (m) {
+        var l = m.tiLe === null ? '' : (m.tiLe < 0.8 ? ' lau' : '');
+        return '<tr><td>' + thoat(m.maMay) + '</td>' +
+          '<td>' + thoat(m.tenMay) + '</td>' +
+          '<td>' + thoat(m.boPhan) + '</td>' +
+          '<td class="s">' + m.gioKeHoach + '</td>' +
+          '<td class="s">' + m.gioDung + '</td>' +
+          '<td class="s">' + m.gioChay + '</td>' +
+          '<td class="s"><span class="nhan' + l + '">' + phanTram_(m.tiLe) + '</span></td></tr>';
+      }),
+      '✅ Mọi máy chạy đủ kế hoạch hôm nay.');
+  })();
 
   // --- Còn treo -------------------------------------------------------------
   // Phiếu treo từ hôm trước là thứ nguy hiểm nhất, nên cho hẳn một cột "Mở ngày"
