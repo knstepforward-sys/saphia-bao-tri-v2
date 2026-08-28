@@ -1,3 +1,9 @@
+## [2026-08-28] Đã đẩy mã ẩn tỉ lệ hiệu dụng lên Apps Script Editor
+- **Thay đổi:** Chạy `clasp push --force` trong `bao-tri-v2/`; 21 file của project Bảo trì v2 đã được cập nhật trên Apps Script Editor, bao gồm công tắc ẩn tỉ lệ hiệu dụng trong báo cáo hằng ngày.
+- **Lý do:** Chủ dự án yêu cầu đưa thay đổi đã lưu trên GitHub lên Apps Script Editor.
+- **Trạng thái:** Đã xong `clasp push` lúc 15:19:36 ngày 28/08/2026 sau khi bộ kiểm tra tĩnh báo sạch. Chưa deploy web app; trang `/exec`, ứng dụng đang chạy thật và QR vẫn dùng version deployment cũ.
+- **Việc cần làm tiếp theo:** Khi được chủ dự án yêu cầu, deploy bằng đúng deployment ID hiện có rồi kiểm tra báo cáo hằng ngày; tuyệt đối không tạo deployment mới.
+
 ## [2026-08-28] Tách mã nguồn Bảo trì khỏi repository QC
 - **Thay đổi:** Tạo repository private `knstepforward-sys/saphia-bao-tri-v2`; chuyển `bao-tri-v2/`, `apps-script/`, `kiemtra/` và tài liệu bảo trì sang repository mới bằng lịch sử Git đã lọc. Bổ sung `README.md`, `AGENTS.md`; cập nhật bộ kiểm tra để wrapper `baocao-saphia` là thành phần ngoài repository và chỉ kiểm tra khi thư mục đó có mặt trên máy.
 - **Lý do:** Mã QC và mã Bảo trì trước đây dùng chung repository `saphia-qc`, làm lịch sử và trạng thái triển khai dễ bị nhầm lẫn.
