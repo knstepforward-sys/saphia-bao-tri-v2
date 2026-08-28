@@ -315,6 +315,12 @@
   }
 
   (function veHieuDung() {
+    // Tắt cả khối thay vì hiện thông báo lỗi/thiếu dữ liệu. Công tắc nằm ở
+    // BaoCaoNgay.gs để khi bật lại không phải sửa giao diện lần nữa.
+    if (!D.hienHieuDung) {
+      $('theA').style.display = 'none';
+      return;
+    }
     var H = D.hieuDung;
     if (!H || H.loi) {
       $('aTom').innerHTML = '<div class="trong">Chưa tính được tỉ lệ hiệu dụng' +

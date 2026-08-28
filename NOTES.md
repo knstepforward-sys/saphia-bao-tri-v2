@@ -1,0 +1,5 @@
+## [2026-08-28] Tạm tắt tỉ lệ hiệu dụng trong báo cáo hằng ngày
+- **Thay đổi:** Đặt công tắc `HIEN_HIEU_DUNG_BAO_CAO_NGAY = false` trong `bao-tri-v2/BaoCaoNgay.gs` để không chạy phép tính A; `bao-tri-v2/TrangNgay.html` ẩn toàn bộ khối tỉ lệ hiệu dụng; `bao-tri-v2/CLAUDE.md` được cập nhật trạng thái và cách bật lại.
+- **Lý do:** Cách tính hiện tại đang coi mọi máy có `Hoat_Dong = TRUE` là có kế hoạch chạy đủ lịch bộ phận, trong khi thực tế chỉ một số máy được bố trí chạy theo ngày/ca. Cần thiết kế quy trình tổ trưởng khai máy có kế hoạch chạy trước khi sử dụng chỉ số này.
+- **Trạng thái:** Đã xong, đã qua bộ kiểm tra cú pháp/tĩnh tại máy local và đã được chủ dự án xác nhận lưu lên GitHub private. Chưa `clasp push` lên Apps Script Editor và chưa deploy; bản đang chạy thật chưa thay đổi.
+- **Việc cần làm tiếp theo:** Nếu muốn áp dụng lên hệ thống thật, thực hiện `clasp push` và deploy phiên bản mới. Lập kế hoạch riêng cho chức năng khai máy chạy và người vắng theo ngày/ca trước khi bật lại chỉ số A.

@@ -14,6 +14,15 @@
  * về ngày nó bắt đầu, đúng như cách cả hệ thống đang tính.
  */
 
+/**
+ * Tạm tắt theo quyết định vận hành ngày 28/08/2026.
+ *
+ * Chỉ số A cần thêm bước tổ trưởng khai những máy có kế hoạch chạy theo ngày/ca;
+ * trước khi có dữ liệu đó, hiển thị A sẽ ngầm coi mọi máy Hoat_Dong = TRUE đều
+ * phải chạy và có thể làm báo cáo sai. Đổi thành true khi quy trình mới hoàn tất.
+ */
+const HIEN_HIEU_DUNG_BAO_CAO_NGAY = false;
+
 /** Tên bộ phận để gom nhóm; phiếu thiếu bộ phận vẫn phải có chỗ đứng. */
 function nhomBoPhan_(x) {
   return String(x.boPhan || '').trim() || '(không rõ bộ phận)';
@@ -142,37 +151,40 @@ function duLieuBaoCaoNgay_(ngay) {
   // Bọc try/catch vì sheet kế hoạch có thể chưa được tạo (hệ đang chạy thật, bản
   // deploy cũ chưa có nó). Thiếu A thì trang vẫn phải mở được như trước.
   let hieuDung = null;
-  try {
-    const kq = tinhHieuDung_(ngay, ngay, { bayGio: bayGio, dsPhieu: tatCa });
-    hieuDung = {
-      tiLe: kq.tong.tiLe,
-      gioKeHoach: phutSangGio_(kq.tong.phutKeHoach),
-      gioChay: phutSangGio_(kq.tong.phutChay),
-      gioDung: phutSangGio_(kq.tong.phutDung),
-      soMay: kq.tong.soMay,
-      soMayDu: kq.tong.soMayDu,
-      thieuKeHoach: kq.thieuKeHoach,
-      // Chỉ gửi máy có dừng. Ngày bình thường chỉ vài máy, gửi cả 176 dòng
-      // xuống điện thoại của tổ trưởng là phí băng thông cho toàn số 100%.
-      may: sapTheoHieuDung_(kq.may.filter(function (m) {
-        return m.phutDung > 0 || m.tiLe === null;
-      })).map(function (m) {
-        return {
-          maMay: m.maMay, tenMay: m.tenMay, boPhan: m.boPhan,
-          gioKeHoach: phutSangGio_(m.phutKeHoach),
-          gioDung: phutSangGio_(m.phutDung),
-          gioChay: phutSangGio_(m.phutChay),
-          tiLe: m.tiLe,
-        };
-      }),
-    };
-  } catch (err) {
-    hieuDung = { loi: err.message };
+  if (HIEN_HIEU_DUNG_BAO_CAO_NGAY) {
+    try {
+      const kq = tinhHieuDung_(ngay, ngay, { bayGio: bayGio, dsPhieu: tatCa });
+      hieuDung = {
+        tiLe: kq.tong.tiLe,
+        gioKeHoach: phutSangGio_(kq.tong.phutKeHoach),
+        gioChay: phutSangGio_(kq.tong.phutChay),
+        gioDung: phutSangGio_(kq.tong.phutDung),
+        soMay: kq.tong.soMay,
+        soMayDu: kq.tong.soMayDu,
+        thieuKeHoach: kq.thieuKeHoach,
+        // Chỉ gửi máy có dừng. Ngày bình thường chỉ vài máy, gửi cả 176 dòng
+        // xuống điện thoại của tổ trưởng là phí băng thông cho toàn số 100%.
+        may: sapTheoHieuDung_(kq.may.filter(function (m) {
+          return m.phutDung > 0 || m.tiLe === null;
+        })).map(function (m) {
+          return {
+            maMay: m.maMay, tenMay: m.tenMay, boPhan: m.boPhan,
+            gioKeHoach: phutSangGio_(m.phutKeHoach),
+            gioDung: phutSangGio_(m.phutDung),
+            gioChay: phutSangGio_(m.phutChay),
+            tiLe: m.tiLe,
+          };
+        }),
+      };
+    } catch (err) {
+      hieuDung = { loi: err.message };
+    }
   }
 
   return {
     ngay: ngay,
     capNhat: Utilities.formatDate(bayGio, CONFIG.MUI_GIO, 'HH:mm dd/MM/yyyy'),
+    hienHieuDung: HIEN_HIEU_DUNG_BAO_CAO_NGAY,
     hieuDung: hieuDung,
     tong: {
       suCo: suCo.length,

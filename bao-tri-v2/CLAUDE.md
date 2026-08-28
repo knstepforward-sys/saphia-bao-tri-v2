@@ -497,7 +497,11 @@ Muốn đếm đủ thì phải thêm ô chọn máy vào màn hình tạo việ
 |---|---|---|
 | `Tong_Hop` | Cả tháng, chỉ liệt kê máy **có dừng** | Không |
 | Sheet `Hieu_Dung` trong file xuất | Cả kỳ: tổng → theo bộ phận → **đủ mọi máy** | Không |
-| Trang `?page=ngay` | Đúng ngày đó, chỉ máy có dừng | **Có** |
+| Trang `?page=ngay` | **Tạm tắt từ 28/08/2026**; chờ bổ sung kế hoạch máy theo ngày/ca | **Có** khi bật lại |
+
+Công tắc `HIEN_HIEU_DUNG_BAO_CAO_NGAY` trong `BaoCaoNgay.gs` đang để `false`.
+Khi tắt, backend không chạy phép tính A và giao diện ẩn hẳn khối này; các báo cáo
+tháng và file xuất không bị ảnh hưởng.
 
 Ngoài ba khối cũ trên còn có chức năng **📈 Báo cáo tỉ lệ khả dụng máy** hoàn toàn
 độc lập. Chức năng tạo file Google Sheet mới theo ngày hoặc tháng, luôn liệt kê đủ
