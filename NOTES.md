@@ -1,3 +1,9 @@
+## [2026-08-28] Deploy ẩn tỉ lệ hiệu dụng bị chặn quyền Workspace
+- **Thay đổi:** Thử cập nhật đúng deployment hiện có `@2` bằng `clasp deploy --deploymentId`; không tạo deployment mới và không dùng `@HEAD`.
+- **Lý do:** Cần đưa thay đổi ẩn tỉ lệ hiệu dụng từ Apps Script Editor lên trang web `/exec` mà vẫn giữ nguyên URL/QR.
+- **Trạng thái:** Bị chặn trước khi triển khai với thông báo chỉ người dùng cùng domain với chủ sở hữu script mới được deploy. Deployment vẫn ở `@2`, ID và URL không thay đổi; mã mới đã có trên Apps Script Editor nhưng ứng dụng web đang chạy thật vẫn dùng version cũ.
+- **Việc cần làm tiếp theo:** Đăng nhập clasp bằng tài khoản thuộc đúng Workspace domain của chủ sở hữu, hoặc nhờ chủ sở hữu mở Manage deployments và cập nhật chính deployment hiện có sang version mới; không chọn New deployment.
+
 ## [2026-08-28] Đã đẩy mã ẩn tỉ lệ hiệu dụng lên Apps Script Editor
 - **Thay đổi:** Chạy `clasp push --force` trong `bao-tri-v2/`; 21 file của project Bảo trì v2 đã được cập nhật trên Apps Script Editor, bao gồm công tắc ẩn tỉ lệ hiệu dụng trong báo cáo hằng ngày.
 - **Lý do:** Chủ dự án yêu cầu đưa thay đổi đã lưu trên GitHub lên Apps Script Editor.
