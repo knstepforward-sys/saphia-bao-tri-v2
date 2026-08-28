@@ -38,8 +38,11 @@ if ($LASTEXITCODE -ne 0) { $ok = $false }
 # --- Lớp 3: HTML -------------------------------------------------------------
 Write-Output "`n=== 3. HTML (scriptlet trong comment, cu phap JS, id) ==="
 $html = Get-ChildItem -Path $duAn -Filter *.html | ForEach-Object { $_.FullName }
-$html += Get-ChildItem -Path (Join-Path $goc 'baocao-saphia') -Filter *.html |
-  ForEach-Object { $_.FullName }
+$thuMucWrapper = Join-Path $goc 'baocao-saphia'
+if (Test-Path -LiteralPath $thuMucWrapper) {
+  $html += Get-ChildItem -LiteralPath $thuMucWrapper -Filter *.html |
+    ForEach-Object { $_.FullName }
+}
 node (Join-Path $PSScriptRoot 'checkhtml.js') @html
 if ($LASTEXITCODE -ne 0) { $ok = $false }
 

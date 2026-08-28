@@ -1,11 +1,13 @@
 # Prompt mở khung chat mới
 
-Mở chat mới **trong thư mục `SAPHIA-project`**, dán khối dưới đây, điền việc muốn làm ở dòng cuối.
+Mở chat mới **trong thư mục repository `saphia-bao-tri-v2`**, dán khối dưới đây,
+điền việc muốn làm ở dòng cuối.
 
 ---
 
 ```
-Dự án: Hệ thống Bảo trì Toàn nhà máy v2 — đang chạy thật ở nhà máy, bản deploy @43.
+Dự án: Hệ thống Bảo trì Toàn nhà máy v2 — đang chạy thật ở nhà máy. Đọc
+bao-tri-v2/CLAUDE.md để biết deployment hiện tại, không dựa vào số ghi trong prompt.
 
 ĐỌC TRƯỚC KHI LÀM BẤT CỨ GÌ:
 - bao-tri-v2/CLAUDE.md — kiến trúc, schema, lý do đằng sau từng quyết định,

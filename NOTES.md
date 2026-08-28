@@ -1,3 +1,9 @@
+## [2026-08-28] Tách mã nguồn Bảo trì khỏi repository QC
+- **Thay đổi:** Tạo repository private `knstepforward-sys/saphia-bao-tri-v2`; chuyển `bao-tri-v2/`, `apps-script/`, `kiemtra/` và tài liệu bảo trì sang repository mới bằng lịch sử Git đã lọc. Bổ sung `README.md`, `AGENTS.md`; cập nhật bộ kiểm tra để wrapper `baocao-saphia` là thành phần ngoài repository và chỉ kiểm tra khi thư mục đó có mặt trên máy.
+- **Lý do:** Mã QC và mã Bảo trì trước đây dùng chung repository `saphia-qc`, làm lịch sử và trạng thái triển khai dễ bị nhầm lẫn.
+- **Trạng thái:** Đã chuẩn bị xong repository Bảo trì private và giữ lại các commit liên quan; chưa `clasp push` và chưa deploy nên ứng dụng đang chạy thật chưa thay đổi.
+- **Việc cần làm tiếp theo:** Push repository Bảo trì sau khi kiểm tra; sau đó xóa phần Bảo trì khỏi repository QC bằng một commit riêng và xác minh cả hai repository.
+
 ## [2026-08-28] Tạm tắt tỉ lệ hiệu dụng trong báo cáo hằng ngày
 - **Thay đổi:** Đặt công tắc `HIEN_HIEU_DUNG_BAO_CAO_NGAY = false` trong `bao-tri-v2/BaoCaoNgay.gs` để không chạy phép tính A; `bao-tri-v2/TrangNgay.html` ẩn toàn bộ khối tỉ lệ hiệu dụng; `bao-tri-v2/CLAUDE.md` được cập nhật trạng thái và cách bật lại.
 - **Lý do:** Cách tính hiện tại đang coi mọi máy có `Hoat_Dong = TRUE` là có kế hoạch chạy đủ lịch bộ phận, trong khi thực tế chỉ một số máy được bố trí chạy theo ngày/ca. Cần thiết kế quy trình tổ trưởng khai máy có kế hoạch chạy trước khi sử dụng chỉ số này.
