@@ -7,9 +7,10 @@
 # Thoát mã 0 = sạch, an toàn để push.
 # Thoát mã 1 = có lỗi, KHÔNG push.
 #
-# Ba lớp đầu chỉ bắt lỗi TĨNH; lớp 4 chạy thẳng số học KPI vì nhóm hàm đó là hàm
-# thuần. Lớp thứ năm — logic nghiệp vụ còn lại — nằm trong Sheet: menu 🔧 Bảo trì
-# → 🧪 Chạy test logic (~230 phép thử, chạy bằng dữ liệu giả).
+# Ba lớp đầu chỉ bắt lỗi TĨNH; lớp 4 và lớp 5 chạy thẳng phép thử vì hai nhóm hàm
+# đó là hàm thuần — chỉ nhận mảng, chuỗi và Date. Lớp thứ sáu — logic nghiệp vụ
+# còn lại — nằm trong Sheet: menu 🔧 Bảo trì → 🧪 Chạy test logic (~230 phép thử,
+# chạy bằng dữ liệu giả).
 # =============================================================================
 
 $ErrorActionPreference = 'Stop'
@@ -52,6 +53,14 @@ if ($LASTEXITCODE -ne 0) { $ok = $false }
 # trong Sheet như phần còn lại của Test.gs.
 Write-Output "`n=== 4. So hoc KPI dap ung tho ==="
 node (Join-Path $PSScriptRoot 'kpi-tho.js') $duAn
+if ($LASTEXITCODE -ne 0) { $ok = $false }
+
+# --- Lớp 5: nội dung tin Telegram --------------------------------------------
+# Ba hàm soạn tin trong ThongBao.gs cố ý tách khỏi phần gửi và không dùng cả
+# Utilities, nên chạy được ở đây. Lớp này cũng canh luôn ranh giới đó: có ai kéo
+# UrlFetchApp hay SpreadsheetApp vào nhóm hàm soạn tin là đỏ ngay.
+Write-Output "`n=== 5. Noi dung tin Telegram ==="
+node (Join-Path $PSScriptRoot 'thongbao.js') $duAn
 if ($LASTEXITCODE -ne 0) { $ok = $false }
 
 # --- Kết luận ----------------------------------------------------------------

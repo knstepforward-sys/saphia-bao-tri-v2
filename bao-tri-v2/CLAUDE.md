@@ -670,7 +670,7 @@ cấp · ngưỡng chặn spam · danh mục máy · lịch trực.
 ### Quy trình push và deploy
 
 ```bash
-powershell -File ..\kiemtra\kiem-tra.ps1      # 3 lớp kiểm tĩnh
+powershell -File ..\kiemtra\kiem-tra.ps1      # 5 lớp chạy tại máy
 clasp push --force
 clasp deploy --deploymentId MA_TRIEN_KHAI_DA_GO_KHOI_KHO_CONG_KHAI... --description "mô tả"
 ```
@@ -712,14 +712,15 @@ clasp deploy --deploymentId MA_TRIEN_KHAI_DA_GO_KHOI_KHO_CONG_KHAI... --descript
 
 ---
 
-## 14. Kiểm thử — 5 lớp
+## 14. Kiểm thử — 6 lớp
 
 ```bash
 powershell -File kiemtra\kiem-tra.ps1
 ```
 
-Chạy 4 lớp tại máy: cú pháp `.gs` → biến che tham số → HTML (scriptlet trong comment, cú
-pháp JS, `getElementById` trỏ vào id không tồn tại) → **số học KPI đáp ứng thợ**.
+Chạy 5 lớp tại máy: cú pháp `.gs` → biến che tham số → HTML (scriptlet trong comment, cú
+pháp JS, `getElementById` trỏ vào id không tồn tại) → **số học KPI đáp ứng thợ** →
+**nội dung tin Telegram**.
 
 Lớp 4 (`kiemtra/kpi-tho.js`) nạp thẳng `Code.gs` + `LuongTho.gs` + `XuatBaoCao.gs` vào node
 rồi gọi `phutBanTrongCho_` / `kpiThoChoPhieu_` — làm được vì nhóm hàm KPI là hàm **thuần**,
@@ -729,7 +730,14 @@ chỉ nhận mảng và `Date`. Gồm 2000 ca ngẫu nhiên canh đẳng thức 
 > khung test và `Date` của code là hai constructor khác nhau, mọi `instanceof Date` bên
 > trong code trả về false và bộ test hoá ra chỉ kiểm thử chính cái khung — đã dính một lần.
 
-Lớp thứ năm: menu **🧪 Chạy test logic** trong Sheet — ~230 test bằng dữ liệu giả,
+Lớp 5 (`kiemtra/thongbao.js`) nạp `Code.gs` + `ThongBao.gs` rồi gọi `soanTinSuCoMoi_` /
+`soanTinDaNhan_` / `soanTinNhac_` — 109 phép thử nội dung tin. Lớp này còn canh **ranh giới
+hàm thuần**: soi mã nguồn từng hàm soạn tin bằng `Function.prototype.toString`, thấy
+`UrlFetchApp` / `SpreadsheetApp` / `Utilities`… là đỏ ngay và dừng tại đó. Cần vì phần gửi
+thật nằm chung file — kéo nhầm một lời gọi mạng vào nhóm hàm soạn tin là mất luôn khả năng
+kiểm thử tại máy.
+
+Lớp thứ sáu: menu **🧪 Chạy test logic** trong Sheet — ~230 test bằng dữ liệu giả,
 **không đọc/ghi sheet nào**.
 
 Điều này làm được nhờ `getOnDutyContacts_` nhận tham số `duLieu` **tiêm theo từng trường**:
