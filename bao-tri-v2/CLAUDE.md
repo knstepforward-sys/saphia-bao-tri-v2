@@ -90,19 +90,29 @@ thì `clasp push` sẽ đẩy nhầm chúng lên Apps Script.
 Tất cả do `setupSystem()` tạo. Chạy lại **an toàn**: không xoá dữ liệu, chỉ ghi lại header,
 và bổ sung khoá cấu hình còn thiếu.
 
-### `Su_Co` — sheet trung tâm, 28 cột
+### `Su_Co` — sheet trung tâm, 33 cột
 
-23 cột gốc theo bản thiết kế, rồi 5 cột bổ sung **luôn thêm vào CUỐI**:
+23 cột gốc theo bản thiết kế, rồi các cột bổ sung **luôn thêm vào CUỐI**:
 
 | Cột | Ý nghĩa |
 |---|---|
 | `Thoi_Gian_Dung_May` | Mốc máy thực sự dừng |
 | `Phut_Cho_Tho_Ban` | Máy chờ vì thợ bận việc khác — **KHÔNG** tính vào KPI thợ |
-| `Phut_Dap_Ung_Thuc` | Từ lúc thợ rảnh đến lúc bấm nhận — **đây mới là** KPI thợ |
+| `Phut_Dap_Ung_Thuc` | Từ lúc thợ rảnh đến lúc bấm nhận (bản một mốc rảnh) |
 | `So_Chong_Viec` | Số phiếu khác thợ đang giữ dở lúc bấm nhận |
 | `Loai_Phieu` | `SU_CO` / `CONG_VIEC` / `BAO_TRI` / `DUNG_MAY`. Trống = `SU_CO` |
+| `Phut_Ban_Thuc_Te` | Tổng phút thợ thật sự bận, cộng dồn từng đoạn (09/2026) |
+| `Phut_KPI_Tho` | `Phut_Tiep_Nhan − Phut_Ban_Thuc_Te` — **đây mới là** số chấm KPI |
+| `So_Doan_Ban` | Số đoạn bận rời; `≥2` là phiếu mà cách cũ miễn trừ rộng tay |
+| `KPI_Ap_Dung` | `CO` / `KHONG — <lý do>` |
+| `Dat_Nguong` | `DAT` / `KHONG_DAT`; rỗng khi chưa chốt ngưỡng |
 
 Mọi truy cập dùng `COT.<Tên_Cột>`, không dùng số.
+
+Năm cột cuối do `tinhLaiKpiTho()` (menu 🎯) tính lại được cho **toàn bộ dữ liệu
+cũ** — mọi mốc giờ cần thiết đã nằm sẵn trên sheet. Chạy lại nhiều lần vô hại.
+Phải chạy `setupSystem()` một lần trước để nới sheet lên 33 cột; hàm có chốt chặn
+báo rõ nếu quên.
 
 ### Ba trạng thái
 
@@ -269,6 +279,41 @@ Hai cột cộng lại **luôn bằng** `Phut_Tiep_Nhan`.
 Ví dụ đã có test canh: 2 máy cùng hỏng 9h00, thợ xong máy 1 lúc 9h30, nhận máy 2 lúc 9h32
 → nhà máy chịu 32 phút, **KPI thợ chỉ 2 phút**.
 
+### Bản cộng dồn đoạn bận (09/2026) — cột đem đi chấm KPI
+
+Công thức trên miễn trừ bằng **một** mốc rảnh, nên rộng tay ở hai chỗ. Đợt này thêm
+cột tính lại bằng cách cộng dồn **từng đoạn** bận, giao với khoảng máy nằm chờ:
+
+```
+Phut_Ban_Thuc_Te = tổng độ dài HỢP các đoạn [giờ nhận, giờ hoàn thành] của các
+                   phiếu KHÁC của chính thợ đó, cắt vào khoảng [giờ báo, giờ nhận]
+                   (phiếu còn DANG_XU_LY → bận tới hết khoảng)
+Phut_KPI_Tho     = Phut_Tiep_Nhan − Phut_Ban_Thuc_Te
+```
+
+Vẫn **luôn** có `Phut_Tiep_Nhan = Phut_Ban_Thuc_Te + Phut_KPI_Tho` (2000 ca ngẫu
+nhiên đã chạy qua). Hai chỗ cách cũ rộng tay, cả hai đều nghiêng về phía có lợi cho
+người bị đo — kiểu sai không ai đi khiếu nại:
+
+| Ca | Cách cũ | Cách cộng dồn |
+|---|---|---|
+| Bận **nhiều đoạn rời** — báo 9h00, nhận 10h00, thợ làm 8h50–9h10 và 9h30–9h50 | KPI 10 phút (nuốt luôn 20 phút rảnh xen giữa) | **KPI 30 phút** |
+| Thợ nhận việc cũ **SAU** lúc máy này báo — báo 9h00, thợ nhận việc cũ 9h02 | KPI 2 phút | **KPI 4 phút** (9h00–9h02 thợ còn rảnh) |
+
+Ca một đoạn bận **trùm qua** lúc báo hỏng thì hai cách cho **cùng** kết quả — đó là
+đa số phiếu, nên số cũ và số mới thường bằng nhau. Cả hai cột giữ song song để đối
+chiếu được với các báo cáo tháng đã gửi đi; **không** sửa đè cột cũ.
+
+`kpiThoChoPhieu_` được gọi từ cả `acceptTask` lẫn `tinhLaiKpiTho()`, và việc cắt
+đoạn bận vào cửa sổ khiến hai đường **luôn** ra cùng số — kể cả khi phiếu gây bận
+lúc đó còn mở, sau này mới đóng. Nhờ vậy tính lại cho dữ liệu cũ không ghi đè sai
+lên số đã ghi tại chỗ.
+
+Ngưỡng đạt khai ở `Cau_Hinh.NGUONG_KPI_DAP_UNG_PHUT`, để trống thì không chấm
+đạt/không đạt. Báo cáo xuất có khối **"CƠ SỞ ĐỂ CHỌN NGƯỠNG"** tính sẵn tỷ lệ đạt ở
+5 mức 5/10/15/20/30 phút kèm trung vị, P75, P90, P95 — để chọn ngưỡng bằng số liệu
+thay vì bốc một con số.
+
 **Thợ tự xem được:** bấm vào phiếu trong "Đã xong gần đây" hiện chi tiết, có dòng
 *"Chờ do bạn đang bận — 30 phút, không tính vào chỉ số đáp ứng của bạn"*. Số liệu công bằng
 mà người bị đánh giá không thấy thì không tạo được niềm tin.
@@ -318,14 +363,35 @@ Bản in: khổ ngang A4, ẩn icon và nền màu nhãn, bảng trải hết ra
 ### Xuất theo biểu mẫu Excel
 
 `xuatBaoCao({ tuNgay, denNgay, dsBoPhan, dsTho, kemViecChung })` tạo Google Sheet mới,
-7 sheet: **`Bao_Cao`** (trang tổng hợp, đứng đầu, mở sẵn) · `Data_Goc` (29 cột form + 1 cột
-`Loại`) · `Theo_Ngay` · `DANH_MUC` · `Dashboard` · `HD_DAP_UNG` · `Nhật ký bảo trì` (chỉ sự
-cố bộ phận Dệt, **bỏ hẳn sheet** nếu kỳ không có phiếu Dệt nào). Giao diện là hộp thoại
-`HopXuat.html` mở từ menu.
+8 sheet: **`Tom_Tat`** (trang cho sếp, đứng đầu, mở sẵn) · `Bao_Cao` (trang tra cứu của tổ
+bảo trì) · `Data_Goc` (29 cột form + `Loại` + 2 cột KPI) · `Theo_Ngay` · `DANH_MUC` ·
+`Dashboard` · `HD_DAP_UNG` · `Nhật ký bảo trì` (chỉ sự cố bộ phận Dệt, **bỏ hẳn sheet** nếu
+kỳ không có phiếu Dệt nào). Giao diện là hộp thoại `HopXuat.html` mở từ menu.
 
-#### `Bao_Cao` — một trang cho sếp, dạng NHẬT KÝ
+#### `Tom_Tat` — TRANG DUY NHẤT SẾP ĐỌC
 
-Sếp không mở 6 tab để ghép số. Trang này gồm:
+Người duyệt báo cáo không đọc nhật ký từng ngày. Họ cần biết tháng này **tệ hơn hay tốt hơn
+tháng trước**, và có gì phải quyết. Một trang, gói vừa khổ in dọc:
+
+1. **4 ô số lớn, mỗi ô kèm mức thay đổi** — số lần máy hỏng · giờ máy nằm im · đáp ứng trung
+   bình · tỷ lệ đạt KPI. Xanh khi đỡ hơn kỳ trước, đỏ khi tệ đi, xám khi kỳ trước chưa có số.
+2. **Điều cần biết** — chỉ những dòng thật sự có nội dung: máy nằm im lâu nhất, phiếu chưa ai
+   nhận, máy chưa chạy lại, số lần máy phải chờ vì thợ bận, nhắc chốt ngưỡng nếu chưa chốt.
+3. **5 máy nằm im lâu nhất.**
+4. **Kết quả theo thợ** — 4 cột thôi; ai dưới 70% được tô đỏ, và **chỉ tô khi đã chốt ngưỡng**
+   (chưa chốt mà tô đỏ là kết tội bằng một con số chưa ai duyệt).
+
+**Kỳ so sánh** dài đúng bằng kỳ báo cáo và dùng đúng bộ lọc bộ phận/thợ của kỳ đó — so một
+tháng với nửa tháng, hay toàn nhà máy với một bộ phận, thì con số "tăng/giảm" thành ra bịa.
+Nguồn `Su_Co` chỉ đọc **một lần** rồi lọc hai lần.
+
+Nguyên tắc của trang này: **con số nào cũng phải đi kèm mốc so sánh.** Một mình "62 giờ máy
+nằm im" không nói lên gì; "62 giờ, giảm 8 giờ so với kỳ trước" mới là thứ đọc xong biết phải
+làm gì.
+
+#### `Bao_Cao` — trang tra cứu của tổ bảo trì, dạng NHẬT KÝ
+
+Ban đầu làm cho sếp nhưng đã phình ra, nên tách `Tom_Tat` ở trên. Trang này gồm:
 
 1. **4 ô số lớn** — số lần hỏng · tổng thời gian máy dừng · tổng thời gian sửa · đáp ứng
    trung bình. Dưới đó một dòng: số lần dừng máy không do hư + **máy dừng lâu nhất kỳ này**.
@@ -641,19 +707,29 @@ clasp deploy --deploymentId MA_TRIEN_KHAI_DA_GO_KHOI_KHO_CONG_KHAI... --descript
 | **Nút cố định `position:fixed` đè lên ô nhập** | Người dùng với tay xuống ô cuối là bấm trúng nút Hoàn thành, phiếu đóng khi chưa khai phụ tùng | `.boc` chừa đáy 150px + hộp xác nhận cho thao tác không hoàn tác được |
 | **`min-width` trên nhiều ô cùng bảng** | Tổng min-width vượt bề ngang thẻ → bảng tràn khỏi viền trên web | Bọc bảng trong `.cuon { overflow-x:auto }` |
 | **Lệnh bash `&&` trong hướng dẫn** | Nút Chạy trong chat thực thi bằng PowerShell, `&&` là lỗi cú pháp | Mỗi lệnh một khối riêng |
+| **Ca test chép làm hai bản** (`kiemtra/kpi-tho.js` và `Test.gs` mục 8b) | Sửa kỳ vọng một bên, quên bên kia → bộ chạy tại máy vẫn xanh mà bộ trong Sheet đỏ. Dính 03/09/2026 | Sửa ca nào thì sửa **cả hai**, và chạy bộ trong Sheet trước khi coi là xong |
+| **Thêm cột vào `HEADER_DATA_GOC`** | Có test canh đúng số cột (biểu mẫu gửi sếp lệch là hỏng) — thêm cột mà quên sửa test là đỏ | Cột mới luôn thêm SAU cột 29, rồi cập nhật test đếm cột |
 
 ---
 
-## 14. Kiểm thử — 4 lớp
+## 14. Kiểm thử — 5 lớp
 
 ```bash
 powershell -File kiemtra\kiem-tra.ps1
 ```
 
-Chạy 3 lớp tĩnh: cú pháp `.gs` → biến che tham số → HTML (scriptlet trong comment, cú pháp
-JS, `getElementById` trỏ vào id không tồn tại).
+Chạy 4 lớp tại máy: cú pháp `.gs` → biến che tham số → HTML (scriptlet trong comment, cú
+pháp JS, `getElementById` trỏ vào id không tồn tại) → **số học KPI đáp ứng thợ**.
 
-Lớp thứ tư: menu **🧪 Chạy test logic** trong Sheet — ~210 test bằng dữ liệu giả,
+Lớp 4 (`kiemtra/kpi-tho.js`) nạp thẳng `Code.gs` + `LuongTho.gs` + `XuatBaoCao.gs` vào node
+rồi gọi `phutBanTrongCho_` / `kpiThoChoPhieu_` — làm được vì nhóm hàm KPI là hàm **thuần**,
+chỉ nhận mảng và `Date`. Gồm 2000 ca ngẫu nhiên canh đẳng thức `đáp ứng = bận + KPI`.
+
+> Phải chạy bằng `vm.runInThisContext`, **không** `createContext`: khác realm thì `Date` của
+> khung test và `Date` của code là hai constructor khác nhau, mọi `instanceof Date` bên
+> trong code trả về false và bộ test hoá ra chỉ kiểm thử chính cái khung — đã dính một lần.
+
+Lớp thứ năm: menu **🧪 Chạy test logic** trong Sheet — ~230 test bằng dữ liệu giả,
 **không đọc/ghi sheet nào**.
 
 Điều này làm được nhờ `getOnDutyContacts_` nhận tham số `duLieu` **tiêm theo từng trường**:

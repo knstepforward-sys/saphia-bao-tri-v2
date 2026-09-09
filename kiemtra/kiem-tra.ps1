@@ -7,8 +7,9 @@
 # Thoát mã 0 = sạch, an toàn để push.
 # Thoát mã 1 = có lỗi, KHÔNG push.
 #
-# Ba lớp ở đây chỉ bắt lỗi TĨNH. Lớp thứ tư — logic nghiệp vụ — nằm trong Sheet:
-# menu 🔧 Bảo trì → 🧪 Chạy test logic (~125 phép thử, chạy bằng dữ liệu giả).
+# Ba lớp đầu chỉ bắt lỗi TĨNH; lớp 4 chạy thẳng số học KPI vì nhóm hàm đó là hàm
+# thuần. Lớp thứ năm — logic nghiệp vụ còn lại — nằm trong Sheet: menu 🔧 Bảo trì
+# → 🧪 Chạy test logic (~230 phép thử, chạy bằng dữ liệu giả).
 # =============================================================================
 
 $ErrorActionPreference = 'Stop'
@@ -44,6 +45,13 @@ if (Test-Path -LiteralPath $thuMucWrapper) {
     ForEach-Object { $_.FullName }
 }
 node (Join-Path $PSScriptRoot 'checkhtml.js') @html
+if ($LASTEXITCODE -ne 0) { $ok = $false }
+
+# --- Lớp 4: số học KPI đáp ứng thợ -------------------------------------------
+# Nhóm hàm KPI là hàm THUẦN nên chạy thẳng được ở đây, không phải đợi bấm menu
+# trong Sheet như phần còn lại của Test.gs.
+Write-Output "`n=== 4. So hoc KPI dap ung tho ==="
+node (Join-Path $PSScriptRoot 'kpi-tho.js') $duAn
 if ($LASTEXITCODE -ne 0) { $ok = $false }
 
 # --- Kết luận ----------------------------------------------------------------
