@@ -1,9 +1,13 @@
 /**
  * Chạy các phép thử NỘI DUNG TIN TELEGRAM ngay tại máy, không cần mở Google Sheet.
  *
- * Làm được vì ba hàm soạn tin trong `ThongBao.gs` là hàm THUẦN — chỉ nhận mảng,
- * chuỗi và Date, không đọc sheet, không gọi mạng. Đó chính là lý do mục 4.1 của
+ * Làm được vì mục 1, 2 và 3 của `ThongBao.gs` là hàm THUẦN — chỉ nhận mảng, chuỗi
+ * và Date, không đọc sheet, không gọi mạng. Đó chính là lý do mục 4.1 của
  * `TASK_THONG_BAO_TELEGRAM.md` tách phần soạn tin khỏi phần gửi.
+ *
+ * Phần gửi thật (`guiTelegram_`, `telegramBat_`, `cauChiDangNgat_`,
+ * `chatIdTheoMaTho_`) KHÔNG kiểm thử được ở đây vì nó gọi mạng và đọc sheet. Ca
+ * kiểm thử cho nó dùng hàm gửi giả, nằm trong `Test.gs` ở bước B8.
  *
  * ⚠️ Khi thêm mục kiểm thử tương ứng vào `bao-tri-v2/Test.gs` ở bước B8, các ca
  * dưới đây thành bản SAO. Sửa kỳ vọng ở một bên mà quên bên kia thì file này vẫn
@@ -26,6 +30,7 @@ const nguon = ['Code.gs', 'ThongBao.gs']
 // kéo ra bằng một dòng nối vào cuối chính script đó.
 const XUAT = ';globalThis.__ra = { soanTinSuCoMoi_, soanTinDaNhan_, soanTinNhac_,' +
   ' gioVN_, chuoi_, phutGiua_, ghepDong_, ghepKhoi_, tenMayDayDu_,' +
+  ' chuanHoaChatId_, catTin_, nenBatCauChi_,' +
   ' COT, HEADER_SU_CO };';
 
 // Chạy trong CHÍNH realm này. Nếu tạo context riêng thì Date của khung test và
@@ -73,18 +78,19 @@ const LINK = 'https://khangdang0703-lab.github.io/baocao-saphia/baotri.html?tho=
 // 1. CANH RANH GIỚI HÀM THUẦN — chạy TRƯỚC mọi ca khác
 // ============================================================================
 //
-// Đây là ca quan trọng nhất của cả file. Bước B3 sẽ thêm phần gửi thật vào CHÍNH
-// `ThongBao.gs` này, và phần đó có `UrlFetchApp`, `CacheService`, `SpreadsheetApp`.
-// Nếu lúc đó có ai kéo một lời gọi như vậy vào trong nhóm hàm soạn tin thì cả bộ
-// kiểm thử tại máy chết ngay, mà lý do sẽ khó đọc. Ca này chạy trước mọi ca khác
-// nên nó nói ra vấn đề trước khi ca đầu tiên kịp nổ vì hàm không tồn tại.
+// Đây là ca quan trọng nhất của cả file. Phần gửi thật nằm trong CHÍNH
+// `ThongBao.gs` này, từ mục 4 trở xuống, và nó có `UrlFetchApp`, `CacheService`,
+// `PropertiesService`, `SpreadsheetApp`. Kéo một lời gọi như vậy ngược lên nhóm
+// hàm thuần là cả bộ kiểm thử tại máy chết ngay, mà lý do sẽ khó đọc. Ca này
+// chạy trước mọi ca khác nên nó nói ra vấn đề trước khi ca đầu tiên kịp nổ.
 //
-// Cố ý soi mã nguồn của TỪNG HÀM chứ không grep cả file — grep cả file thì tới
-// B3 là đỏ oan.
+// Cố ý soi mã nguồn của TỪNG HÀM chứ không grep cả file — grep cả file thì mục 4
+// và mục 5 của `ThongBao.gs` bị báo đỏ oan.
 const CAM = ['UrlFetchApp', 'SpreadsheetApp', 'CacheService', 'PropertiesService',
   'Utilities', 'LockService', 'SHEET.'];
 const PHAI_THUAN = ['soanTinSuCoMoi_', 'soanTinDaNhan_', 'soanTinNhac_',
-  'gioVN_', 'chuoi_', 'phutGiua_', 'ghepDong_', 'ghepKhoi_', 'tenMayDayDu_'];
+  'gioVN_', 'chuoi_', 'phutGiua_', 'ghepDong_', 'ghepKhoi_', 'tenMayDayDu_',
+  'chuanHoaChatId_', 'catTin_', 'nenBatCauChi_'];
 const hetThuan = [];
 PHAI_THUAN.forEach(function (ten) {
   const ma = String(G[ten]);
@@ -247,6 +253,45 @@ chua('Thiếu mã phiếu thì câu vẫn trọn',
 chua('Thiếu giờ báo thì số phút là 0, không văng lỗi',
   G.soanTinNhac_(phieu({ Ma_Su_Co: 'SC-1' }), 1, luc('2026-09-09T15:12'), ''),
   'Máy đã nằm im 0 phút.');
+
+// ============================================================================
+// 6. HÀM THUẦN PHỤC VỤ PHẦN GỬI
+// ============================================================================
+
+// Chat id nhóm và kênh mang số ÂM — chặn dấu trừ là bot không nhắn được vào nhóm.
+bang('chuanHoaChatId_ nhận id thường', G.chuanHoaChatId_('123456789'), '123456789');
+bang('chuanHoaChatId_ nhận id âm của nhóm', G.chuanHoaChatId_('-1001234567890'), '-1001234567890');
+bang('chuanHoaChatId_ cắt khoảng trắng', G.chuanHoaChatId_('  123456789 '), '123456789');
+bang('chuanHoaChatId_ nhận cả ô Sheets đọc ra số', G.chuanHoaChatId_(123456789), '123456789');
+// Ô trống là thợ chưa ghép — bình thường, không phải lỗi (rào 5.4).
+bang('chuanHoaChatId_ ô trống ra rỗng', G.chuanHoaChatId_(''), '');
+bang('chuanHoaChatId_ ô null ra rỗng', G.chuanHoaChatId_(null), '');
+// Người dùng dán đè định dạng thì Sheets đọc số lớn ra dạng mũ. Gửi tới một id
+// đã bị làm tròn là nhắn nhầm người khác, nên thà không gửi.
+bang('chuanHoaChatId_ chặn dạng mũ của Sheets', G.chuanHoaChatId_('1.23457E+11'), '');
+bang('chuanHoaChatId_ chặn chữ lẫn vào', G.chuanHoaChatId_('12345abc'), '');
+bang('chuanHoaChatId_ chặn tên người dùng', G.chuanHoaChatId_('@nhan_tho'), '');
+
+bang('catTin_ giữ nguyên tin ngắn', G.catTin_('abc', 10), 'abc');
+bang('catTin_ giữ nguyên tin đúng bằng giới hạn', G.catTin_('abcde', 5), 'abcde');
+// Vượt 4096 ký tự thì Telegram trả 400 và mất TRỌN tin — thợ không nhận được gì.
+bang('catTin_ cắt tin quá dài và đánh dấu bị cắt', G.catTin_('abcdefgh', 5), 'abcd…');
+bang('catTin_ với chuỗi rỗng', G.catTin_('', 10), '');
+bang('catTin_ với null ra rỗng', G.catTin_(null, 10), '');
+bang('catTin_ mặc định 4000 ký tự', G.catTin_(new Array(5000).join('x')).length, 4000);
+
+// Hai kiểu hỏng, hai cách xử. 429 và 5xx là hỏng phía hệ thống — gọi tiếp cũng
+// hỏng, mỗi lần gọi là một người phải chờ.
+bang('nenBatCauChi_ bật khi bị chặn tốc độ', G.nenBatCauChi_([200, 429]), true);
+bang('nenBatCauChi_ bật khi Telegram lỗi 500', G.nenBatCauChi_([500]), true);
+bang('nenBatCauChi_ bật khi 503', G.nenBatCauChi_([200, 200, 503]), true);
+// 400 và 403 là hỏng ở MỘT chat id: ghép nhầm, hoặc thợ chưa bấm Start với bot.
+// Bật cầu chì vì chuyện đó là cắt tin của cả 14 người còn lại.
+bang('nenBatCauChi_ KHÔNG bật vì một chat id sai', G.nenBatCauChi_([200, 400]), false);
+bang('nenBatCauChi_ KHÔNG bật vì thợ chưa bấm Start', G.nenBatCauChi_([403]), false);
+bang('nenBatCauChi_ không bật khi mọi tin đều đi được', G.nenBatCauChi_([200, 200]), false);
+bang('nenBatCauChi_ mảng rỗng thì không tự bật', G.nenBatCauChi_([]), false);
+bang('nenBatCauChi_ không tham số thì không văng lỗi', G.nenBatCauChi_(), false);
 
 loi.forEach(function (x) { console.log(x); });
 console.log(loi.length

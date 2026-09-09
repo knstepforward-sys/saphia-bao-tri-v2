@@ -7,17 +7,22 @@
  * gọi điện, nhưng rất nhiều người quên gọi. Phiếu nằm ở CHO_NHAN mà không ai
  * biết, máy nằm im. Xem TASK_THONG_BAO_TELEGRAM.md, phương án chốt 09/09/2026.
  *
- * BƯỚC B1 — file này HIỆN CHỈ CÓ PHẦN SOẠN TIN, chưa có phần gửi.
- * Chưa có UrlFetchApp, chưa có công tắc, chưa có cầu chì, chưa móc vào file nào
- * đang chạy. Các phần đó là B3 tới B7.
+ * ĐẾN HẾT BƯỚC B3. File có phần soạn tin, phần gửi, công tắc và cầu chì, nhưng
+ * CHƯA MÓC VÀO FILE NÀO ĐANG CHẠY — chưa file nào gọi tới đây. Còn lại: cột
+ * `Telegram_Chat_ID` và ba khoá `Cau_Hinh` (B4), hai mục menu (B5), ba chỗ móc
+ * trong `CongNhan.gs` và `LuongTho.gs` (B6), trigger nhắc (B7).
  *
- * ⚠️ MỌI HÀM TRONG FILE NÀY PHẢI THUẦN — chỉ nhận mảng, chuỗi và Date.
- * Không đọc sheet, không gọi mạng, KHÔNG dùng cả `Utilities`: bước B2 nạp thẳng
- * file này vào node để kiểm thử tại máy, mà `Utilities` chỉ tồn tại trong Apps
- * Script. Đó cũng là lý do có `gioVN_` riêng ở dưới thay vì gọi `fmtGio_`.
+ * ⚠️ RANH GIỚI QUAN TRỌNG NHẤT CỦA FILE NÀY nằm giữa mục 3 và mục 4.
  *
- * Khi thêm phần gửi ở B3, đặt nó ở CUỐI file và giữ nguyên tính thuần của nhóm
- * hàm soạn tin — ranh giới này chính là thứ làm bộ kiểm thử chạy được tại máy.
+ * Mọi hàm ở mục 1, 2 và 3 đều THUẦN — chỉ nhận mảng, chuỗi và Date. Không đọc
+ * sheet, không gọi mạng, KHÔNG dùng cả `Utilities`, vì `kiemtra/thongbao.js` nạp
+ * thẳng file này vào node mà `Utilities` chỉ tồn tại trong Apps Script. Đó cũng
+ * là lý do có `gioVN_` riêng ở dưới thay vì gọi `fmtGio_` bên `Code.gs`.
+ *
+ * Từ mục 4 trở xuống mới được đụng tới `PropertiesService`, `CacheService`,
+ * `UrlFetchApp`, `SpreadsheetApp`. Kéo một lời gọi như vậy ngược lên trên là
+ * mất khả năng kiểm thử tại máy — lớp 5 của bộ kiểm tra soi mã nguồn từng hàm
+ * thuần và sẽ báo đỏ ngay, kèm tên hàm và tên thứ bị cấm.
  */
 
 // ============================================================================
@@ -94,7 +99,7 @@ function tenMayDayDu_(v) {
 // cố do công nhân gõ tay, có thể chứa dấu `<`, `*`, `_`; bật Markdown hay HTML
 // lên là Telegram trả lỗi 400 hoặc hiển thị sai. Văn bản trơn thì không phải
 // thoát ký tự nào, và cũng không có đường cho nội dung người dùng nhập chen mã
-// định dạng vào tin. Khi viết phần gửi ở B3, ĐỪNG thêm parse_mode.
+// định dạng vào tin. Phần gửi ở mục 5 cố ý KHÔNG đặt `parse_mode`; đừng thêm vào.
 //
 // `link` là cột Link_Ca_Nhan của Danh_Muc_Tho — mỗi thợ nhận link của riêng mình,
 // mở thẳng trang thợ, không phải đăng nhập. Thợ chưa ghép link thì dòng đó tự
@@ -166,4 +171,233 @@ function soanTinNhac_(v, lan, khi, link, sdtKhanCap) {
       (lanHai && sdt) ? ('☎️ Không xử lý được thì gọi số khẩn cấp: ' + sdt) : '',
     ]),
   ]);
+}
+
+// ============================================================================
+// 3. HÀM THUẦN PHỤC VỤ PHẦN GỬI
+// ============================================================================
+//
+// Ba hàm dưới đây cũng thuần, cố ý tách khỏi `guiTelegram_` để kiểm thử được tại
+// máy: chúng chứa phần dễ sai nhất của phần gửi — quyết định khi nào bật cầu chì,
+// cắt tin quá dài, nhận diện chat id hợp lệ. Bóc ba thứ đó ra rồi thì
+// `guiTelegram_` chỉ còn lại phần vỏ gọi mạng, vốn không kiểm thử tại máy được.
+
+/**
+ * Chuẩn hoá chat id đọc từ sheet.
+ *
+ * Chat id là số nguyên và có thể ÂM — nhóm với kênh mang id âm. Ô nào không ra
+ * số nguyên sạch thì trả rỗng, coi như thợ chưa ghép, đúng rào 5.4. Sheets đọc ô
+ * số lớn ra dạng mũ nếu người dùng dán đè định dạng, nên phép kiểm này cũng chặn
+ * luôn chuyện gửi tới một id đã bị làm tròn sai.
+ */
+function chuanHoaChatId_(v) {
+  const s = chuoi_(v);
+  return /^-?\d{1,20}$/.test(s) ? s : '';
+}
+
+/**
+ * Cắt tin cho vừa giới hạn 4096 ký tự của Telegram.
+ *
+ * Mô tả sự cố là ô gõ tự do nên dài bao nhiêu cũng được. Vượt giới hạn thì
+ * Telegram trả lỗi 400 và mất TRỌN tin — thợ không nhận được gì cả, tệ hơn hẳn
+ * nhận một tin bị cắt đuôi.
+ */
+function catTin_(s, toiDa) {
+  const gh = toiDa || 4000;
+  const t = String(s === null || s === undefined ? '' : s);
+  return t.length <= gh ? t : (t.slice(0, gh - 1) + '…');
+}
+
+/**
+ * Loạt mã HTTP vừa nhận có đáng bật cầu chì 10 phút hay không.
+ *
+ * Cố ý PHÂN BIỆT hai kiểu hỏng vì chúng cần hai cách xử khác hẳn nhau:
+ *
+ * - 429 (Telegram chặn tốc độ) và 5xx (Telegram lỗi) hỏng ở PHÍA HỆ THỐNG. Gọi
+ *   tiếp cũng hỏng, mà mỗi lần gọi là một người phải chờ. Bật cầu chì.
+ * - 400 và 403 hỏng ở MỘT chat id cụ thể: ghép nhầm id, hoặc thợ chưa bấm Start
+ *   với bot nên bot không được phép nhắn. Chỉ mình người đó không nhận được tin;
+ *   bật cầu chì vì chuyện đó là cắt tin của cả 14 người còn lại.
+ *
+ * Mảng rỗng nghĩa là lời gọi ném lỗi trước khi kịp có mã nào — chỗ gọi tự bật.
+ */
+function nenBatCauChi_(dsMa) {
+  const ds = dsMa || [];
+  for (let i = 0; i < ds.length; i++) {
+    const ma = Number(ds[i]);
+    if (ma === 429 || ma >= 500) return true;
+  }
+  return false;
+}
+
+// ============================================================================
+// 4. TOKEN, CÔNG TẮC, CẦU CHÌ
+// ============================================================================
+//
+// TỪ ĐÂY TRỞ XUỐNG KHÔNG CÒN THUẦN. Đừng gọi các hàm dưới đây từ nhóm hàm soạn
+// tin ở mục 2 — lớp 5 của bộ kiểm tra soi mã nguồn từng hàm soạn tin và sẽ báo
+// đỏ ngay, kèm tên hàm và tên thứ bị cấm.
+
+const TELEGRAM = {
+  KHOA_TOKEN: 'TELEGRAM_BOT_TOKEN',   // Script Properties, KHÔNG để trong Cau_Hinh
+  KHOA_BAT: 'TELEGRAM_BAT',           // Cau_Hinh
+  COT_CHAT_ID: 'Telegram_Chat_ID',    // cột cuối Danh_Muc_Tho
+  KHOA_CAU_CHI: 'telegram_cau_chi',
+  NGAT_GIAY: 600,                     // cầu chì ngắt 10 phút
+  TOI_DA_MOI_LUOT: 20,                // chặn cứng số tin mỗi lượt, rào 5.11
+};
+
+/**
+ * Token bot, đọc từ Script Properties.
+ *
+ * KHÔNG cất trong `Cau_Hinh`: ai xem được Sheet là cầm được token và nhắn tin
+ * được dưới danh nghĩa bot. Chưa đặt token thì trả rỗng và mọi hàm gửi thành
+ * lệnh rỗng — đó là trạng thái bình thường cho tới bước 1 của mục 7.
+ */
+function tokenTelegram_() {
+  try {
+    return chuoi_(PropertiesService.getScriptProperties()
+      .getProperty(TELEGRAM.KHOA_TOKEN));
+  } catch (e) {
+    return '';
+  }
+}
+
+/**
+ * Công tắc tổng, đọc từ `Cau_Hinh.TELEGRAM_BAT`.
+ *
+ * Đây là rào quan trọng nhất về vận hành (5.5): gõ `TAT` vào ô đó là dừng toàn
+ * bộ phần Telegram ngay lập tức, người ở nhà máy tự làm được, không phải chờ ai
+ * push mã. Nên MẶC ĐỊNH LÀ TẮT — thiếu khoá, gõ sai chính tả, đọc sheet hỏng,
+ * mọi đường đều phải dẫn về tắt.
+ *
+ * Nhận `cauHinh` tiêm vào để chỗ nào đã đọc cấu hình rồi thì khỏi đọc lần nữa,
+ * theo đúng lối `getOnDutyContacts_` đang dùng.
+ */
+function telegramBat_(cauHinh) {
+  try {
+    const ch = cauHinh || docCauHinh_();
+    return chuoi_(ch[TELEGRAM.KHOA_BAT]).toUpperCase() === 'BAT';
+  } catch (e) {
+    return false;
+  }
+}
+
+/** Cầu chì đang ngắt hay không — rào 5.12. */
+function cauChiDangNgat_() {
+  try {
+    return CacheService.getScriptCache().get(TELEGRAM.KHOA_CAU_CHI) !== null;
+  } catch (e) {
+    return false;   // Cache hỏng thì cứ cho gửi, đừng vì nó mà tắt cả thông báo.
+  }
+}
+
+/**
+ * Bật cầu chì: 10 phút tới không gọi mạng lần nào nữa.
+ *
+ * Ý nghĩa con số: kể cả Telegram chết hẳn thì mỗi 10 phút chỉ có ĐÚNG MỘT người
+ * phải chờ hết giờ chờ, thay vì mọi người báo sự cố đều phải chờ.
+ */
+function batCauChi_() {
+  try {
+    CacheService.getScriptCache().put(TELEGRAM.KHOA_CAU_CHI, '1', TELEGRAM.NGAT_GIAY);
+  } catch (e) {
+    // Không bật được cầu chì cũng KHÔNG được ném ra ngoài — rào 5.1.
+  }
+}
+
+// ============================================================================
+// 5. GỬI THẬT
+// ============================================================================
+
+/**
+ * Gửi một loạt tin. `ds` là mảng `{ chatId, text }`. Trả về SỐ TIN GỬI ĐƯỢC.
+ *
+ * ⚠️ HÀM NÀY KHÔNG BAO GIỜ NÉM LỖI RA NGOÀI — rào 5.1. Phiếu đã ghi xong trước
+ * khi gọi tới đây, nên dù Telegram chết hẳn thì công nhân vẫn báo được sự cố và
+ * vẫn thấy danh bạ như cũ. Chỗ gọi vẫn phải bọc thêm try/catch của riêng nó.
+ *
+ * ⚠️ GỌI NGOÀI KHOÁ, tuyệt đối không trong khoá — rào 5.2. Đặt nhầm vào trong
+ * khoá thì mọi người báo sự cố phải xếp hàng chờ một cuộc gọi mạng, đúng thứ mà
+ * chú thích trong `reportIncident` đã cảnh báo.
+ *
+ * Bốn cửa chặn trước khi chạm mạng, xếp theo thứ tự rẻ tiền nhất trước:
+ * danh sách rỗng → công tắc tắt → chưa có token → cầu chì đang ngắt.
+ */
+function guiTelegram_(ds, cauHinh) {
+  try {
+    const ban = (ds || []).filter(function (t) {
+      return t && chuanHoaChatId_(t.chatId) && chuoi_(t.text);
+    });
+    if (!ban.length) return 0;
+    if (!telegramBat_(cauHinh)) return 0;
+
+    const token = tokenTelegram_();
+    if (!token) return 0;
+    if (cauChiDangNgat_()) return 0;
+
+    // Chặn cứng số tin mỗi lượt — rào 5.11. Trường hợp phải phòng: mất điện cả
+    // xưởng, 40 máy báo cùng lúc, bot nhắn 200 tin.
+    const gui = ban.slice(0, TELEGRAM.TOI_DA_MOI_LUOT);
+
+    const url = 'https://api.telegram.org/bot' + token + '/sendMessage';
+    const yeuCau = gui.map(function (t) {
+      return {
+        url: url,
+        method: 'post',
+        contentType: 'application/json',
+        // Cố ý KHÔNG có parse_mode: tin là văn bản trơn, xem chú thích mục 2.
+        payload: JSON.stringify({
+          chat_id: chuanHoaChatId_(t.chatId),
+          text: catTin_(t.text),
+          disable_web_page_preview: true,
+        }),
+        // muteHttpExceptions để một chat id hỏng không kéo cả loạt ném lỗi —
+        // thiếu cờ này thì một thợ chưa bấm Start với bot sẽ làm hỏng tin của
+        // tất cả những người còn lại trong ca.
+        muteHttpExceptions: true,
+      };
+    });
+
+    const traLoi = UrlFetchApp.fetchAll(yeuCau);
+    const dsMa = traLoi.map(function (r) { return r.getResponseCode(); });
+    if (nenBatCauChi_(dsMa)) batCauChi_();
+
+    return dsMa.filter(function (ma) { return Number(ma) === 200; }).length;
+  } catch (e) {
+    // Tới đây nghĩa là lời gọi treo hết giờ chờ hoặc mạng hỏng hẳn — đúng thứ
+    // cầu chì sinh ra để chặn.
+    batCauChi_();
+    return 0;
+  }
+}
+
+/**
+ * Map `Ma_Tho` → chat id, đọc từ `Danh_Muc_Tho`.
+ *
+ * Đọc riêng ở đây, KHÔNG nhét chat id vào object `danhBa` — rào 5.8: `danhBa`
+ * được trả thẳng về trình duyệt của công nhân, nhét chat id vào đó là phát tán
+ * ra ngoài. Đổi lại tốn thêm một lượt đọc sheet khoảng 150 ms, chấp nhận được.
+ *
+ * Tự nối thêm cột `Telegram_Chat_ID` khi `HEADER_THO` chưa có nó, nên hàm chạy
+ * đúng cả TRƯỚC và SAU bước B4. Sheet mặc định rộng 26 cột nên đọc 10 cột vẫn
+ * nằm trong vùng, không văng lỗi tràn cột kể cả khi chưa chạy `setupSystem` —
+ * rào 5.3. Thợ chưa ghép thì vắng mặt trong map, im lặng bỏ qua — rào 5.4.
+ */
+function chatIdTheoMaTho_() {
+  const map = {};
+  try {
+    const header = HEADER_THO.indexOf(TELEGRAM.COT_CHAT_ID) >= 0
+      ? HEADER_THO : HEADER_THO.concat([TELEGRAM.COT_CHAT_ID]);
+    docSheet_(SHEET.THO, header).forEach(function (t) {
+      const ma = chuoi_(t.Ma_Tho);
+      const id = chuanHoaChatId_(t[TELEGRAM.COT_CHAT_ID]);
+      // Thợ nghỉ việc thì bỏ tick Hoat_Dong — từ đó không nhắn cho họ nữa.
+      if (ma && id && laTrue_(t.Hoat_Dong)) map[ma] = id;
+    });
+  } catch (e) {
+    // Thiếu sheet hay đọc hỏng thì trả map rỗng: không ai nhận được tin, nhưng
+    // không có thứ gì khác bị kéo hỏng theo.
+  }
+  return map;
 }
