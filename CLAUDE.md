@@ -25,6 +25,29 @@ mở app mobile → nhập báo cáo sự cố/sửa chữa → lưu thẳng và
 >
 > Cài đặt máy mới: xem `README.md`. Prompt mở chat: xem `PROMPT_KHUNG_CHAT_MOI.md`.
 
+> ## 🚫 BỐN VIỆC KHÔNG ĐƯỢC TỰ Ý LÀM
+>
+> Hệ thống đang phục vụ **175 máy** dùng QR cố định. Hỏng là dừng sản xuất.
+>
+> 1. **`clasp push`** — chỉ chạy khi chủ dự án xác nhận rõ ràng **TỪNG LẦN**. Không suy ra
+>    từ lần trước, không suy ra từ việc "đã duyệt phương án". Đang bị chặn trong
+>    `.claude/settings.json`.
+> 2. **`clasp deploy`** — như trên. Và khi được phép thì **luôn dùng đúng deployment ID
+>    đang có**. Tạo "Bản triển khai mới" là đổi URL và làm chết toàn bộ QR đã in.
+> 3. **Sửa file khi chưa được duyệt** — trình bày phương án trước, chờ đồng ý rồi mới sửa.
+> 4. **Đổi các giá trị hạ tầng** — Spreadsheet ID, Apps Script ID, deployment ID, URL
+>    `/exec`, cấu trúc cột sheet. Muốn đổi phải hỏi.
+>
+> Trước khi sửa mã, hỏi lại: **việc này giải bằng cấu hình trên Google Sheet được không?**
+> Sửa code là phương án cuối. Đã bị nhắc một lần vì định thêm cột thay vì tạo bộ phận mới.
+>
+> Sau mỗi thay đổi, thêm mục mới lên **đầu** `NOTES.md`, ghi riêng ba trạng thái: đã push
+> GitHub / đã `clasp push` / đã deploy. **Không** viết "đã chạy thật" nếu mới chỉ sửa mã
+> hoặc mới push GitHub. Trước khi push chạy `powershell -File kiemtra\kiem-tra.ps1`.
+>
+> Gọi `clasp.cmd`, không gọi `clasp` — PowerShell chặn file `.ps1`. Tài liệu và giao diện
+> đều bằng **tiếng Việt**.
+
 > ## ⚠️ Thư mục này chứa HAI hệ thống riêng biệt
 >
 > | Thư mục | Hệ thống | Tài liệu |
