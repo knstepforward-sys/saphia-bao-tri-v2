@@ -412,7 +412,8 @@ function archiveOldTickets() {
  * không bao giờ nhân đôi.
  */
 function caiDatTrigger() {
-  const cuaTa = { refreshReportsThangNay: true, archiveOldTickets: true };
+  const cuaTa = { refreshReportsThangNay: true, archiveOldTickets: true,
+    nhacPhieuChoNhan: true };
 
   let daXoa = 0;
   ScriptApp.getProjectTriggers().forEach(function (t) {
@@ -426,9 +427,15 @@ function caiDatTrigger() {
   // Dọn dữ liệu: ngày 1 hằng tháng, lúc rạng sáng cho khỏi vướng giờ làm việc.
   ScriptApp.newTrigger('archiveOldTickets').timeBased().onMonthDay(1).atHour(2).create();
 
-  return 'Đã cài 3 trigger (xoá ' + daXoa + ' trigger cũ):\n' +
+  // Nhắc phiếu chưa ai nhận: 5 phút một lượt. Chạy bằng mã HEAD nên KHÔNG cần
+  // deploy. Công tắc Cau_Hinh.TELEGRAM_BAT tắt thì mỗi lượt chỉ đọc một ô cấu
+  // hình rồi thoát, nên cài sẵn trigger từ trước lúc bật cũng vô hại.
+  ScriptApp.newTrigger('nhacPhieuChoNhan').timeBased().everyMinutes(5).create();
+
+  return 'Đã cài 4 trigger (xoá ' + daXoa + ' trigger cũ):\n' +
     '• Cập nhật Tong_Hop lúc ~12h và ~23h mỗi ngày\n' +
-    '• Dọn phiếu cũ sang Luu_Tru ngày 1 hằng tháng lúc ~2h sáng';
+    '• Dọn phiếu cũ sang Luu_Tru ngày 1 hằng tháng lúc ~2h sáng\n' +
+    '• Nhắc phiếu chưa ai nhận, 5 phút một lượt (chỉ chạy khi TELEGRAM_BAT = BAT)';
 }
 
 /** Liệt kê trigger đang cài — để kiểm tra lại sau này. */

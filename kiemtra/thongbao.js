@@ -31,6 +31,7 @@ const nguon = ['Code.gs', 'ThongBao.gs']
 const XUAT = ';globalThis.__ra = { soanTinSuCoMoi_, soanTinDaNhan_, soanTinNhac_,' +
   ' gioVN_, chuoi_, phutGiua_, ghepDong_, ghepKhoi_, tenMayDayDu_,' +
   ' chuanHoaChatId_, catTin_, nenBatCauChi_, gomChatIdTuUpdates_, locNguoiNhan_,' +
+  ' demLanDaNhac_, chonPhieuCanNhac_, TRANG_THAI,' +
   ' TELEGRAM, COT, HEADER_SU_CO, HEADER_THO };';
 
 // Chạy trong CHÍNH realm này. Nếu tạo context riêng thì Date của khung test và
@@ -91,7 +92,7 @@ const CAM = ['UrlFetchApp', 'SpreadsheetApp', 'CacheService', 'PropertiesService
 const PHAI_THUAN = ['soanTinSuCoMoi_', 'soanTinDaNhan_', 'soanTinNhac_',
   'gioVN_', 'chuoi_', 'phutGiua_', 'ghepDong_', 'ghepKhoi_', 'tenMayDayDu_',
   'chuanHoaChatId_', 'catTin_', 'nenBatCauChi_', 'gomChatIdTuUpdates_',
-  'locNguoiNhan_'];
+  'locNguoiNhan_', 'demLanDaNhac_', 'chonPhieuCanNhac_'];
 const hetThuan = [];
 PHAI_THUAN.forEach(function (ten) {
   const ma = String(G[ten]);
@@ -410,6 +411,86 @@ bang('Danh bạ nấc 3 không có ai', G.locNguoiNhan_(null, llMau, ''), []);
 bang('Map liên lạc rỗng ra mảng rỗng',
   G.locNguoiNhan_(danhBaGia([{ maTho: 'TH01' }]), {}, ''), []);
 bang('Không tham số nào thì không văng lỗi', G.locNguoiNhan_(), []);
+
+// ============================================================================
+// 10. QUYẾT ĐỊNH CỦA TRIGGER NHẮC
+// ============================================================================
+
+const nk = function (ma, hd, actor) {
+  return { Ma_Su_Co: ma, Hanh_Dong: hd, Actor: actor === undefined ? 'BOT' : actor };
+};
+
+bang('Chưa nhắc lần nào', G.demLanDaNhac_([]), {});
+bang('Đọc được lần 1', G.demLanDaNhac_([nk('SC-1', 'NHAC_LAN_1')]), { 'SC-1': 1 });
+bang('Lần 2 đè lên lần 1',
+  G.demLanDaNhac_([nk('SC-1', 'NHAC_LAN_1'), nk('SC-1', 'NHAC_LAN_2')]), { 'SC-1': 2 });
+// Nhật ký chung với mọi hành động khác của người thật, phải lọc đúng tác nhân.
+bang('Bỏ qua dòng của người, chỉ đếm dòng của BOT',
+  G.demLanDaNhac_([nk('SC-1', 'NHAN_VIEC', 'TH01'), nk('SC-1', 'BAO_SU_CO', 'CONG_NHAN')]), {});
+bang('Bỏ qua hành động khác của chính BOT',
+  G.demLanDaNhac_([nk('SC-1', 'GUI_TIN')]), {});
+bang('Không tham số thì không văng lỗi', G.demLanDaNhac_(), {});
+
+const chNhac = { NHAC_LAN_1_PHUT: '10', NHAC_LAN_2_PHUT: '20' };
+const bay = luc('2026-09-09T15:00');
+const phieuCho = function (ma, phutTruoc, trangThai) {
+  return { dong: 1, v: phieu({ Ma_Su_Co: ma, Ma_May: 'DET12', Ten_May: 'MÁY DỆT 12',
+    Bo_Phan: 'DET', Trang_Thai: trangThai || G.TRANG_THAI.CHO_NHAN,
+    Thoi_Gian_Bao: new Date(bay.getTime() - phutTruoc * 60000) }) };
+};
+
+bang('Chưa tới ngưỡng thì chưa nhắc',
+  G.chonPhieuCanNhac_([phieuCho('SC-1', 5)], {}, chNhac, bay), []);
+bang('Quá ngưỡng 1 thì nhắc lần 1',
+  G.chonPhieuCanNhac_([phieuCho('SC-1', 12)], {}, chNhac, bay)
+    .map(function (m) { return m.lan; }), [1]);
+bang('Đã nhắc lần 1 rồi thì không nhắc lại lần 1',
+  G.chonPhieuCanNhac_([phieuCho('SC-1', 12)], { 'SC-1': 1 }, chNhac, bay), []);
+bang('Quá ngưỡng 2 thì lên lần 2',
+  G.chonPhieuCanNhac_([phieuCho('SC-1', 25)], { 'SC-1': 1 }, chNhac, bay)
+    .map(function (m) { return m.lan; }), [2]);
+// Rào 5.11: hai lần là hết, đời đời. Bot không phải cái chuông reo mãi.
+bang('Đã nhắc lần 2 thì thôi hẳn',
+  G.chonPhieuCanNhac_([phieuCho('SC-1', 300)], { 'SC-1': 2 }, chNhac, bay), []);
+// Trigger chạy trễ hoặc script bị tắt một lúc: nhắc "lần 1" cho phiếu đã treo 3
+// tiếng là nói sai sự thật.
+bang('Chưa nhắc lần nào mà đã quá cả hai ngưỡng thì nhảy thẳng lên lần 2',
+  G.chonPhieuCanNhac_([phieuCho('SC-1', 90)], {}, chNhac, bay)
+    .map(function (m) { return m.lan; }), [2]);
+
+// CHO_NHAN chính là định nghĩa "chưa ai nhận".
+bang('Phiếu đã có thợ nhận thì không nhắc',
+  G.chonPhieuCanNhac_([phieuCho('SC-1', 60, G.TRANG_THAI.DANG_XU_LY)], {}, chNhac, bay), []);
+bang('Phiếu đã xong thì không nhắc',
+  G.chonPhieuCanNhac_([phieuCho('SC-1', 60, G.TRANG_THAI.HOAN_THANH)], {}, chNhac, bay), []);
+
+// Trần 1 ngày. Quan trọng nhất là lúc gõ BAT lần đầu: không có nó thì công tắc
+// vừa bật là bot bắn một loạt tin về phiếu cũ còn treo từ trước.
+bang('Phiếu treo quá một ngày thì thôi',
+  G.chonPhieuCanNhac_([phieuCho('SC-1', 1500)], {}, chNhac, bay), []);
+bang('Phiếu treo đúng sát trần vẫn nhắc',
+  G.chonPhieuCanNhac_([phieuCho('SC-1', 1439)], {}, chNhac, bay).length, 1);
+
+// Ngưỡng để 0 là tắt riêng lớp đó, đúng mô tả ghi trong Cau_Hinh.
+bang('Ngưỡng 1 để 0 thì tắt lần nhắc thứ nhất',
+  G.chonPhieuCanNhac_([phieuCho('SC-1', 12)],
+    {}, { NHAC_LAN_1_PHUT: '0', NHAC_LAN_2_PHUT: '20' }, bay), []);
+bang('Ngưỡng 2 để 0 thì vẫn còn lần nhắc thứ nhất',
+  G.chonPhieuCanNhac_([phieuCho('SC-1', 90)],
+    {}, { NHAC_LAN_1_PHUT: '10', NHAC_LAN_2_PHUT: '0' }, bay)
+    .map(function (m) { return m.lan; }), [1]);
+bang('Chưa khai ngưỡng nào thì không nhắc ai',
+  G.chonPhieuCanNhac_([phieuCho('SC-1', 90)], {}, {}, bay), []);
+
+// Rào 5.11: mất điện cả xưởng, 40 máy báo cùng lúc.
+bang('Chặn cứng số phiếu mỗi lượt', (function () {
+  const ds = [];
+  for (let i = 0; i < 40; i++) ds.push(phieuCho('SC-' + i, 30));
+  return G.chonPhieuCanNhac_(ds, {}, chNhac, bay, 10).length;
+})(), 10);
+
+bang('Danh sách rỗng ra mảng rỗng', G.chonPhieuCanNhac_([], {}, chNhac, bay), []);
+bang('Không tham số thì không văng lỗi', G.chonPhieuCanNhac_(), []);
 
 loi.forEach(function (x) { console.log(x); });
 console.log(loi.length

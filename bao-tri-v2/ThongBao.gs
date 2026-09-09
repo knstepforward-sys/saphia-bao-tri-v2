@@ -7,10 +7,12 @@
  * gọi điện, nhưng rất nhiều người quên gọi. Phiếu nằm ở CHO_NHAN mà không ai
  * biết, máy nằm im. Xem TASK_THONG_BAO_TELEGRAM.md, phương án chốt 09/09/2026.
  *
- * ĐẾN HẾT BƯỚC B6. Luồng đang chạy gọi vào đây qua ĐÚNG HAI CỬA, cả hai ở mục 7:
- * `thongBaoSuCoMoi_` từ `reportIncident`, và `thongBaoDaNhan_` từ `acceptIncident`.
- * Giữ đúng hai cửa để sau này muốn gỡ hẳn phần Telegram thì biết chỗ mà tìm.
- * Còn lại: trigger nhắc lần 1 và lần 2 (B7).
+ * ĐẾN HẾT BƯỚC B7 — mã đã đủ. Còn lại là kiểm thử và tài liệu (B8).
+ *
+ * Luồng đang chạy gọi vào đây qua ĐÚNG HAI CỬA, cả hai ở mục 7: `thongBaoSuCoMoi_`
+ * từ `reportIncident`, và `thongBaoDaNhan_` từ `acceptIncident`. Cửa thứ ba là
+ * `nhacPhieuChoNhan` ở mục 8, do trigger 5 phút gọi. Giữ đúng ba cửa đó để sau
+ * này muốn gỡ hẳn phần Telegram thì biết chỗ mà tìm.
  *
  * ⚠️ RANH GIỚI QUAN TRỌNG NHẤT CỦA FILE NÀY nằm giữa mục 3 và mục 4.
  *
@@ -295,6 +297,82 @@ function locNguoiNhan_(danhBa, lienLac, boQuaMaTho) {
   return ra;
 }
 
+/**
+ * Đếm mỗi phiếu đã được nhắc tới lần thứ mấy, đọc từ `Nhat_Ky_Su_Co`.
+ *
+ * Trả về map `Ma_Su_Co` → lần cao nhất (0, 1 hoặc 2). Hàm THUẦN.
+ *
+ * Vết nhắc để trong nhật ký chứ KHÔNG thêm cột `Nhac_Lan` vào `Su_Co` — mục 9
+ * của tài liệu đã cân nhắc và bác: nhật ký chứa được, lại còn để lại vết kiểm
+ * chứng bot đã làm gì, mà `Su_Co` thì đang là chỗ trigger tuyệt đối không được
+ * ghi vào (rào 5.9).
+ */
+function demLanDaNhac_(dsNhatKy) {
+  const map = {};
+  (dsNhatKy || []).forEach(function (r) {
+    if (!r) return;
+    if (chuoi_(r.Actor).toUpperCase() !== 'BOT') return;
+    const ma = chuoi_(r.Ma_Su_Co);
+    if (!ma) return;
+    const hd = chuoi_(r.Hanh_Dong).toUpperCase();
+    const lan = hd === 'NHAC_LAN_2' ? 2 : (hd === 'NHAC_LAN_1' ? 1 : 0);
+    if (lan > (map[ma] || 0)) map[ma] = lan;
+  });
+  return map;
+}
+
+/**
+ * Chọn ra những phiếu đến lượt phải nhắc. Hàm THUẦN — đây là toàn bộ phần quyết
+ * định của trigger, tách ra để kiểm thử được tại máy mà không cần mở Sheet.
+ *
+ * Trả về mảng `{ v, lan }`, `lan` là 1 hoặc 2.
+ *
+ * Bốn phép chặn, mỗi phép ứng một cách hỏng cụ thể:
+ *
+ * - **Chỉ phiếu `CHO_NHAN`.** Đó chính là định nghĩa "chưa ai nhận". Phiếu việc
+ *   chung và dừng máy mở thẳng ở `DANG_XU_LY` nên không bao giờ lọt vào đây.
+ * - **Tối đa 2 lần mỗi phiếu, đời đời** — rào 5.11. Đã nhắc lần 2 rồi thì thôi
+ *   hẳn, bot không phải là cái chuông reo mãi.
+ * - **Nhảy thẳng lên lần 2 được.** Trigger chạy trễ hoặc script bị tắt một lúc
+ *   thì phiếu có thể đã quá cả hai ngưỡng khi mới xét lần đầu. Nhắc "lần 1" cho
+ *   một phiếu đã treo 3 tiếng là nói sai sự thật, nên bỏ qua lần 1 luôn.
+ * - **Trần `NHAC_TRAN_PHUT`.** Phiếu treo quá một ngày thì nhắc nữa cũng vô
+ *   nghĩa, chuyện đó phải xử bằng người. Quan trọng hơn: đây là rào chặn lúc gõ
+ *   BAT lần đầu — không có nó thì công tắc vừa bật là bot bắn một loạt tin về
+ *   những phiếu cũ còn treo từ trước, đúng cách làm người ta tắt bot ngay ngày
+ *   đầu tiên.
+ *
+ * Ngưỡng đặt 0 là tắt riêng lớp đó, đúng như mô tả ghi trong `Cau_Hinh`.
+ */
+function chonPhieuCanNhac_(dsGanDay, daNhac, cauHinh, khi, toiDa) {
+  const ch = cauHinh || {};
+  const nguong1 = Number(ch.NHAC_LAN_1_PHUT) || 0;
+  const nguong2 = Number(ch.NHAC_LAN_2_PHUT) || 0;
+  const dem = daNhac || {};
+  const tran = TELEGRAM.NHAC_TRAN_PHUT;
+  const gh = toiDa || TELEGRAM.NHAC_TOI_DA_PHIEU;
+  const ra = [];
+
+  (dsGanDay || []).forEach(function (r) {
+    if (ra.length >= gh) return;
+    const v = r && r.v;
+    if (!v) return;
+    if (chuoi_(v[COT.Trang_Thai]) !== TRANG_THAI.CHO_NHAN) return;
+
+    const ma = chuoi_(v[COT.Ma_Su_Co]);
+    if (!ma) return;
+    const daCo = dem[ma] || 0;
+    if (daCo >= 2) return;
+
+    const phut = phutGiua_(v[COT.Thoi_Gian_Bao], khi);
+    if (!phut || phut > tran) return;
+
+    if (nguong2 && phut >= nguong2) { ra.push({ v: v, lan: 2 }); return; }
+    if (nguong1 && phut >= nguong1 && daCo < 1) { ra.push({ v: v, lan: 1 }); }
+  });
+  return ra;
+}
+
 // ============================================================================
 // 4. TOKEN, CÔNG TẮC, CẦU CHÌ
 // ============================================================================
@@ -310,6 +388,11 @@ const TELEGRAM = {
   KHOA_CAU_CHI: 'telegram_cau_chi',
   NGAT_GIAY: 600,                     // cầu chì ngắt 10 phút
   TOI_DA_MOI_LUOT: 20,                // chặn cứng số tin mỗi lượt, rào 5.11
+  // --- Trigger nhắc ---------------------------------------------------------
+  KHOA_DANG_NHAC: 'telegram_dang_nhac',
+  NHAC_GIU_GIAY: 240,                 // cờ chống chạy chồng, ngắn hơn nhịp 5 phút
+  NHAC_TRAN_PHUT: 1440,               // phiếu treo quá 1 ngày thì thôi, xem mục 8
+  NHAC_TOI_DA_PHIEU: 10,              // số PHIẾU tối đa mỗi lượt, rào 5.11
 };
 
 /**
@@ -657,5 +740,87 @@ function thongBaoDaNhan_(v, maThoNhan, cauHinh) {
     }), cauHinh);
   } catch (e) {
     return 0;
+  }
+}
+
+// ============================================================================
+// 8. TRIGGER NHẮC — lớp 2 và lớp 3
+// ============================================================================
+//
+// Chạy 5 phút một lượt. Đây là phần chữa đúng bệnh ở mục 1 của tài liệu, và là
+// phần **chạy thật được mà chưa cần deploy**, vì trigger chạy bằng mã HEAD.
+
+/**
+ * Trigger 5 phút: nhắc những phiếu chưa ai nhận.
+ *
+ * ⚠️ CHỈ ĐỌC `Su_Co`, CHỈ GHI `Nhat_Ky_Su_Co` — rào 5.9. Không đổi `Trang_Thai`,
+ * không đổi bất cứ cột nào của `Su_Co`. Bot mà ghi vào `Su_Co` thì có ngày nó đè
+ * đúng lúc thợ đang bấm nhận.
+ *
+ * ⚠️ KHÔNG dùng `LockService` — cố ý khác chữ trong rào 5.10, giữ đúng ý của nó.
+ * Khoá script là khoá dùng chung: giữ nó suốt lượt trigger là chặn luôn công
+ * nhân báo sự cố trong lúc bot gọi mạng, đúng thứ rào 5.2 cấm, và khi Telegram
+ * treo thì khoá bị giữ tới hết giờ chờ. Cờ trong `CacheService` chống chạy chồng
+ * đúng như rào 5.10 muốn mà không đụng tới ai.
+ *
+ * Ghi nhật ký SAU khi gửi và chỉ ghi khi gửi được ít nhất một tin. Gửi hỏng thì
+ * không để lại vết, lượt sau thử lại — thà nhắc muộn còn hơn nuốt mất lần nhắc.
+ * Đổi lại, nếu script chết đúng khe giữa lúc gửi xong và lúc ghi nhật ký thì
+ * phiếu đó bị nhắc lặp một lần. Hiếm, và một tin thừa nhẹ hơn một tin mất.
+ */
+function nhacPhieuChoNhan() {
+  const cache = (function () { try { return CacheService.getScriptCache(); } catch (e) { return null; } })();
+
+  // Chống chạy chồng — rào 5.10. Không giành được thì bỏ lượt luôn, không chờ,
+  // không thử lại: 5 phút nữa có lượt khác.
+  if (cache) {
+    if (cache.get(TELEGRAM.KHOA_DANG_NHAC)) return 'Lượt trước còn đang chạy, bỏ lượt này.';
+    cache.put(TELEGRAM.KHOA_DANG_NHAC, '1', TELEGRAM.NHAC_GIU_GIAY);
+  }
+
+  try {
+    const cauHinh = docCauHinh_();
+    if (!telegramBat_(cauHinh)) return 'Công tắc TELEGRAM_BAT đang tắt, không làm gì.';
+
+    const khi = nowVN_();
+    const canNhac = chonPhieuCanNhac_(
+      docSuCoGanDay_(),
+      demLanDaNhac_(docSheet_(SHEET.NHAT_KY, HEADER_NHAT_KY)),
+      cauHinh, khi);
+    if (!canNhac.length) return 'Không có phiếu nào tới lượt nhắc.';
+
+    const lienLac = lienLacTho_();
+    const sdtKhanCap = chuoi_(cauHinh.SDT_KHAN_CAP);
+    let daGui = 0;
+
+    canNhac.forEach(function (m) {
+      const v = m.v;
+      const khiBao = v[COT.Thoi_Gian_Bao];
+      // Dựng lại đúng nhóm người đã nhận tin lần đầu: lấy theo mốc GIỜ BÁO HỎNG,
+      // không phải giờ hiện tại, để ca đã đổi giữa chừng cũng không lệch người.
+      const danhBa = getOnDutyContacts_(
+        chuoi_(v[COT.Bo_Phan]), chuoi_(v[COT.Nhom_Loi]),
+        (khiBao instanceof Date) ? khiBao : null, { cauHinh: cauHinh });
+
+      const nhan = locNguoiNhan_(danhBa, lienLac, '');
+      if (!nhan.length) return;
+
+      const so = guiTelegram_(nhan.map(function (n) {
+        return { chatId: n.chatId, text: soanTinNhac_(v, m.lan, khi, n.link, sdtKhanCap) };
+      }), cauHinh);
+      if (!so) return;   // tắt, cầu chì, hoặc hỏng → không ghi vết, lượt sau thử lại
+
+      daGui += so;
+      ghiNhatKy_(v[COT.Ma_Su_Co], v[COT.Ma_May], 'BOT', 'NHAC_LAN_' + m.lan,
+        { soTin: so, phutTreo: phutGiua_(khiBao, khi) }, '');
+    });
+
+    return 'Đã nhắc ' + canNhac.length + ' phiếu, gửi ' + daGui + ' tin.';
+  } catch (e) {
+    // Trigger hỏng không được kéo theo thứ gì khác. Ghi lại để còn lần ra.
+    console.error('nhacPhieuChoNhan lỗi: ' + e.message);
+    return 'Lỗi: ' + e.message;
+  } finally {
+    if (cache) { try { cache.remove(TELEGRAM.KHOA_DANG_NHAC); } catch (e2) { /* bỏ qua */ } }
   }
 }

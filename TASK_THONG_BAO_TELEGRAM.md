@@ -233,8 +233,26 @@ thợ đang bấm nhận.
 
 ### 5.10 Trigger phải chịu được chạy chồng và chạy trễ
 
-Google có thể chạy trigger trễ hoặc chồng lượt. Dùng `LockService` với `tryLock` ngắn, không
-lấy được khoá thì bỏ lượt, lượt sau 5 phút nữa làm tiếp. Không chờ, không thử lại.
+Google có thể chạy trigger trễ hoặc chồng lượt. Không lấy được lượt thì bỏ luôn, lượt sau 5
+phút nữa làm tiếp. Không chờ, không thử lại.
+
+> **Dùng cờ trong `CacheService`, KHÔNG dùng `LockService`** — khác chữ của rào này, chốt
+> ngày 09/09/2026 khi làm bước B7. Khoá script là khoá dùng chung: giữ nó suốt lượt trigger
+> là chặn luôn công nhân báo sự cố trong lúc bot gọi mạng, đúng thứ rào 5.2 cấm; và khi
+> Telegram treo thì khoá bị giữ tới hết giờ chờ, tức là gộp cả hai cách hỏng mà 5.2 với 5.12
+> sinh ra để tránh. Cờ trong cache chống chạy chồng đúng như rào này muốn mà không đụng tới ai.
+
+**Trigger chạy trễ thì nhảy thẳng lên lần nhắc thứ 2.** Phiếu có thể đã quá cả hai ngưỡng khi
+mới được xét lần đầu; nhắc "lần 1" cho một phiếu đã treo 3 tiếng là nói sai sự thật.
+
+**Trần 1 ngày (`NHAC_TRAN_PHUT`).** Phiếu treo quá ngần đó thì thôi, chuyện đó phải xử bằng
+người. Lý do quan trọng hơn: đây là rào chặn lúc gõ `BAT` lần đầu — không có nó thì công tắc
+vừa bật là bot bắn một loạt tin về những phiếu cũ còn treo từ trước, đúng cách làm người ta
+tắt bot ngay ngày đầu tiên.
+
+**Ghi nhật ký SAU khi gửi, và chỉ ghi khi gửi được ít nhất một tin.** Gửi hỏng thì không để
+lại vết, lượt sau thử lại. Đổi lại, script chết đúng khe giữa lúc gửi xong và lúc ghi nhật ký
+thì phiếu đó bị nhắc lặp một lần. Hiếm, và một tin thừa nhẹ hơn một tin mất.
 
 ### 5.11 Chặn cứng số tin mỗi lượt
 
