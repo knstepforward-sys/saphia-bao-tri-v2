@@ -58,15 +58,21 @@ Script trong `<iframe>` toàn màn hình — dùng khi muốn có domain/URL ri�
 ## Cấu trúc thư mục
 
 ```
-SAPHIA-project/
+saphia-bao-tri-v2/                # Repository private knstepforward-sys/saphia-bao-tri-v2
 ├── apps-script/                  # Container-bound Apps Script project (đẩy qua clasp)
 │   ├── Mã.js                     # = Code.gs, toàn bộ backend logic
 │   ├── index.html                # Form nhập liệu mobile (HTML+CSS+JS inline)
 │   ├── appsscript.json           # Manifest: timezone, webapp exec-as, access
-│   └── .clasp.json               # scriptId để clasp push/pull
-└── baocao-saphia/                # Repo GitHub riêng (đã git init, có remote)
-    └── index_fullscreen.html     # Wrapper iframe fullscreen trỏ tới URL /exec
+│   └── test/                     # Kiểm thử chạy bằng node, ngoài Apps Script
+├── bao-tri-v2/                   # Hệ Bảo trì Toàn nhà máy v2 — xem CLAUDE.md riêng
+└── kiemtra/                      # Bộ kiểm tra tĩnh chạy trước khi push
 ```
+
+`.clasp.json` **không** nằm trong repository — file đó chứa scriptId, bị `.gitignore`
+loại trừ và chỉ tồn tại trên máy. Xem `.clasp.json.mau` để biết cấu trúc.
+
+Wrapper GitHub Pages nằm ở repository triển khai riêng `baocao-saphia`, không thuộc
+repository này, để không làm đổi các đường dẫn QR đã phát hành.
 
 ## `apps-script/Mã.js` — Backend (Code.gs)
 
@@ -171,10 +177,10 @@ SPA nhỏ gọn, không framework, toàn bộ CSS + HTML + JS trong 1 file, tố
   mới sẽ đổi URL, trừ khi dùng chung 1 deployment ID và chỉ "Manage deployments → Edit"), phải sửa lại
   `src` trong file này.
 
-## Việc tiếp theo đã biết trước (chưa bắt đầu)
+## Trạng thái KPI đáp ứng — ĐÃ LÀM XONG
 
-- Thêm KPI **"thời gian đáp ứng"** (có thể là thời gian từ lúc hư đến lúc kỹ thuật viên bắt đầu sửa,
-  `gioSua - gioHu`) và **"phát hiện chồng lịch kỹ thuật viên"** (kỹ thuật viên có 2 phiếu trùng khung
-  giờ sửa chữa). Sẽ tham khảo công thức mẫu từ `BC_HH_T7_2026.xlsx` khi được cung cấp. Theo nguyên tắc
-  dự án, nên implement ở Apps Script (server-side), khả năng là thêm cột tính toán trong `submitBaoCao`
-  hoặc một hàm riêng chạy trên toàn bộ sheet `BaoCao`.
+KPI "thời gian đáp ứng" và "chồng lịch kỹ thuật viên" **không còn là việc sắp làm**, đã có
+trong mã: `calcDapUngMetrics_()` tính chỉ số, `themCotDapUngKPI_()` bổ sung cột T:Y vào sheet
+`BaoCao`. Kiểm thử nằm ở `apps-script/test/test_dapUngKPI.js`, chạy bằng node.
+
+Chi tiết thiết kế và các mục còn phải quyết định xem `TASK_NANG_CAP_DAP_UNG_KPI.md`.

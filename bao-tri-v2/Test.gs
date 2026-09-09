@@ -83,6 +83,20 @@ function chayTest() {
   t.bang('Nhóm ca không tồn tại → dùng MAC_DINH',
     xacDinhCa_('KHONG_CO_NHOM_NAY', _luc_('2026-08-03T08:00'), cfg).ca, 'N');
 
+  // Mốc chốt ngày ca — biên mà báo cáo ngày ngừng cộng dồn phiếu chưa đóng.
+  // MAC_DINH vào ca 07:00 nên ngày 03/08 chốt lúc 07:00 ngày 04/08.
+  t.bang('Ngày đã qua chốt ở giờ vào ca hôm sau',
+    fmtGio_(mocChotNgayCa_('2026-08-03', cfg)), '07:00');
+  t.bang('Mốc chốt rơi đúng vào ngày hôm sau',
+    fmtNgay_(mocChotNgayCa_('2026-08-03', cfg)), '2026-08-04');
+  // Ngày hôm nay: biên còn ở tương lai nên phải trả về giờ hiện tại, không được
+  // chốt sớm — máy đang dừng thật thì phút dừng vẫn phải chạy.
+  t.bang('Ngày hôm nay chưa chốt, lấy giờ hiện tại',
+    mocChotNgayCa_(fmtNgay_(nowVN_()), cfg) <= nowVN_()
+      && fmtNgay_(mocChotNgayCa_(fmtNgay_(nowVN_()), cfg)) === fmtNgay_(nowVN_()), true);
+  t.bang('Ngày rỗng/sai định dạng → giờ hiện tại, không văng lỗi',
+    fmtNgay_(mocChotNgayCa_('', cfg)), fmtNgay_(nowVN_()));
+
   // --- 3. Lịch trực ----------------------------------------------------------
   const lich = { TH01: { '03': 'N', '04': 'ND' } };
   t.bang('TH01 ngày 03 ca N → có trực', coTrucKhong_(lich, 'TH01', '2026-08-03', 'N'), true);
@@ -238,6 +252,167 @@ function chayTest() {
     _luc_('2026-08-03T09:00'), _luc_('2026-08-03T09:32'));
   t.bang('Việc thợ khác không tính vào', khac.cho, 0);
 
+  // --- 8b. KPI đáp ứng bản cộng dồn đoạn bận ---------------------------------
+  // Ca then chốt, bộ test cũ KHÔNG phủ: thợ bận thành HAI đoạn rời. Cách cũ lấy
+  // mốc rảnh muộn nhất nên nuốt luôn khoảng rảnh xen giữa; cách mới cộng dồn.
+  const banDoan1 = _phieu_({
+    Ma_Su_Co: 'SC-A', Ma_Tho: 'TH02', Trang_Thai: TRANG_THAI.HOAN_THANH,
+    Thoi_Gian_Nhan: _luc_('2026-08-03T08:50'),
+    Thoi_Gian_Hoan_Thanh: _luc_('2026-08-03T09:10'),
+  });
+  const banDoan2 = _phieu_({
+    Ma_Su_Co: 'SC-B', Ma_Tho: 'TH02', Trang_Thai: TRANG_THAI.HOAN_THANH,
+    Thoi_Gian_Nhan: _luc_('2026-08-03T09:30'),
+    Thoi_Gian_Hoan_Thanh: _luc_('2026-08-03T09:50'),
+  });
+  const haiDoan = [banDoan1, banDoan2];
+  const bao10 = _luc_('2026-08-03T09:00');
+  const nhan10 = _luc_('2026-08-03T10:00');
+
+  const roi = phutBanTrongCho_(haiDoan, 'TH02', 'SC-2', bao10, nhan10);
+  t.bang('Hai đoạn bận rời — bận thực tế 10 + 20', roi.phutBan, 30);
+  t.bang('Hai đoạn bận rời — đếm đúng 2 đoạn', roi.soDoan, 2);
+
+  // Cùng dữ liệu, cách cũ chỉ tính thợ 10 phút — chênh 20 phút rảnh xen giữa.
+  const cachCu = tinhDapUng_(haiDoan, 'TH02', 'SC-2', bao10, nhan10);
+  t.bang('Cách cũ miễn trừ rộng hơn — đây là lý do phải vá', cachCu.thuc, 10);
+
+  const phieuRoi = _phieu_({
+    Ma_Su_Co: 'SC-2', Ma_Tho: 'TH02', Thoi_Gian_Bao: bao10, Thoi_Gian_Nhan: nhan10,
+  }).v;
+  const kRoi = kpiThoChoPhieu_(haiDoan, phieuRoi, 0);
+  t.bang('Hai đoạn bận rời — KPI thợ 30 phút', kRoi.phutKpi, 30);
+  t.bang('Đáp ứng = bận thực tế + KPI thợ', kRoi.phutBan + kRoi.phutKpi, 60);
+
+  // Ca một đoạn bận TRÙM QUA lúc máy này báo hỏng: hai cách phải ra ĐÚNG cùng
+  // con số, nếu không là đã lặng lẽ đổi nghĩa toàn bộ dữ liệu cũ.
+  const phieuMotDoan = _phieu_({
+    Ma_Su_Co: 'SC-2', Ma_Tho: 'TH02',
+    Thoi_Gian_Bao: _luc_('2026-08-03T09:00'), Thoi_Gian_Nhan: _luc_('2026-08-03T09:32'),
+  }).v;
+  const banTrum = _phieu_({
+    Ma_Su_Co: 'SC-1', Ma_Tho: 'TH02', Trang_Thai: TRANG_THAI.HOAN_THANH,
+    Thoi_Gian_Nhan: _luc_('2026-08-03T08:50'),
+    Thoi_Gian_Hoan_Thanh: _luc_('2026-08-03T09:30'),
+  });
+  const kTrum = kpiThoChoPhieu_([banTrum], phieuMotDoan, 0);
+  t.bang('Một đoạn bận trùm đầu — KPI khớp y hệt cách cũ',
+    kTrum.phutKpi,
+    tinhDapUng_([banTrum], 'TH02', 'SC-2',
+      _luc_('2026-08-03T09:00'), _luc_('2026-08-03T09:32')).thuc);
+  t.bang('Một đoạn bận trùm đầu — chỉ 1 đoạn', kTrum.soDoan, 1);
+
+  // Nhưng nếu thợ nhận việc cũ SAU lúc máy này báo hỏng thì hai cách lệch nhau:
+  // `viecCu` được nhận lúc 09:02, máy này báo 09:00 — hai phút 09:00–09:02 thợ
+  // chưa cầm việc nào cả. Cách cũ gộp luôn vào "bận" (KPI 2 phút), cách mới trả
+  // hai phút đó về cho thợ (KPI 4 phút). Cách mới đúng: máy đã nằm chờ trong khi
+  // thợ còn rảnh. Đây là chỗ thứ hai mà cách cũ rộng tay, ngoài ca nhiều đoạn.
+  const kSauBao = kpiThoChoPhieu_([viecCu], phieuMotDoan, 0);
+  t.bang('Nhận việc cũ sau lúc báo — cách cũ chỉ tính thợ 2 phút', chong.thuc, 2);
+  t.bang('Nhận việc cũ sau lúc báo — cách mới tính đủ 4 phút', kSauBao.phutKpi, 4);
+
+  // Thợ rảnh hẳn → không có đoạn nào, KPI bằng trọn thời gian chờ.
+  const kRanh = kpiThoChoPhieu_([], phieuMotDoan, 0);
+  t.bang('Thợ rảnh — không đoạn bận nào', kRanh.soDoan, 0);
+  t.bang('Thợ rảnh — KPI bằng cả 32 phút', kRanh.phutKpi, 32);
+
+  // Đang ôm việc dở lúc nhận → bận suốt cửa sổ → KPI bằng 0.
+  const kOm = kpiThoChoPhieu_([dangOm], phieuMotDoan, 0);
+  t.bang('Đang ôm việc dở — KPI bằng 0', kOm.phutKpi, 0);
+
+  // Việc chung tính là bận; bảo trì thì không — giữ đúng như cách cũ.
+  // Khai riêng phiếu ở đây, KHÔNG dùng lại `lapCamera` của mục 9: nó khai bằng
+  // const ở phía dưới, gọi lên trên là dính "Cannot access before initialization".
+  const camera8b = _phieu_({
+    Ma_Su_Co: 'CV-8B', Ma_Tho: 'TH02', Trang_Thai: TRANG_THAI.HOAN_THANH,
+    Loai_Phieu: LOAI_PHIEU.CONG_VIEC,
+    Thoi_Gian_Nhan: _luc_('2026-08-03T09:00'),
+    Thoi_Gian_Hoan_Thanh: _luc_('2026-08-03T11:00'),
+  });
+  t.bang('Việc chung vẫn miễn trừ cho thợ',
+    phutBanTrongCho_([camera8b], 'TH02', 'SC-2',
+      _luc_('2026-08-03T09:30'), _luc_('2026-08-03T11:02')).phutBan, 90);
+
+  const baoTri8b = _phieu_({
+    Ma_Su_Co: 'BT-8B', Ma_Tho: 'TH02', Trang_Thai: TRANG_THAI.HOAN_THANH,
+    Loai_Phieu: LOAI_PHIEU.BAO_TRI,
+    Thoi_Gian_Hoan_Thanh: _luc_('2026-08-03T09:10'),
+  });
+  t.bang('Bảo trì vẫn không làm thợ "bận"',
+    phutBanTrongCho_([baoTri8b], 'TH02', 'SC-2', bao10, nhan10).phutBan, 0);
+
+  // Tính lúc nhận (phiếu kia còn mở) và tính lại sau này (phiếu kia đã đóng muộn
+  // hơn) phải cho CÙNG kết quả — nếu lệch thì backfill sẽ viết đè số sai lên số
+  // đã ghi tại chỗ.
+  const conMo = _phieu_({
+    Ma_Su_Co: 'SC-B', Ma_Tho: 'TH02', Trang_Thai: TRANG_THAI.DANG_XU_LY,
+    Thoi_Gian_Nhan: _luc_('2026-08-03T09:30'),
+  });
+  const dongMuon = _phieu_({
+    Ma_Su_Co: 'SC-B', Ma_Tho: 'TH02', Trang_Thai: TRANG_THAI.HOAN_THANH,
+    Thoi_Gian_Nhan: _luc_('2026-08-03T09:30'),
+    Thoi_Gian_Hoan_Thanh: _luc_('2026-08-03T10:20'),
+  });
+  t.bang('Tính lúc nhận và tính lại sau cho cùng số phút',
+    [phutBanTrongCho_([banDoan1, conMo], 'TH02', 'SC-2', bao10, nhan10).phutBan,
+      phutBanTrongCho_([banDoan1, dongMuon], 'TH02', 'SC-2', bao10, nhan10).phutBan],
+    [40, 40]);
+
+  // Phiếu nào bị loại khỏi KPI, và vì sao.
+  t.bang('Việc chung không vào KPI',
+    kpiThoChoPhieu_([], _phieu_({ Ma_Su_Co: 'CV-1', Ma_Tho: 'TH02',
+      Loai_Phieu: LOAI_PHIEU.CONG_VIEC }).v, 0).apDung, 'KHONG — phiếu CONG_VIEC');
+  t.bang('Bảo trì không vào KPI',
+    kpiThoChoPhieu_([], _phieu_({ Ma_Su_Co: 'BT-1', Ma_Tho: 'TH02',
+      Loai_Phieu: LOAI_PHIEU.BAO_TRI }).v, 0).apDung, 'KHONG — phiếu BAO_TRI');
+  t.bang('Phiếu chưa ai nhận không vào KPI',
+    kpiThoChoPhieu_([], _phieu_({ Ma_Su_Co: 'SC-3' }).v, 0).apDung,
+    'KHONG — chưa ai nhận');
+  t.bang('Thiếu mốc giờ thì không chấm',
+    kpiThoChoPhieu_([], _phieu_({ Ma_Su_Co: 'SC-3', Ma_Tho: 'TH02',
+      Thoi_Gian_Bao: bao10 }).v, 0).apDung, 'KHONG — thiếu mốc giờ');
+  t.bang('Phiếu bị loại thì để trống ô phút, không ghi 0',
+    kpiThoChoPhieu_([], _phieu_({ Ma_Su_Co: 'SC-3' }).v, 0).phutKpi, '');
+
+  // Ngưỡng: để trống thì không chấm đạt/không đạt.
+  t.bang('Chưa chốt ngưỡng — không chấm đạt', kRoi.datNguong, '');
+  t.bang('KPI 30 phút, ngưỡng 30 → ĐẠT',
+    kpiThoChoPhieu_(haiDoan, phieuRoi, 30).datNguong, 'DAT');
+  t.bang('KPI 30 phút, ngưỡng 15 → KHÔNG ĐẠT',
+    kpiThoChoPhieu_(haiDoan, phieuRoi, 15).datNguong, 'KHONG_DAT');
+
+  // Phân vị dùng thứ hạng gần nhất — luôn trả về một giá trị có thật.
+  t.bang('Phân vị — trung vị của 5 số', phanVi_([2, 4, 6, 8, 10], 0.5), 6);
+  t.bang('Phân vị — P90 lấy số lớn nhất trong 5 số', phanVi_([2, 4, 6, 8, 10], 0.9), 10);
+  t.bang('Phân vị — mảng rỗng trả rỗng', phanVi_([], 0.5), '');
+  t.bang('Tỷ lệ — mẫu 0 trả rỗng chứ không phải 0%', tyLe_(0, 0), '');
+  t.bang('Tỷ lệ — 3/4 thành 75', tyLe_(3, 4), 75);
+
+  // --- 8c. Trang Tom_Tat — kỳ liền trước và mức tăng giảm --------------------
+  // Sai biên ngày ở đây là so nhầm kỳ mà bảng vẫn hiện ra đẹp đẽ, không ai thấy.
+  t.bang('Lùi 1 ngày qua đầu tháng', dichNgay_('2026-08-01', -1), '2026-07-31');
+  t.bang('Lùi 1 ngày vào tháng 2 (2026 không nhuận)',
+    dichNgay_('2026-03-01', -1), '2026-02-28');
+  t.bang('Tiến 1 ngày qua cuối năm', dichNgay_('2026-12-31', 1), '2027-01-01');
+  t.bang('Ngày hỏng thì trả rỗng', dichNgay_('linh tinh', -1), '');
+
+  // Kỳ tháng 8 (31 ngày) → kỳ trước phải là trọn tháng 7, không phải 30 ngày.
+  const soNgayT8 = dsNgayTrongKy_('2026-08-01', '2026-08-31').length;
+  const denT7 = dichNgay_('2026-08-01', -1);
+  t.bang('Kỳ trước của tháng 8 là trọn tháng 7',
+    [dichNgay_(denT7, -(soNgayT8 - 1)), denT7], ['2026-07-01', '2026-07-31']);
+
+  // Hướng tốt/xấu: downtime giảm là tốt, tỷ lệ đạt tăng mới là tốt.
+  t.bang('Giờ dừng giảm → tốt', soSanhKy_(50, 62, true, ' giờ').tot, true);
+  t.bang('Giờ dừng tăng → xấu', soSanhKy_(70, 62, true, ' giờ').tot, false);
+  t.bang('Tỷ lệ đạt tăng → tốt', soSanhKy_(80, 71, false, '%').tot, true);
+  t.bang('Kỳ trước trống thì không kết luận',
+    soSanhKy_(50, '', true, ' giờ'), { chu: 'kỳ trước chưa có số liệu', tot: null });
+  t.bang('Không đổi thì không tô màu',
+    soSanhKy_(50, 50, true, ' giờ'), { chu: 'không đổi so với kỳ trước', tot: null });
+  t.bang('Có nêu rõ tăng hay giảm bao nhiêu',
+    soSanhKy_(50, 62, true, ' giờ').chu, '▼ giảm 12 giờ so với kỳ trước');
+
   // --- 9. Công việc chung ----------------------------------------------------
   t.bang('Ô Loai_Phieu trống → hiểu là phiếu sự cố',
     laCongViec_(_phieu_({ Ma_Su_Co: 'SC-1' }).v), false);
@@ -356,10 +531,14 @@ function chayTest() {
   t.bang('Trạng thái khi chồng việc',
     trangThaiDapUng_(chongViecPhieu), 'CHỒNG VIỆC / KIỂM TRA DỮ LIỆU');
 
-  // 29 cột đầu phải khớp biểu mẫu gốc; cột 30 là cột "Loại" thêm ngoài form.
+  // 29 cột đầu phải khớp biểu mẫu gốc; các cột sau đó là phần thêm ngoài form —
+  // 30 "Loại", rồi 31–32 là hai cột KPI (09/2026). Test này canh đúng chỗ đó:
+  // cột thứ 29 mà xê dịch là biểu mẫu gửi sếp đã lệch.
   t.bang('Cột thứ 29 vẫn là cột cuối của biểu mẫu',
     HEADER_DATA_GOC[28], 'Trạng thái đáp ứng');
-  t.bang('Data_Goc = 29 cột form + 1 cột Loại', HEADER_DATA_GOC.length, 30);
+  t.bang('Data_Goc = 29 cột form + Loại + 2 cột KPI', HEADER_DATA_GOC.length, 32);
+  t.bang('Hai cột thêm sau cùng là KPI',
+    [HEADER_DATA_GOC[30], HEADER_DATA_GOC[31]], ['KPI thợ\n(Phút)', 'Số đoạn bận']);
   t.bang('Số cột Nhật ký bảo trì đúng biểu mẫu', HEADER_NHAT_KY_DET.length, 10);
 
   // Việc chung và bảo trì vào Data_Goc nhưng không mang chỉ số đáp ứng.

@@ -1,3 +1,9 @@
+## [2026-09-09] Kéo mã từ Apps Script Editor về repository và dọn tài liệu cũ
+- **Thay đổi:** `clasp clone` ra thư mục tạm rồi chép 21 file của Bảo trì v2 về repository: 6 file khác nhau, +1006 dòng / −45 dòng. Về thêm khối KPI thợ (`tinhLaiKpiTho`, `kpiThoChoPhieu_`, `nguongKpi_`, `phutBanTrongCho_`, menu `menuTinhLaiKpi`) và khối báo cáo so sánh kỳ trước (`soSanhKy_`, `ghiTomTat_`, `gomKpiTho_`, `tyLeDatKpi_`, `tbDapUngSuCo_`, `phanVi_`). Dọn tài liệu: sửa cây thư mục trong `CLAUDE.md` cho khớp repository hiện tại, bỏ mục "KPI đáp ứng chưa bắt đầu" vì đã làm xong, chuyển "so sánh tháng trước" khỏi danh sách đang chờ trong `bao-tri-v2/CLAUDE.md`, ghi thêm tài khoản clasp mới và bẫy PowerShell chặn `clasp.ps1`.
+- **Lý do:** Repository tụt lại so với Apps Script Editor vì có người sửa thẳng trên Editor. Đẩy repository lên lúc đó sẽ xoá mất khối KPI trên hệ thống đang chạy. Tài liệu cũng ghi sai trạng thái nên khó theo dõi việc còn lại.
+- **Trạng thái:** Đã kéo về và commit. Bộ kiểm tra tĩnh báo sạch. **Không** `clasp push`, **không** deploy; hệ thống đang chạy trên máy nhà máy không thay đổi gì. Đã kiểm hai chiều: không có hàm nào của repository bị mất ở bản kéo về. Tỉ lệ hiệu dụng vẫn tắt (`HIEN_HIEU_DUNG_BAO_CAO_NGAY = false`).
+- **Việc cần làm tiếp theo:** Bắt đầu cải tiến cách tính tỉ lệ hiệu dụng rồi mới bật lại công tắc. Mỗi phiên làm việc kéo mã về so trước khi sửa.
+
 ## [2026-08-28] Deploy ẩn tỉ lệ hiệu dụng bị chặn quyền Workspace
 - **Thay đổi:** Thử cập nhật đúng deployment hiện có `@2` bằng `clasp deploy --deploymentId`; không tạo deployment mới và không dùng `@HEAD`.
 - **Lý do:** Cần đưa thay đổi ẩn tỉ lệ hiệu dụng từ Apps Script Editor lên trang web `/exec` mà vẫn giữ nguyên URL/QR.

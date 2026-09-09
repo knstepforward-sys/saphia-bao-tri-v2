@@ -237,6 +237,11 @@ const CAU_HINH_MAC_DINH = [
     'TỈ LỆ HIỆU DỤNG A — có trừ thời gian của phiếu VIỆC CHUNG (CV-) hay không. ' +
     'Gõ TRUE hoặc FALSE. Chỉ những phiếu CV- đã ghi ĐÚNG TÊN MÁY (khớp Danh_Muc_May) ' +
     'mới quy được về máy; phiếu không ghi máy vẫn bị bỏ qua dù bật TRUE.'],
+  ['NGUONG_KPI_DAP_UNG_PHUT', '',
+    'KPI ĐÁP ỨNG THỢ — phiếu được coi là ĐẠT khi Phut_KPI_Tho không vượt quá số phút ' +
+    'này. ĐỂ TRỐNG khi công ty chưa chốt: báo cáo vẫn ra đủ, cột "Tỷ lệ đạt" hiện "—", ' +
+    'và khối "CƠ SỞ ĐỂ CHỌN NGƯỠNG" vẫn tính sẵn tỷ lệ đạt ở 5 mức để chọn. ' +
+    'Chốt xong chỉ cần gõ số vào đây rồi xuất lại báo cáo, không phải sửa code.'],
   ['HUONG_DAN_KHOA_LINK_THO', '',
     'KHOÁ LINK KHI THỢ NGHỈ VIỆC: xoá trắng ô Token của người đó trong sheet ' +
     'Danh_Muc_Tho, bỏ tick Hoat_Dong, rồi chạy menu 🔧 Bảo trì → "4. Sinh lại ' +
@@ -261,6 +266,17 @@ const HEADER_SU_CO = [
   'Phut_Dap_Ung_Thuc',   // từ lúc thợ rảnh đến lúc bấm nhận — ĐÂY mới là KPI thợ
   'So_Chong_Viec',       // số phiếu khác thợ đang giữ dở lúc bấm nhận
   'Loai_Phieu',          // SU_CO (máy hỏng, qua QR) | CONG_VIEC (việc chung, thợ tự tạo)
+  // --- Đợt KPI đáp ứng theo yêu cầu công ty (09/2026) ------------------------
+  // Phut_Dap_Ung_Thuc ở trên miễn trừ thời gian bận bằng MỘT mốc rảnh (giờ hoàn
+  // thành muộn nhất), nên khi thợ bận thành nhiều đoạn rời thì mọi khoảng rảnh
+  // xen giữa cũng được miễn oan. Bốn cột dưới tính lại bằng cách CỘNG DỒN các
+  // đoạn bận nên chỉ miễn trừ đúng phần thợ thật sự đang cầm việc khác.
+  // Cố ý giữ song song, không sửa đè: số cũ đã đi vào các báo cáo đã gửi.
+  'Phut_Ban_Thuc_Te',    // tổng phút thợ thật sự bận, trong khoảng máy nằm chờ
+  'Phut_KPI_Tho',        // = Phut_Tiep_Nhan − Phut_Ban_Thuc_Te → số chấm KPI thợ
+  'So_Doan_Ban',         // số đoạn bận rời; ≥2 là ca mà cách cũ tính rộng tay
+  'KPI_Ap_Dung',         // CO | KHONG — <lý do>: loại phiếu không đo, thiếu mốc…
+  'Dat_Nguong',          // DAT | KHONG_DAT | rỗng khi công ty chưa chốt ngưỡng
 ];
 
 const HEADER_NHAT_KY = [
@@ -541,6 +557,37 @@ function xacDinhCa_(nhomCa, khi, cauHinhCa) {
     ngay = fmtNgay_(new Date(khi.getTime() - 24 * 60 * 60 * 1000));
   }
   return { ca: MA_CA.DEM, ngayCa: ngay, nhomCa: ten };
+}
+
+/**
+ * Mốc chốt số liệu của một ngày ca: thời điểm mà ngày ca `ngay` kết thúc.
+ *
+ * Ngày ca `ngay` chạy từ giờ vào ca ngày của `ngay` tới giờ vào ca ngày của hôm
+ * sau — đúng biên mà xacDinhCa_() dùng để gán Ngay_Ca. Báo cáo của một ngày đã
+ * qua phải dừng cộng dồn ở biên đó, nếu không phiếu chưa ai đóng sẽ tiếp tục
+ * đội phút dừng lên mãi và số của ngày cũ đổi mỗi lần mở trang.
+ *
+ * Ngày hôm nay thì biên còn nằm ở tương lai nên trả về giờ hiện tại — máy vẫn
+ * đang dừng thật, chốt sớm là báo thiếu.
+ *
+ * Dùng giờ vào ca của nhóm MAC_DINH làm biên chung cho cả báo cáo. Vài nhóm vào
+ * ca lệch vài chục phút (tổ điện 06:30), nhưng báo cáo ngày là một con số cho cả
+ * nhà máy nên phải có một biên duy nhất.
+ */
+function mocChotNgayCa_(ngay, cauHinhCa) {
+  const bayGio = nowVN_();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(ngay || ''))) return bayGio;
+
+  const cfg = cauHinhCa || docCauHinhCa_();
+  const c = cfg[CONFIG.NHOM_CA_MAC_DINH];
+  const phut = c && c.tu !== null && c.tu !== undefined ? c.tu : 7 * 60;
+
+  // Nửa đêm của ngày kế tiếp, cộng thêm giờ vào ca. Cộng phút thay vì dựng chuỗi
+  // 'HH:mm' để không phải lo giờ vào ca có phải mốc tròn hay không.
+  const hetNgay = new Date(
+    new Date(ngay + 'T00:00:00+07:00').getTime() + (24 * 60 + phut) * 60000);
+
+  return hetNgay < bayGio ? hetNgay : bayGio;
 }
 
 // ============================================================================
@@ -1191,6 +1238,7 @@ function onOpen() {
     .addItem('📋 Báo cáo trong ngày', 'menuBaoCaoNgay')
     .addItem('➕ Bù phiếu dừng máy (thợ quên quét)…', 'menuBuPhieuDungMay')
     .addItem('📊 Cập nhật báo cáo tổng hợp', 'menuBaoCao')
+    .addItem('🎯 Tính lại KPI đáp ứng của thợ', 'menuTinhLaiKpi')
     .addItem('📤 Xuất báo cáo (chọn ngày, bộ phận, thợ)…', 'menuXuatBaoCao')
     .addItem('📈 Báo cáo tỉ lệ khả dụng máy…', 'menuBaoCaoKhaDung')
     .addItem('🗄️ Dọn phiếu cũ sang Lưu trữ', 'menuLuuTru')
@@ -1249,6 +1297,7 @@ function menuMoKeHoachKhaDung() {
 
 function menuLuuTru() { chayVaBao_('Dọn phiếu cũ', archiveOldTickets); }
 function menuCaiTrigger() { chayVaBao_('Cài trigger', caiDatTrigger); }
+function menuTinhLaiKpi() { chayVaBao_('Tính lại KPI đáp ứng', tinhLaiKpiTho); }
 
 function menuBaoCao() {
   const ui = SpreadsheetApp.getUi();

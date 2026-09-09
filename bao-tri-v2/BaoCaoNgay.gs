@@ -55,7 +55,7 @@ function sapTheoBoPhanRoiGio_(ds) {
   });
 }
 
-/** Số phút một phiếu đã treo, tính tới lúc mở trang. */
+/** Số phút một phiếu đã treo, tính tới mốc chốt của ngày ca (xem mocChotNgayCa_). */
 function phutDaTreo_(v, bayGio) {
   const bao = v[COT.Thoi_Gian_Bao];
   if (!(bao instanceof Date)) return '';
@@ -63,7 +63,10 @@ function phutDaTreo_(v, bayGio) {
 }
 
 function duLieuBaoCaoNgay_(ngay) {
-  const bayGio = nowVN_();
+  // Chốt ở biên ngày ca chứ không phải giờ hiện tại: báo cáo ngày 07/09 xem lúc
+  // nào cũng phải ra cùng một con số, không được tăng thêm chỉ vì có phiếu chưa
+  // ai đóng. Ngày hôm nay thì biên còn ở tương lai nên vẫn là giờ hiện tại.
+  const bayGio = mocChotNgayCa_(ngay);
   const tatCa = docSuCoVaLuuTru_();
   const ds = tatCa.filter(function (v) {
     return String(v[COT.Ngay_Ca]).trim() === ngay;
@@ -194,7 +197,7 @@ function duLieuBaoCaoNgay_(ngay) {
       congViec: congViec.length,
       baoTri: baoTri.length,
       phutDungHong: tongDowntimeSuCo_(suCo),
-      phutDungKhac: tongPhutDung_(dungMay),
+      phutDungKhac: tongPhutDung_(dungMay, bayGio),
     },
     chuaDong: chuaDong.map(gonSuCo_)
       .sort(function (a, b) { return (b.treo || 0) - (a.treo || 0); }),

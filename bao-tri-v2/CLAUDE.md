@@ -613,6 +613,13 @@ clasp deploy --deploymentId MA_TRIEN_KHAI_DA_GO_KHOI_KHO_CONG_KHAI... --descript
 - Chỉ trang web `/exec` mới phục vụ theo **version đã deploy**.
 - **Luôn `clasp deploy --deploymentId`** với đúng ID trên. Tạo "Bản triển khai mới" sẽ sinh
   URL khác và làm chết mọi QR đã in.
+- **Kéo về trước khi sửa.** Đã có lần repository tụt lại ~1000 dòng so với Editor vì có người
+  sửa thẳng trên Apps Script. Mở phiên làm việc thì `clasp clone` ra thư mục tạm và so trước,
+  đừng push đè.
+- **Tài khoản clasp: `kn.stepforward`** (đổi 09/09/2026). Tài khoản cá nhân cũ từng bị chặn
+  deploy vì không cùng domain Workspace với chủ sở hữu script.
+- **PowerShell chặn `clasp.ps1`** với lỗi *running scripts is disabled*. Gọi `clasp.cmd` thay
+  vì `clasp`; không hạ ExecutionPolicy của máy chỉ để chạy một lệnh.
 
 ---
 
@@ -666,9 +673,22 @@ Lớp thứ tư: menu **🧪 Chạy test logic** trong Sheet — ~210 test bằn
   chạy lại*, để ráp xong bấm ngay tại chỗ. Sửa `LuongTho.gs` + `Tho.html`, **cần deploy** —
   hoãn tới chủ nhật theo yêu cầu người dùng, không deploy giữa ca sản xuất.
 
-- **So sánh với tháng trước** trong báo cáo tổng hợp — thứ đắt giá nhất còn thiếu để báo
-  cáo sếp có sức nặng. Dữ liệu đã đủ, chỉ cần đọc thêm tháng liền trước.
 - **Quy downtime ra tiền** — cần người dùng cung cấp doanh thu ước tính mỗi giờ máy chạy.
+
+### Đã làm xong, chưa deploy (09/09/2026)
+
+Hai khối dưới đây đã có trên Apps Script Editor và đã kéo về repository, nhưng **bản web
+đang chạy thật vẫn là version cũ chưa có chúng**:
+
+- **So sánh với kỳ trước** trong báo cáo xuất — `soSanhKy_()`, `ghiTomTat_()` dựng thêm một
+  trang tóm tắt đứng đầu file xuất, kèm `tyLeDatKpi_()`, `tbDapUngSuCo_()`, `phanVi_()`,
+  `gomKpiTho_()` trong `XuatBaoCao.gs`.
+- **Tính lại KPI đáp ứng của thợ** — `tinhLaiKpiTho()`, `kpiThoChoPhieu_()`, `nguongKpi_()`,
+  `phutBanTrongCho_()` trong `LuongTho.gs`, gọi qua menu `menuTinhLaiKpi` trong `Code.gs`.
+
+**Tỉ lệ hiệu dụng A vẫn đang TẮT.** Công tắc `HIEN_HIEU_DUNG_BAO_CAO_NGAY = false` trong
+`BaoCaoNgay.gs`; mã tính trong `HieuDung.gs` còn nguyên, chỉ là không được gọi. Cách tính
+hiện tại còn sai nên đã tắt tạm theo yêu cầu người dùng — cải tiến rồi mới bật lại.
 
 ### Đã quyết định KHÔNG làm
 

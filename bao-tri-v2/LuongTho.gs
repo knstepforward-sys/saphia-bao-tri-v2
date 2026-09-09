@@ -105,6 +105,216 @@ function tinhDapUng_(ds, maTho, maSuCoNay, baoLuc, nhanLuc) {
   };
 }
 
+// ============================================================================
+// 2b. KPI ĐÁP ỨNG THỢ — bản cộng dồn đoạn bận (đợt 09/2026)
+//
+// `tinhDapUng_` ở trên miễn trừ thời gian bận bằng MỘT mốc rảnh duy nhất: giờ
+// hoàn thành muộn nhất trong các phiếu chồng. Hệ quả: thợ bận thành nhiều đoạn
+// rời thì mọi khoảng RẢNH xen giữa cũng bị gộp vào "chờ do thợ bận".
+//
+//   Máy báo 09:00, thợ nhận 10:00, trong đó thợ làm 08:50–09:10 và 09:30–09:50.
+//   Cách cũ : mốc rảnh = 09:50 → chờ 50 phút, KPI thợ chỉ 2... thực ra 10 phút.
+//   Đúng ra : bận 10 + 20 = 30 phút, thợ rảnh 30 phút mà chưa nhận → KPI 30.
+//
+// Sai lệch này luôn nghiêng về phía có lợi cho người bị đo, nên phải vá trước
+// khi đem đi chấm KPI. Hai cột cũ giữ nguyên không sửa đè — số cũ đã nằm trong
+// các báo cáo đã gửi đi, đổi nghĩa giữa chừng là mất khả năng đối chiếu.
+// ============================================================================
+
+/**
+ * Tổng số phút thợ THẬT SỰ bận trong khoảng máy nằm chờ [baoLuc, nhanLuc].
+ *
+ * Gộp HỢP các đoạn bận rồi cộng độ dài, thay vì lấy mốc muộn nhất. Đoạn bận lấy
+ * đúng cùng nguồn với `tinhDapUng_` để hai cách không bao giờ nói ngược nhau:
+ * phiếu của chính thợ đó, trừ phiếu đang xét, và phải có đủ mốc nhận→hoàn thành.
+ *
+ * Phiếu còn DANG_XU_LY → bận từ lúc nhận tới hết cửa sổ. Nhờ cắt vào cửa sổ mà
+ * hàm này cho **cùng kết quả** dù chạy ngay lúc bấm nhận (phiếu kia còn mở) hay
+ * chạy lại sau này (phiếu kia đã đóng, giờ hoàn thành nằm sau nhanLuc) — điều
+ * kiện để `tinhLaiKpiTho()` bù cho dữ liệu cũ mà không lệch với số ghi tại chỗ.
+ *
+ * @param {Array}  ds       kết quả docSuCoGanDay_() — hoặc tập đã lọc sẵn theo thợ
+ * @param {string} maTho
+ * @param {string} maSuCoNay mã phiếu đang xét (tự loại khỏi phép so)
+ * @param {Date}   baoLuc
+ * @param {Date}   nhanLuc
+ * @return {{phutBan: number, soDoan: number}}
+ */
+function phutBanTrongCho_(ds, maTho, maSuCoNay, baoLuc, nhanLuc) {
+  const ma = String(maTho).trim();
+  const maNay = String(maSuCoNay).trim();
+  const tu = baoLuc.getTime();
+  const den = nhanLuc.getTime();
+  const doan = [];
+
+  ds.forEach(function (r) {
+    const v = r.v;
+    if (String(v[COT.Ma_Tho]).trim() !== ma) return;
+    if (String(v[COT.Ma_Su_Co]).trim() === maNay) return;
+
+    const nhan = v[COT.Thoi_Gian_Nhan];
+    if (!(nhan instanceof Date)) return;   // BT- cố ý trống → không tính là bận
+
+    // Còn giữ dở → bận liên tục cho tới hết cửa sổ.
+    if (v[COT.Trang_Thai] === TRANG_THAI.DANG_XU_LY) {
+      doan.push([nhan.getTime(), den]);
+      return;
+    }
+
+    const xong = v[COT.Thoi_Gian_Hoan_Thanh];
+    if (!(xong instanceof Date)) return;
+    doan.push([nhan.getTime(), xong.getTime()]);
+  });
+
+  // Cắt vào cửa sổ, bỏ đoạn rỗng, sắp theo mốc bắt đầu rồi gộp các đoạn dính nhau.
+  const cat = doan
+    .map(function (d) { return [Math.max(d[0], tu), Math.min(d[1], den)]; })
+    .filter(function (d) { return d[1] > d[0]; })
+    .sort(function (a, b) { return a[0] - b[0]; });
+
+  let tong = 0, soDoan = 0, dau = null, cuoi = null;
+  cat.forEach(function (d) {
+    if (cuoi === null || d[0] > cuoi) {
+      if (cuoi !== null) { tong += cuoi - dau; soDoan++; }
+      dau = d[0];
+      cuoi = d[1];
+    } else if (d[1] > cuoi) {
+      cuoi = d[1];
+    }
+  });
+  if (cuoi !== null) { tong += cuoi - dau; soDoan++; }
+
+  return { phutBan: Math.round(tong / 60000), soDoan: soDoan };
+}
+
+/**
+ * Bộ 5 giá trị KPI của MỘT phiếu. Dùng chung cho lúc thợ bấm nhận và cho lần
+ * tính lại hàng loạt — hai đường không được phép cho ra số khác nhau.
+ *
+ * `nguong` là số phút công ty chốt; để trống thì không chấm đạt/không đạt.
+ *
+ * @return {{apDung: string, phutBan: (number|string), phutKpi: (number|string),
+ *           soDoan: (number|string), datNguong: string}}
+ */
+function kpiThoChoPhieu_(ds, v, nguong) {
+  const khong = function (lyDo) {
+    return { apDung: 'KHONG — ' + lyDo, phutBan: '', phutKpi: '', soDoan: '', datNguong: '' };
+  };
+
+  // Chỉ phiếu sự cố mới có người "báo hỏng" để mà đo đáp ứng. CV-/BT-/DM- vẫn
+  // được tính là thợ bận ở hàm trên, nhưng bản thân chúng không vào KPI.
+  const loai = loaiPhieu_(v);
+  if (loai !== LOAI_PHIEU.SU_CO) return khong('phiếu ' + loai);
+  if (!String(v[COT.Ma_Tho]).trim()) return khong('chưa ai nhận');
+
+  const bao = v[COT.Thoi_Gian_Bao];
+  const nhan = v[COT.Thoi_Gian_Nhan];
+  if (!(bao instanceof Date) || !(nhan instanceof Date)) return khong('thiếu mốc giờ');
+
+  const ban = phutBanTrongCho_(ds, v[COT.Ma_Tho], v[COT.Ma_Su_Co], bao, nhan);
+  const tong = Math.max(0, Math.round((nhan.getTime() - bao.getTime()) / 60000));
+  const kpi = Math.max(0, tong - ban.phutBan);
+
+  return {
+    apDung: 'CO',
+    phutBan: ban.phutBan,
+    phutKpi: kpi,
+    soDoan: ban.soDoan,
+    datNguong: nguong ? (kpi <= nguong ? 'DAT' : 'KHONG_DAT') : '',
+  };
+}
+
+/**
+ * Ngưỡng KPI (phút) công ty chốt, đọc từ sheet Cau_Hinh. Chưa chốt → 0, và mọi
+ * chỗ dùng phải hiểu 0 là "chưa chấm đạt/không đạt", không phải "ngưỡng 0 phút".
+ */
+function nguongKpi_(cauHinh) {
+  const ch = cauHinh || docCauHinh_();
+  const n = Number(ch.NGUONG_KPI_DAP_UNG_PHUT);
+  return isFinite(n) && n > 0 ? n : 0;
+}
+
+/**
+ * Tính lại 5 cột KPI cho TOÀN BỘ sheet Su_Co. Chạy từ menu 🔧 Bảo trì.
+ *
+ * Vì sao cần: bốn cột này mới có từ 09/2026, còn `acceptTask` chỉ ghi được cho
+ * phiếu nhận từ lúc bản mới lên web app. Mọi mốc giờ cần thiết đều đã nằm sẵn
+ * trong sheet nên tính lại được cho cả các tháng đã qua — nhờ vậy báo cáo tháng
+ * 8 có KPI ngay, không phải chờ deploy.
+ *
+ * Chạy lại nhiều lần vô hại: hàm tính thuần từ các mốc giờ, không cộng dồn.
+ *
+ * Chỉ ghi đúng khối 5 cột mới bằng MỘT setValues — không đụng cột nào khác, nên
+ * không có đường nào làm hỏng mốc thời gian hay ba cột KPI cũ.
+ */
+function tinhLaiKpiTho() {
+  const lock = LockService.getScriptLock();
+  try {
+    if (!lock.tryLock(CONFIG.KHOA_CHO_GIAY * 1000)) {
+      return 'Hệ thống đang bận, thử lại sau vài giây.';
+    }
+
+    const sh = sheet_(SHEET.SU_CO);
+
+    // Sheet cũ mới có 28 cột, đọc/ghi 33 cột là văng "out of bounds" giữa chừng.
+    // Nói thẳng phải làm gì, thay vì để người dùng nhận một thông báo lỗi kỹ thuật.
+    if (sh.getMaxColumns() < HEADER_SU_CO.length) {
+      return 'Sheet Su_Co chưa có đủ ' + HEADER_SU_CO.length + ' cột. ' +
+        'Chạy menu 🔧 Bảo trì → "1. Cài đặt hệ thống" một lần rồi tính lại.';
+    }
+
+    const soDong = sh.getLastRow() - 1;
+    if (soDong < 1) return 'Sheet Su_Co chưa có phiếu nào.';
+
+    const values = sh.getRange(2, 1, soDong, HEADER_SU_CO.length).getValues();
+    const ds = values
+      .map(function (v, i) { return { dong: i + 2, v: v }; })
+      .filter(function (r) { return String(r.v[COT.Ma_Su_Co]).trim() !== ''; });
+
+    // Gom sẵn theo thợ: mỗi phiếu chỉ phải so với phiếu của chính thợ đó, thay
+    // vì quét cả sheet cho từng phiếu (n² trên toàn bộ dữ liệu nhiều năm).
+    const theoTho = {};
+    ds.forEach(function (r) {
+      const ma = String(r.v[COT.Ma_Tho]).trim();
+      if (!ma) return;
+      if (!theoTho[ma]) theoTho[ma] = [];
+      theoTho[ma].push(r);
+    });
+
+    const nguong = nguongKpi_();
+    const cotDau = COT.Phut_Ban_Thuc_Te + 1;   // 1-based cho getRange
+    const khoi = [];
+    let soApDung = 0, soNhieuDoan = 0, soDat = 0;
+
+    values.forEach(function (v) {
+      if (String(v[COT.Ma_Su_Co]).trim() === '') { khoi.push(['', '', '', '', '']); return; }
+
+      const cungTho = theoTho[String(v[COT.Ma_Tho]).trim()] || [];
+      const k = kpiThoChoPhieu_(cungTho, v, nguong);
+      if (k.apDung === 'CO') {
+        soApDung++;
+        if (k.soDoan >= 2) soNhieuDoan++;
+        if (k.datNguong === 'DAT') soDat++;
+      }
+      khoi.push([k.phutBan, k.phutKpi, k.soDoan, k.apDung, k.datNguong]);
+    });
+
+    sh.getRange(2, cotDau, khoi.length, 5).setValues(khoi);
+
+    ghiNhatKy_('', '', 'HE_THONG', 'TINH_LAI_KPI',
+      { soDong: khoi.length, soApDung: soApDung, nguong: nguong }, '');
+
+    return 'Đã tính lại KPI cho ' + khoi.length + ' dòng.\n' +
+      '• Vào KPI: ' + soApDung + ' phiếu\n' +
+      '• Có từ 2 đoạn bận rời (cách cũ tính rộng tay): ' + soNhieuDoan + ' phiếu\n' +
+      (nguong
+        ? '• Đạt ngưỡng ≤ ' + nguong + ' phút: ' + soDat + '/' + soApDung + ' phiếu'
+        : '• Chưa chốt ngưỡng — điền NGUONG_KPI_DAP_UNG_PHUT ở sheet Cau_Hinh để chấm đạt/không đạt.');
+  } finally {
+    lock.releaseLock();
+  }
+}
+
 /** Rút gọn một dòng Su_Co để gửi về client. */
 function gonPhieu_(v) {
   return {
@@ -235,6 +445,10 @@ function getTechnicianBootstrap(maTho, token) {
 function acceptIncident(maSuCo, maTho, token, requestId) {
   const lock = LockService.getScriptLock();
   try {
+    // Đọc cấu hình TRƯỚC khi giành khoá (nguyên tắc 4) — ngưỡng chỉ là con số để
+    // chấm đạt/không đạt, không dính gì tới thứ tự ghi.
+    const nguongKpiPhut = nguongKpi_();
+
     if (!lock.tryLock(CONFIG.KHOA_CHO_GIAY * 1000)) {
       return { ok: false, error: 'Hệ thống đang bận, thử lại sau vài giây.' };
     }
@@ -276,6 +490,16 @@ function acceptIncident(maSuCo, maTho, token, requestId) {
     v[COT.Phut_Cho_Tho_Ban] = dapUng.cho;
     v[COT.Phut_Dap_Ung_Thuc] = dapUng.thuc;
     v[COT.So_Chong_Viec] = dapUng.chongViec;
+
+    // KPI bản cộng dồn đoạn bận. Gọi SAU các dòng trên vì hàm đọc Ma_Tho và
+    // Thoi_Gian_Nhan vừa gán; phiếu đang xét tự bị loại khỏi phép so theo mã.
+    const kpi = kpiThoChoPhieu_(dsGanDay, v, nguongKpiPhut);
+    v[COT.Phut_Ban_Thuc_Te] = kpi.phutBan;
+    v[COT.Phut_KPI_Tho] = kpi.phutKpi;
+    v[COT.So_Doan_Ban] = kpi.soDoan;
+    v[COT.KPI_Ap_Dung] = kpi.apDung;
+    v[COT.Dat_Nguong] = kpi.datNguong;
+
     v[COT.Cap_Nhat_Luc] = luc;
     v[COT.Request_ID_Cuoi] = String(requestId).trim();
     v[COT.Phien_Ban] = (Number(v[COT.Phien_Ban]) || 0) + 1;
@@ -286,6 +510,8 @@ function acceptIncident(maSuCo, maTho, token, requestId) {
       phutChoThoBan: dapUng.cho,
       phutDapUngThuc: dapUng.thuc,
       soChongViec: dapUng.chongViec,
+      phutBanThucTe: kpi.phutBan,
+      phutKpiTho: kpi.phutKpi,
     }, requestId);
 
     return { ok: true, phieu: gonPhieu_(v) };

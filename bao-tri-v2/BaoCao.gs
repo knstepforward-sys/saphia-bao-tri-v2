@@ -295,11 +295,14 @@ function tongDowntimeSuCo_(ds) {
 
 /**
  * Tổng số phút máy nằm im của một tập phiếu dừng máy.
- * Phiếu chưa đóng thì tính tới thời điểm chạy báo cáo — máy vẫn đang dừng thật,
- * bỏ qua sẽ báo thiếu đúng những ca dừng lâu nhất.
+ * Phiếu chưa đóng thì tính tới `mocChot` — máy vẫn đang dừng thật, bỏ qua sẽ
+ * báo thiếu đúng những ca dừng lâu nhất.
+ *
+ * `mocChot` mặc định là giờ hiện tại. Báo cáo của một ngày ca đã qua truyền vào
+ * mocChotNgayCa_() để phiếu chưa ai đóng không cộng dồn xuyên sang ngày sau.
  */
-function tongPhutDung_(ds) {
-  const bayGio = nowVN_();
+function tongPhutDung_(ds, mocChot) {
+  const bayGio = mocChot instanceof Date ? mocChot : nowVN_();
   return ds.reduce(function (tong, v) {
     const tu = v[COT.Thoi_Gian_Dung_May];
     if (!(tu instanceof Date)) return tong;

@@ -54,12 +54,26 @@ function xuatBaoCao(opts) {
   const dsTho = lamSachDanhSach_(o.dsTho);
   const kemViecChung = !!o.kemViecChung;
 
-  const ds = locPhieuTheoKy_(docSuCoVaLuuTru_(), {
-    tuNgay: tu, denNgay: den,
-    dsBoPhan: dsBoPhan, dsTho: dsTho, kemViecChung: kemViecChung,
-  }).sort(function (a, b) {
-    return String(a[COT.Ma_Su_Co]).localeCompare(String(b[COT.Ma_Su_Co]));
-  });
+  // Đọc MỘT lần rồi lọc hai lần: kỳ báo cáo và kỳ liền trước cùng độ dài. Đọc
+  // hai lần là tốn gấp đôi thời gian đọc sheet mà chẳng được gì.
+  const nguon = docSuCoVaLuuTru_();
+  const loc = { dsBoPhan: dsBoPhan, dsTho: dsTho, kemViecChung: kemViecChung };
+
+  const ds = locPhieuTheoKy_(nguon, Object.assign({ tuNgay: tu, denNgay: den }, loc))
+    .sort(function (a, b) {
+      return String(a[COT.Ma_Su_Co]).localeCompare(String(b[COT.Ma_Su_Co]));
+    });
+
+  // Kỳ liền trước, DÀI ĐÚNG BẰNG kỳ này và dùng ĐÚNG bộ lọc bộ phận/thợ này —
+  // so một tháng với nửa tháng, hay toàn nhà máy với một bộ phận, thì con số
+  // "tăng/giảm" thành ra bịa.
+  const soNgayKy = dsNgayTrongKy_(tu, den).length;
+  const denTruoc = dichNgay_(tu, -1);
+  const tuTruoc = denTruoc ? dichNgay_(denTruoc, -(soNgayKy - 1)) : '';
+  const kyTruoc = tuTruoc && denTruoc ? { tuNgay: tuTruoc, denNgay: denTruoc } : null;
+  const dsTruoc = kyTruoc
+    ? locPhieuTheoKy_(nguon, Object.assign({ tuNgay: tuTruoc, denNgay: denTruoc }, loc))
+    : [];
 
   const nhanKy = nhanKy_(tu, den);
   const ten = tenFileXuat_(tu, den, dsBoPhan, dsTho);
@@ -68,6 +82,7 @@ function xuatBaoCao(opts) {
   const ctx = {
     nhanKy: nhanKy, tuNgay: tu, denNgay: den,
     dsBoPhan: dsBoPhan, dsTho: dsTho, kemViecChung: kemViecChung,
+    kyTruoc: kyTruoc,
   };
 
   // ghiDataGoc_ dùng ssMoi.getSheets()[0], nên trang tổng hợp — thứ được chèn vào
@@ -94,8 +109,11 @@ function xuatBaoCao(opts) {
   const dsDet = locSuCoDet_(ds);
   if (dsDet.length) ghiNhatKyDet_(ssMoi, dsDet);
 
+  // Hai trang này chèn vào vị trí 0 nên phải ghi SAU CÙNG, và Tom_Tat ghi sau
+  // Bao_Cao để nó nằm ngoài cùng bên trái — đó là trang sếp mở ra đầu tiên.
   ghiTrangBaoCao_(ssMoi, ds, ctx);
-  ssMoi.setActiveSheet(ssMoi.getSheetByName('Bao_Cao'));
+  ghiTomTat_(ssMoi, ds, dsTruoc, ctx);
+  ssMoi.setActiveSheet(ssMoi.getSheetByName('Tom_Tat'));
 
   // Sheet mặc định do SpreadsheetApp.create sinh ra, không dùng tới.
   ['Sheet1', 'Trang tính1', 'Trang tinh1'].forEach(function (t) {
@@ -258,16 +276,40 @@ function locPhieuTheoKy_(ds, opts) {
   });
 }
 
-/** Mảng 'yyyy-MM-dd' từ tu đến den (bao gồm cả hai đầu). */
+/**
+ * Dời một ngày 'yyyy-MM-dd' đi `soNgay` ngày (âm là lùi). Trả '' nếu ngày hỏng.
+ *
+ * Tính bằng `Date.UTC` chứ không qua `Utilities.formatDate`, giống `thuCuaNgay_`
+ * ngay dưới: ở đây chỉ có phép cộng ngày trên lịch, kéo timeZone của project vào
+ * là tự chuốc rủi ro lệch một ngày. Nhờ vậy hàm cũng THUẦN, chạy được ở lớp kiểm
+ * tra tại máy — biên kỳ báo cáo sai thì cả bảng "tăng/giảm" so nhầm kỳ mà vẫn
+ * hiện ra đẹp đẽ, không ai phát hiện.
+ */
+function dichNgay_(ngay, soNgay) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(ngay || '').trim());
+  if (!m) return '';
+  const d = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])) +
+    soNgay * 24 * 60 * 60 * 1000);
+  return d.getUTCFullYear() + '-' + pad2_(d.getUTCMonth() + 1) + '-' +
+    pad2_(d.getUTCDate());
+}
+
+/**
+ * Mảng 'yyyy-MM-dd' từ tu đến den (bao gồm cả hai đầu).
+ *
+ * Chạy trên chuỗi bằng `dichNgay_` thay vì trên Date: chuỗi ISO so sánh được
+ * trực tiếp, và hàm giữ được tính THUẦN như cam kết ở đầu mục 2b — bản cũ gọi
+ * `fmtNgay_`, tức phụ thuộc `Utilities` và timeZone của project.
+ */
 function dsNgayTrongKy_(tu, den) {
   const out = [];
-  const dCuoi = ngayCaSangDate_(den);
-  let d = ngayCaSangDate_(tu);
-  if (!d || !dCuoi) return out;
+  let d = dichNgay_(tu, 0);             // vừa chuẩn hoá vừa kiểm định dạng
+  const cuoi = dichNgay_(den, 0);
+  if (!d || !cuoi) return out;
   // Chặn cứng để một tham số sai không kéo vòng lặp chạy vô hạn.
-  while (d.getTime() <= dCuoi.getTime() && out.length <= 400) {
-    out.push(fmtNgay_(d));
-    d = new Date(d.getTime() + 24 * 60 * 60 * 1000);
+  while (d <= cuoi && out.length <= 400) {
+    out.push(d);
+    d = dichNgay_(d, 1);
   }
   return out;
 }
@@ -511,6 +553,11 @@ const HEADER_DATA_GOC = [
   // Cột thứ 30, nằm NGOÀI 29 cột của biểu mẫu gốc — thêm vào cuối để lọc nhanh
   // giữa 3 loại phiếu mà không xê dịch cột nào của form.
   'Loại',
+  // Cột 31–32, cũng ngoài biểu mẫu: số KPI thợ và số đoạn bận dùng để tra lại
+  // từng phiếu khi có ai thắc mắc. "Số đoạn bận" ≥ 2 là phiếu mà cột "sau khi
+  // thợ rảnh" miễn trừ rộng hơn thực tế.
+  'KPI thợ\n(Phút)',
+  'Số đoạn bận',
 ];
 
 function ghiDataGoc_(ssMoi, ds) {
@@ -554,7 +601,8 @@ function ghiDataGoc_(ssMoi, ds) {
       dong.push(x.ten, x.sl, x.dvt);
     }
     dong.push(v[COT.Phut_Cho_Tho_Ban], v[COT.Phut_Dap_Ung_Thuc],
-      trangThaiDapUng_(v), nhanLoaiPhieu_(v));
+      trangThaiDapUng_(v), nhanLoaiPhieu_(v),
+      v[COT.Phut_KPI_Tho], v[COT.So_Doan_Ban]);
     bang.push(dong);
   });
 
@@ -573,11 +621,301 @@ function ghiDataGoc_(ssMoi, ds) {
 }
 
 // ============================================================================
-// 3a. SHEET Bao_Cao — MỘT TRANG cho sếp xem
+// 3-0. SHEET Tom_Tat — TRANG DUY NHẤT SẾP ĐỌC
 //
-// Sếp không mở 6 tab để ghép số. Trang này đứng đầu file, gộp đủ ba thứ hay bị
-// hỏi: máy dừng bao nhiêu mỗi ngày, máy nào hỏng nhiều, thợ nào làm gì. Các sheet
-// còn lại là chi tiết để tra khi cần.
+// `Bao_Cao` bên dưới ban đầu được làm cho sếp, nhưng đã phình ra: nhật ký từng
+// ngày, khối chọn ngưỡng KPI, bảng thợ 12 cột. Người duyệt báo cáo không đọc
+// chừng đó — họ cần biết tháng này TỆ HƠN hay TỐT HƠN tháng trước, và có gì phải
+// quyết. Nên tách hẳn: `Tom_Tat` chỉ KẾT QUẢ, gói trong một trang in; `Bao_Cao`
+// thành trang tra cứu cho tổ bảo trì.
+//
+// Nguyên tắc của trang này: con số nào cũng phải đi kèm mốc so sánh. Một mình
+// "62 giờ máy nằm im" không nói lên điều gì — "62 giờ, giảm 8 giờ so với kỳ
+// trước" mới là thứ đọc xong biết phải làm gì.
+// ============================================================================
+
+const SO_COT_TT = 8;   // A..H — đủ hẹp để in vừa một trang dọc
+
+/**
+ * So sánh một con số với kỳ trước.
+ * `thapLaTot` = true với downtime, số lần hỏng, số phút đáp ứng; false với tỷ lệ.
+ * Trả { chu, tot } — `tot` là null khi không kết luận được (kỳ trước trống).
+ */
+function soSanhKy_(nay, truoc, thapLaTot, donVi) {
+  if (truoc === '' || truoc === null || truoc === undefined || !isFinite(truoc)) {
+    return { chu: 'kỳ trước chưa có số liệu', tot: null };
+  }
+  const lech = Math.round((nay - truoc) * 10) / 10;
+  if (lech === 0) return { chu: 'không đổi so với kỳ trước', tot: null };
+  const tang = lech > 0;
+  return {
+    chu: (tang ? '▲ tăng ' : '▼ giảm ') + Math.abs(lech) + (donVi || '') +
+      ' so với kỳ trước',
+    tot: thapLaTot ? !tang : tang,
+  };
+}
+
+/** Trung bình phút đáp ứng của riêng phiếu sự cố — dùng cho cả kỳ này và kỳ trước. */
+function tbDapUngSuCo_(ds) {
+  return trungBinh_(ds.filter(laSuCo_)
+    .filter(function (v) { return String(v[COT.Phut_Tiep_Nhan]) !== ''; })
+    .map(function (v) { return Number(v[COT.Phut_Tiep_Nhan]); }));
+}
+
+/** Tỷ lệ phiếu đạt ngưỡng KPI, '' khi chưa chốt ngưỡng hoặc kỳ không có phiếu. */
+function tyLeDatKpi_(ds, nguong) {
+  if (!nguong) return '';
+  const v = gomKpiTho_(ds).vaoKpi;
+  return tyLe_(v.filter(function (p) { return p <= nguong; }).length, v.length);
+}
+
+function ghiTomTat_(ssMoi, ds, dsTruoc, ctx) {
+  const sh = ssMoi.insertSheet('Tom_Tat', 0);
+  const bayGio = nowVN_();
+  const gNgay = gomTheoNgay_(ds, ctx, bayGio);
+  const gMT = gomTheoMayTho_(ds);
+  const nguong = nguongKpi_();
+
+  // Kỳ trước dùng ĐÚNG bộ lọc bộ phận/thợ của kỳ này, nếu không thì so sánh
+  // giữa hai phạm vi khác nhau — sai còn tệ hơn không so sánh.
+  const ctxTruoc = ctx.kyTruoc
+    ? { nhanKy: '', tuNgay: ctx.kyTruoc.tuNgay, denNgay: ctx.kyTruoc.denNgay }
+    : null;
+  const coTruoc = !!(ctxTruoc && dsTruoc);
+  const gNgayTruoc = coTruoc ? gomTheoNgay_(dsTruoc, ctxTruoc, bayGio) : null;
+  const gMTTruoc = coTruoc ? gomTheoMayTho_(dsTruoc) : null;
+
+  const luoi = [];
+  function them_(r) {
+    const d = (r || []).slice(0, SO_COT_TT);
+    while (d.length < SO_COT_TT) d.push('');
+    luoi.push(d);
+    return luoi.length;
+  }
+
+  // --- Đầu trang ------------------------------------------------------------
+  const dTieuDe = them_(['BÁO CÁO BẢO TRÌ MÁY']);
+  const dKy = them_([ctx.nhanKy + moTaBoLoc_(ctx)]);
+  const dXuat = them_([
+    'Xuất lúc ' + fmtNgay_(bayGio) + ' ' + fmtGio_(bayGio) +
+    (coTruoc ? ' · so sánh với ' + nhanKy_(ctx.kyTruoc.tuNgay, ctx.kyTruoc.denNgay) : ''),
+  ]);
+  them_([]);
+
+  // --- Bốn ô số lớn, mỗi ô kèm mức thay đổi ---------------------------------
+  const gioDung = quyRaGio_(gNgay.tong.tongPhut);
+  const dapUng = tbDapUngSuCo_(ds);
+  const datKpi = tyLeDatKpi_(ds, nguong);
+
+  const ss = [
+    soSanhKy_(gMT.tong.soSuCo, coTruoc ? gMTTruoc.tong.soSuCo : '', true, ' lần'),
+    soSanhKy_(gioDung, coTruoc ? quyRaGio_(gNgayTruoc.tong.tongPhut) : '', true, ' giờ'),
+    soSanhKy_(dapUng === '' ? 0 : dapUng,
+      coTruoc ? tbDapUngSuCo_(dsTruoc) : '', true, ' phút'),
+    soSanhKy_(datKpi === '' ? 0 : datKpi,
+      coTruoc && nguong ? tyLeDatKpi_(dsTruoc, nguong) : '', false, '%'),
+  ];
+
+  const dNhan = them_(['SỐ LẦN MÁY HỎNG', '', 'GIỜ MÁY NẰM IM', '',
+    'ĐÁP ỨNG TRUNG BÌNH', '', 'ĐẠT KPI ĐÁP ỨNG', '']);
+  const dSo = them_([gMT.tong.soSuCo, '', gioDung + ' giờ', '',
+    (dapUng === '' ? '—' : dapUng + ' phút'), '',
+    (datKpi === '' ? '—' : datKpi + '%'), '']);
+  const dLech = them_([ss[0].chu, '', ss[1].chu, '', ss[2].chu, '', ss[3].chu, '']);
+  them_([]);
+
+  // --- Điều cần biết — chỉ những dòng thật sự có nội dung --------------------
+  // `do: true` là dòng cần tô đỏ: không phải tin về nhà máy mà là báo cho người
+  // xuất biết BÁO CÁO NÀY ĐANG THIẾU SỐ. Cột toàn dấu gạch ngang mà không có lời
+  // giải thích thì người đọc tưởng tháng này không có dữ liệu.
+  const y = [];
+  const mayTe = Object.keys(gMT.theoMay).map(function (ten) {
+    return { ten: ten, lan: gMT.theoMay[ten].lan, dt: gMT.theoMay[ten].downtime };
+  }).sort(function (a, b) { return b.dt - a.dt; });
+
+  const gKpi = gomKpiTho_(ds);
+  if (gKpi.soChuaTinh) {
+    y.push({
+      chu: 'CHƯA TÍNH KPI ĐÁP ỨNG cho ' + gKpi.soChuaTinh + ' phiếu — vì vậy cột ' +
+        '"Đáp ứng sau khi trừ lúc bận" và "Đạt ngưỡng" bên dưới đang trống. ' +
+        'Vào Google Sheet gốc, chạy menu 🔧 Bảo trì → "1. Cài đặt hệ thống", rồi ' +
+        '"🎯 Tính lại KPI đáp ứng của thợ", sau đó xuất lại báo cáo này.',
+      do: true,
+    });
+  }
+  if (mayTe.length) {
+    y.push('Máy nằm im lâu nhất: ' + mayTe[0].ten + ' — ' + mayTe[0].lan +
+      ' lần hỏng, ' + quyRaGio_(mayTe[0].dt) + ' giờ.');
+  }
+  const treo = ds.filter(function (v) {
+    return laSuCo_(v) && v[COT.Trang_Thai] === TRANG_THAI.CHO_NHAN;
+  }).length;
+  if (treo) {
+    y.push('CÒN ' + treo + ' phiếu chưa ai nhận tính tới lúc xuất báo cáo — ' +
+      'những phiếu này không được tính vào chỉ số đáp ứng ở trên.');
+  }
+  if (gNgay.tong.conDung) {
+    y.push('Còn ' + gNgay.tong.conDung + ' máy CHƯA chạy lại tính tới lúc xuất báo cáo.');
+  }
+  if (gNgay.tong.soChoBan) {
+    y.push(gNgay.tong.soChoBan + ' lần máy phải chờ vì thợ đang bận việc khác — ' +
+      'phần chờ này không tính vào chỉ số của thợ, nhưng máy vẫn nằm im.');
+  }
+  if (!nguong) {
+    y.push('CHƯA CHỐT NGƯỠNG ĐẠT KPI. Sheet Bao_Cao có khối "CƠ SỞ ĐỂ CHỌN NGƯỠNG" ' +
+      'tính sẵn tỷ lệ đạt ở 5 mức 5/10/15/20/30 phút để chọn.');
+  }
+
+  const dMucY = them_(['ĐIỀU CẦN BIẾT']);
+  const dsDongY = [];
+  const dsDongDo = [];
+  if (!y.length) {
+    dsDongY.push(them_(['Kỳ này không có gì bất thường.']));
+  } else {
+    y.forEach(function (x) {
+      const d = them_(['• ' + (typeof x === 'string' ? x : x.chu)]);
+      dsDongY.push(d);
+      if (typeof x !== 'string' && x.do) dsDongDo.push(d);
+    });
+  }
+  them_([]);
+
+  // --- Máy hỏng nhiều nhất --------------------------------------------------
+  const dMucMay = them_(['MÁY CẦN CHÚ Ý — 5 máy nằm im lâu nhất']);
+  const dHeadMay = them_(['Máy', '', '', 'Số lần hỏng', '', 'Giờ máy nằm im', '', '']);
+  if (!mayTe.length) {
+    them_(['Kỳ này không có sự cố máy nào.']);
+  } else {
+    mayTe.slice(0, 5).forEach(function (m) {
+      them_([m.ten, '', '', m.lan, '', quyRaGio_(m.dt), '', '']);
+    });
+  }
+  const dCuoiMay = luoi.length;
+  them_([]);
+
+  // --- Kết quả theo thợ -----------------------------------------------------
+  const dsTho = Object.keys(gMT.theoTho).map(function (ten) {
+    const x = gMT.theoTho[ten];
+    return {
+      ten: ten, soViec: x.soViec, kpi: trungBinh_(x.kpi),
+      dat: nguong && x.kpi.length
+        ? tyLe_(x.kpi.filter(function (p) { return p <= nguong; }).length, x.kpi.length)
+        : '',
+    };
+  }).sort(function (a, b) { return b.soViec - a.soViec; });
+
+  const dMucTho = them_(['KẾT QUẢ THEO THỢ']);
+  const dHeadTho = them_(['Thợ', '', '', 'Số việc', '',
+    'Đáp ứng sau khi trừ lúc bận (phút)', '',
+    nguong ? 'Đạt ≤ ' + nguong + ' phút' : 'Đạt ngưỡng']);
+  const dsThoKem = [];
+  if (!dsTho.length) {
+    them_(['Kỳ này không có phiếu nào gắn thợ.']);
+  } else {
+    dsTho.forEach(function (t) {
+      const d = them_([t.ten, '', '', t.soViec, '',
+        t.kpi === '' ? '—' : t.kpi, '',
+        t.dat === '' ? '—' : t.dat + '%']);
+      // Tô đỏ người dưới 70% để sếp không phải dò cột số. Chỉ tô khi ĐÃ chốt
+      // ngưỡng — chưa chốt mà tô đỏ là kết tội bằng một con số chưa ai duyệt.
+      if (nguong && t.dat !== '' && t.dat < 70) dsThoKem.push(d);
+    });
+  }
+  const dCuoiTho = luoi.length;
+
+  them_([]);
+  const dCuoiTrang = them_(['Chi tiết: sheet Bao_Cao (nhật ký từng ngày, KPI đầy đủ) · ' +
+    'Theo_Ngay (phút dừng mỗi ngày) · Data_Goc (từng phiếu một).']);
+
+  // ==========================================================================
+  // Ghi một lần rồi mới định dạng
+  // ==========================================================================
+  sh.getRange(1, 1, luoi.length, SO_COT_TT).setValues(luoi);
+
+  sh.getRange(dTieuDe, 1, 1, SO_COT_TT).merge()
+    .setBackground(MAU_CHINH).setFontColor('#ffffff')
+    .setFontSize(18).setFontWeight('bold')
+    .setHorizontalAlignment('center').setVerticalAlignment('middle');
+  sh.setRowHeight(dTieuDe, 44);
+  sh.getRange(dKy, 1, 1, SO_COT_TT).merge()
+    .setBackground(MAU_NHAT).setFontColor('#174ea6').setFontWeight('bold')
+    .setFontSize(12).setHorizontalAlignment('center');
+  sh.getRange(dXuat, 1, 1, SO_COT_TT).merge()
+    .setFontColor('#5f6368').setFontSize(10).setHorizontalAlignment('center');
+
+  [1, 3, 5, 7].forEach(function (c, i) {
+    sh.getRange(dNhan, c, 1, 2).merge()
+      .setBackground(MAU_NHAT).setFontColor('#174ea6').setFontWeight('bold')
+      .setFontSize(10).setHorizontalAlignment('center').setWrap(true);
+    sh.getRange(dSo, c, 1, 2).merge()
+      .setFontSize(22).setFontWeight('bold').setFontColor(MAU_CHINH)
+      .setHorizontalAlignment('center').setVerticalAlignment('middle');
+    // Xanh khi đỡ hơn kỳ trước, đỏ khi tệ đi, xám khi không kết luận được.
+    sh.getRange(dLech, c, 1, 2).merge()
+      .setFontSize(9.5).setHorizontalAlignment('center').setWrap(true)
+      .setFontColor(ss[i].tot === null ? '#80868b'
+        : (ss[i].tot ? '#188038' : '#c5221f'));
+  });
+  sh.setRowHeight(dSo, 46);
+  sh.setRowHeight(dLech, 30);
+  sh.getRange(dNhan, 1, 3, SO_COT_TT)
+    .setBorder(true, true, true, true, true, false, MAU_VIEN,
+      SpreadsheetApp.BorderStyle.SOLID);
+
+  [dMucY, dMucMay, dMucTho].forEach(function (d) {
+    sh.getRange(d, 1, 1, SO_COT_TT).merge()
+      .setFontWeight('bold').setFontSize(12).setFontColor('#174ea6');
+    sh.setRowHeight(d, 26);
+  });
+  dsDongY.forEach(function (d) {
+    sh.getRange(d, 1, 1, SO_COT_TT).merge().setWrap(true).setFontSize(10.5)
+      .setVerticalAlignment('middle');
+  });
+  dsDongDo.forEach(function (d) {
+    sh.getRange(d, 1, 1, SO_COT_TT)
+      .setBackground('#fce8e6').setFontColor('#c5221f').setFontWeight('bold');
+    sh.setRowHeight(d, 44);
+  });
+
+  [dHeadMay, dHeadTho].forEach(function (d) {
+    sh.getRange(d, 1, 1, SO_COT_TT)
+      .setBackground('#e8eaed').setFontWeight('bold').setFontSize(10)
+      .setWrap(true).setVerticalAlignment('middle');
+  });
+  [[dHeadMay, dCuoiMay], [dHeadTho, dCuoiTho]].forEach(function (k) {
+    if (k[1] >= k[0]) {
+      sh.getRange(k[0], 1, k[1] - k[0] + 1, SO_COT_TT)
+        .setBorder(true, true, true, true, true, true, MAU_VIEN,
+          SpreadsheetApp.BorderStyle.SOLID);
+    }
+  });
+  // KHÔNG gộp ô cho cột tên: ô B và C để trống nên tên dài tự tràn qua. Gộp ở
+  // đây phải gộp NGANG từng dòng một; gộp cả khối bằng một lệnh là gộp DỌC cả
+  // cột, tên máy dồn hết vào một ô.
+  if (dsThoKem.length) {
+    sh.getRangeList(dsThoKem.map(function (d) { return 'A' + d + ':H' + d; }))
+      .setBackground('#fce8e6');
+  }
+
+  sh.getRange(dCuoiTrang, 1, 1, SO_COT_TT).merge()
+    .setFontColor('#5f6368').setFontSize(9.5).setHorizontalAlignment('center');
+
+  sh.setColumnWidth(1, 200);
+  [2, 3].forEach(function (c) { sh.setColumnWidth(c, 55); });
+  sh.setColumnWidth(4, 90);
+  sh.setColumnWidth(5, 40);
+  sh.setColumnWidth(6, 150);
+  sh.setColumnWidth(7, 40);
+  sh.setColumnWidth(8, 110);
+  sh.setHiddenGridlines(true);
+}
+
+// ============================================================================
+// 3a. SHEET Bao_Cao — trang tra cứu của tổ bảo trì
+//
+// Gộp đủ ba thứ hay bị hỏi: máy dừng bao nhiêu mỗi ngày, máy nào hỏng nhiều, thợ
+// nào làm gì — cộng khối chọn ngưỡng KPI. Trang cho SẾP là `Tom_Tat` ở trên; đây
+// là chỗ tra khi cần biết vì sao ra con số đó.
 // ============================================================================
 
 const SO_COT_BC = 12;   // A..L
@@ -585,11 +923,65 @@ const MAU_CHINH = '#1a73e8';
 const MAU_NHAT = '#e8f0fe';
 const MAU_VIEN = '#dadce0';
 
+// Các mức ngưỡng đem ra cho công ty cân nhắc. Cố ý tính sẵn cả 5 mức thay vì hỏi
+// trước: chọn ngưỡng mà không thấy tỷ lệ đạt tương ứng thì chỉ là bốc một con số.
+const NGUONG_GOI_Y_KPI = [5, 10, 15, 20, 30];
+
+/**
+ * Phân vị theo thứ hạng gần nhất (nearest-rank), KHÔNG nội suy: giá trị trả về
+ * luôn là một con số có thật trong dữ liệu. Với vài chục phiếu mỗi tháng thì nội
+ * suy chỉ tạo ra con số không phiếu nào mang, khó đối chiếu khi có người thắc mắc.
+ */
+function phanVi_(ds, p) {
+  if (!ds.length) return '';
+  const sap = ds.slice().sort(function (a, b) { return a - b; });
+  const i = Math.min(sap.length - 1, Math.max(0, Math.ceil(p * sap.length) - 1));
+  return sap[i];
+}
+
+/** Tỷ lệ phần trăm làm tròn số nguyên; mẫu bằng 0 thì trả rỗng, không trả 0%. */
+function tyLe_(tu, mau) {
+  return mau ? Math.round((tu / mau) * 100) : '';
+}
+
+/**
+ * Tách tập phiếu thành phần VÀO KPI và phần bị loại, kèm lý do loại.
+ *
+ * Đọc cột KPI_Ap_Dung đã tính sẵn (xem lý do ở gomTheoMayTho_). Ô còn trống nghĩa
+ * là chưa chạy "Tính lại KPI đáp ứng" lần nào — phải nói thẳng ra trên báo cáo,
+ * vì im lặng thì bảng KPI trông như thật mà thực ra thiếu phiếu.
+ */
+function gomKpiTho_(ds) {
+  const vaoKpi = [];
+  const loai = { loaiPhieu: 0, chuaNhan: 0, thieuMoc: 0 };
+  let soChuaTinh = 0;
+
+  ds.forEach(function (v) {
+    const tt = String(v[COT.KPI_Ap_Dung]).trim();
+    if (!tt) {
+      // Phiếu CV-/BT-/DM- chưa tính thì cũng không bao giờ vào KPI — đừng doạ
+      // người đọc bằng cảnh báo cho những phiếu vốn dĩ bị loại.
+      if (laSuCo_(v)) soChuaTinh++;
+      return;
+    }
+    if (tt === 'CO') {
+      if (String(v[COT.Phut_KPI_Tho]) !== '') vaoKpi.push(Number(v[COT.Phut_KPI_Tho]));
+      return;
+    }
+    if (tt.indexOf('chưa ai nhận') >= 0) loai.chuaNhan++;
+    else if (tt.indexOf('thiếu mốc giờ') >= 0) loai.thieuMoc++;
+    else loai.loaiPhieu++;
+  });
+
+  return { vaoKpi: vaoKpi, loai: loai, soChuaTinh: soChuaTinh };
+}
+
 function ghiTrangBaoCao_(ssMoi, ds, ctx) {
   const sh = ssMoi.insertSheet('Bao_Cao', 0);
   const bayGio = nowVN_();
   const gNgay = gomTheoNgay_(ds, ctx, bayGio);
   const gMT = gomTheoMayTho_(ds);
+  const nguongBc = nguongKpi_();   // 0 = công ty chưa chốt ngưỡng
 
   const luoi = [];
   function them_(r) {
@@ -717,13 +1109,85 @@ function ghiTrangBaoCao_(ssMoi, ds, ctx) {
     them_(['Không có sự cố hay lần dừng máy nào trong kỳ này.']);
   }
 
+  // --- Phần 1b: KPI đáp ứng thợ — cơ sở để công ty chọn ngưỡng ---------------
+  // Khối này đứng TRƯỚC bảng theo thợ vì nó trả lời câu hỏi phải chốt trước:
+  // lấy bao nhiêu phút làm mức đạt. Chấm người khi chưa có mức đạt là chấm chay.
+  const gKpi = gomKpiTho_(ds);
+  them_([]);
+  const dMucKpi = them_(['KPI ĐÁP ỨNG THỢ — CƠ SỞ ĐỂ CHỌN NGƯỠNG']);
+  const dsCanhBaoKpi = [];
+
+  if (gKpi.soChuaTinh) {
+    dsCanhBaoKpi.push(them_(['⚠️ Còn ' + gKpi.soChuaTinh + ' phiếu sự cố chưa có số KPI. ' +
+      'Chạy menu 🔧 Bảo trì → "🎯 Tính lại KPI đáp ứng của thợ" rồi xuất lại báo cáo này.']));
+  }
+
+  const dHeadKpi = [];
+  const dDauKpi = luoi.length + 1;
+  if (!gKpi.vaoKpi.length) {
+    them_(['Kỳ này chưa có phiếu nào vào KPI đáp ứng.']);
+  } else {
+    const soLoai = gKpi.loai.loaiPhieu + gKpi.loai.chuaNhan + gKpi.loai.thieuMoc;
+    them_(['Vào KPI: ' + gKpi.vaoKpi.length + ' phiếu · đã loại ' + soLoai + ' phiếu ' +
+      '(việc chung / bảo trì / dừng máy: ' + gKpi.loai.loaiPhieu +
+      ' · chưa ai nhận: ' + gKpi.loai.chuaNhan +
+      ' · thiếu mốc giờ: ' + gKpi.loai.thieuMoc + ')']);
+    them_(['Trung vị ' + phanVi_(gKpi.vaoKpi, 0.5) + ' phút' +
+      ' · P75 ' + phanVi_(gKpi.vaoKpi, 0.75) +
+      ' · P90 ' + phanVi_(gKpi.vaoKpi, 0.9) +
+      ' · P95 ' + phanVi_(gKpi.vaoKpi, 0.95) +
+      ' · Cao nhất ' + phanVi_(gKpi.vaoKpi, 1) +
+      '  (nửa số phiếu được nhận trong vòng ' + phanVi_(gKpi.vaoKpi, 0.5) + ' phút)']);
+
+    dHeadKpi.push(them_(['Ngưỡng', 'Số phiếu đạt', 'Tỷ lệ đạt toàn nhà máy',
+      'Số thợ đạt ≥ 90%', 'Thợ thấp nhất', '', '', '', '', '', '', '']));
+
+    // Ngưỡng công ty đã chốt (nếu có) cũng phải nằm trong bảng, dù không trùng
+    // mức gợi ý nào — để đọc thẳng được tỷ lệ đạt của chính mức đang áp dụng.
+    const mucXet = NGUONG_GOI_Y_KPI.slice();
+    if (nguongBc && mucXet.indexOf(nguongBc) === -1) mucXet.push(nguongBc);
+    mucXet.sort(function (a, b) { return a - b; });
+
+    const dsThoCoKpi = Object.keys(gMT.theoTho)
+      .map(function (ten) { return { ten: ten, kpi: gMT.theoTho[ten].kpi }; })
+      .filter(function (x) { return x.kpi.length; });
+
+    mucXet.forEach(function (n) {
+      const dat = gKpi.vaoKpi.filter(function (p) { return p <= n; }).length;
+
+      let soThoDat = 0, kem = null;
+      dsThoCoKpi.forEach(function (x) {
+        const tl = tyLe_(x.kpi.filter(function (p) { return p <= n; }).length, x.kpi.length);
+        if (tl >= 90) soThoDat++;
+        if (!kem || tl < kem.tl) kem = { ten: x.ten, tl: tl };
+      });
+
+      them_(['≤ ' + n + ' phút' + (n === nguongBc ? '  ← đang áp dụng' : ''),
+        dat + '/' + gKpi.vaoKpi.length,
+        tyLe_(dat, gKpi.vaoKpi.length) + '%',
+        soThoDat + '/' + dsThoCoKpi.length,
+        kem ? kem.ten + ' (' + kem.tl + '%)' : '—',
+        '', '', '', '', '', '', '']);
+    });
+
+    if (!nguongBc) {
+      them_(['Chưa chốt ngưỡng. Chọn xong chỉ cần gõ số phút vào ô ' +
+        'NGUONG_KPI_DAP_UNG_PHUT ở sheet Cau_Hinh rồi xuất lại — không phải sửa code.']);
+    }
+  }
+  const dCuoiKpi = luoi.length;
+
   // --- Phần 2: tổng kết theo thợ --------------------------------------------
   const dsTho = Object.keys(gMT.theoTho).map(function (ten) {
     const x = gMT.theoTho[ten];
     return { ten: ten, soViec: x.soViec, dapUng: trungBinh_(x.dapUng),
       cho: trungBinh_(x.choBan), sauRanh: trungBinh_(x.sauRanh),
       chong: x.chong, soChoBan: x.soChoBan, tongCho: x.tongCho,
-      tongSua: x.tongSua, tongDung: x.tongDung };
+      tongSua: x.tongSua, tongDung: x.tongDung,
+      kpi: trungBinh_(x.kpi),
+      datNguong: nguongBc && x.kpi.length
+        ? tyLe_(x.kpi.filter(function (p) { return p <= nguongBc; }).length, x.kpi.length) + '%'
+        : '—' };
   }).sort(function (a, b) { return b.soViec - a.soViec; });
 
   them_([]);
@@ -732,7 +1196,9 @@ function ghiTrangBaoCao_(ssMoi, ds, ctx) {
     'Chờ do thợ bận TB', 'Sau khi rảnh TB',
     'Số phiếu phải chờ vì thợ bận', 'Tổng phút chờ do bận',
     'Số lần nhận việc khi chưa đóng việc cũ',
-    'Tổng phút sửa', 'Tổng phút máy dừng', '', '']);
+    'Tổng phút sửa', 'Tổng phút máy dừng',
+    'KPI thợ TB (phút)',
+    nguongBc ? 'Tỷ lệ đạt ≤ ' + nguongBc + ' phút' : 'Tỷ lệ đạt ngưỡng']);
 
   const dDau2 = luoi.length + 1;
   dsTho.forEach(function (t) {
@@ -740,7 +1206,9 @@ function ghiTrangBaoCao_(ssMoi, ds, ctx) {
       t.dapUng === '' ? '—' : t.dapUng,
       t.cho === '' ? '—' : t.cho,
       t.sauRanh === '' ? '—' : t.sauRanh,
-      t.soChoBan, t.tongCho, t.chong, t.tongSua, t.tongDung, '', '']);
+      t.soChoBan, t.tongCho, t.chong, t.tongSua, t.tongDung,
+      t.kpi === '' ? '—' : t.kpi,
+      t.datNguong]);
   });
   let dCuoi2 = luoi.length;
   if (!dsTho.length) {
@@ -756,6 +1224,10 @@ function ghiTrangBaoCao_(ssMoi, ds, ctx) {
     'ở Ghi chú là chờ vì thợ đang làm phiếu nào, để kiểm chứng được. Lưu ý "Số lần ' +
     'nhận việc khi chưa đóng việc cũ" là chuyện khác: máy vẫn phải chờ ngay cả khi ' +
     'thợ đã đóng việc cũ xong mới nhận việc mới.']);
+  them_(['"KPI thợ TB" khác "Sau khi rảnh TB" ở chỗ nó cộng dồn TỪNG đoạn thợ bận rồi ' +
+    'mới trừ, nên khoảng thợ rảnh xen giữa hai việc vẫn tính cho thợ; cột "Sau khi rảnh" ' +
+    'chỉ lấy một mốc rảnh muộn nhất nên miễn trừ rộng hơn. Hai cột chỉ lệch nhau ở phiếu ' +
+    'mà thợ bận thành nhiều đoạn rời; giữ cả hai để đối chiếu với báo cáo các tháng trước.']);
 
   // ==========================================================================
   // Ghi một lần rồi mới định dạng
@@ -790,8 +1262,8 @@ function ghiTrangBaoCao_(ssMoi, ds, ctx) {
   sh.getRange(dPhu, 1, 1, SO_COT_BC).merge()
     .setFontColor('#5f6368').setFontSize(10.5).setHorizontalAlignment('center');
 
-  // Hai tiêu đề mục
-  [dMuc1, dMuc2].forEach(function (d) {
+  // Ba tiêu đề mục
+  [dMuc1, dMucKpi, dMuc2].forEach(function (d) {
     sh.getRange(d, 1, 1, SO_COT_BC).merge()
       .setFontWeight('bold').setFontSize(12).setFontColor('#174ea6');
     sh.setRowHeight(d, 28);
@@ -827,6 +1299,22 @@ function ghiTrangBaoCao_(ssMoi, ds, ctx) {
         SpreadsheetApp.BorderStyle.SOLID);
   }
 
+  // Bảng chọn ngưỡng KPI
+  dsCanhBaoKpi.forEach(function (d) {
+    sh.getRange(d, 1, 1, SO_COT_BC).merge()
+      .setBackground('#fce8e6').setFontColor('#c5221f').setFontWeight('bold');
+  });
+  dHeadKpi.forEach(function (d) {
+    sh.getRange(d, 1, 1, SO_COT_BC)
+      .setBackground('#e8eaed').setFontWeight('bold').setFontSize(10.5)
+      .setWrap(true).setVerticalAlignment('middle');
+  });
+  if (dHeadKpi.length && dCuoiKpi >= dDauKpi) {
+    sh.getRange(dHeadKpi[0], 1, dCuoiKpi - dHeadKpi[0] + 1, 5)
+      .setBorder(true, true, true, true, true, true, MAU_VIEN,
+        SpreadsheetApp.BorderStyle.SOLID);
+  }
+
   // Bảng theo thợ
   sh.getRange(dHead2, 1, 1, SO_COT_BC)
     .setBackground('#e8eaed').setFontWeight('bold').setFontSize(10.5)
@@ -837,7 +1325,7 @@ function ghiTrangBaoCao_(ssMoi, ds, ctx) {
         SpreadsheetApp.BorderStyle.SOLID);
   }
 
-  sh.getRange(dChuThich, 1, 2, SO_COT_BC).setFontColor('#5f6368').setFontSize(10);
+  sh.getRange(dChuThich, 1, 3, SO_COT_BC).setFontColor('#5f6368').setFontSize(10);
 
   sh.setColumnWidth(1, 120);   // Phiếu
   sh.setColumnWidth(2, 115);   // Máy
@@ -1209,7 +1697,8 @@ function gomTheoMayTho_(ds) {
       if (!theoTho[tenTho]) {
         theoTho[tenTho] = { soViec: 0, dapUng: [], sauRanh: [], choBan: [],
           chong: 0, soChoBan: 0, tongCho: 0,
-          suCo: 0, viecChung: 0, baoTri: 0, tongSua: 0, tongDung: 0 };
+          suCo: 0, viecChung: 0, baoTri: 0, tongSua: 0, tongDung: 0,
+          kpi: [] };
       }
       const x = theoTho[tenTho];
       x.soViec++;
@@ -1225,6 +1714,14 @@ function gomTheoMayTho_(ds) {
         if (c > 0) { x.soChoBan++; x.tongCho += c; }
       }
       if (Number(v[COT.So_Chong_Viec]) > 0) x.chong++;
+      // KPI bản cộng dồn đoạn bận. Lấy giá trị ĐÃ TÍNH SẴN trên sheet chứ không
+      // tính tại chỗ: báo cáo có thể đang lọc theo bộ phận hoặc theo một thợ, mà
+      // muốn biết thợ có bận hay không thì phải xét CẢ những phiếu bị bộ lọc gạt
+      // ra. Tính trong đây là ra số đẹp giả tạo cho báo cáo lọc hẹp.
+      if (String(v[COT.KPI_Ap_Dung]).trim() === 'CO' &&
+          String(v[COT.Phut_KPI_Tho]) !== '') {
+        x.kpi.push(Number(v[COT.Phut_KPI_Tho]));
+      }
       // Tổng phút sửa tính cho MỌI loại việc người đó làm; tổng phút máy dừng chỉ
       // tính phiếu thực sự làm máy nằm im. Hai con số này trả lời câu "thợ X sửa
       // máy mất bao lâu" mà bảng cũ chỉ có số trung bình nên không đáp được.
@@ -1385,6 +1882,10 @@ function ghiHuongDan_(ssMoi, ctx) {
       'Đây mới là chỉ số đánh giá thợ. Hai cột này cộng lại bằng đáp ứng tổng'],
     ['7', 'Trạng thái đáp ứng', 'Suy ra từ số liệu',
       'CHỒNG VIỆC = thợ nhận việc mới khi chưa đóng việc cũ'],
+    ['7b', 'KPI thợ, Số đoạn bận', 'Menu 🔧 Bảo trì → Tính lại KPI đáp ứng',
+      'KPI thợ cộng dồn TỪNG đoạn thợ bận rồi mới trừ, nên khoảng rảnh xen giữa hai ' +
+      'việc vẫn tính cho thợ. Số đoạn bận ≥ 2 là phiếu mà cột "sau khi thợ rảnh" ' +
+      'miễn trừ rộng hơn thực tế. Ngưỡng đạt khai ở sheet Cau_Hinh'],
     ['8', 'Sheet Theo_Ngay', 'Cắt thời gian dừng theo từng ngày',
       'Phiếu dừng nhiều ngày được CHIA cho từng ngày, không dồn vào ngày mở phiếu. ' +
       'Vì vậy cộng dọc cột phút có thể lệch với tổng theo phiếu ở Dashboard khi ' +
