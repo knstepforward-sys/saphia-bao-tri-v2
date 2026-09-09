@@ -153,6 +153,8 @@ const HEADER_MAY = ['Ma_May', 'Ten_May', 'Bo_Phan', 'Hoat_Dong', 'Link_QR'];
 const HEADER_THO = [
   'Ma_Tho', 'Ten_Tho', 'Chuyen_Mon', 'Nhom_Ca', 'So_Dien_Thoai',
   'Bo_Phan_Phu_Trach', 'Token', 'Hoat_Dong', 'Link_Ca_Nhan',
+  // --- Bổ sung sau, luôn THÊM VÀO CUỐI để không xô lệch dữ liệu đã ghi -------
+  'Telegram_Chat_ID',    // bot Telegram nhắn cho thợ; để trống là chưa ghép
 ];
 
 const HEADER_CA = ['Nhom_Ca', 'Mo_Ta', 'Ca_Ngay_Tu', 'Ca_Ngay_Den', 'Co_Ca_Dem'];
@@ -242,6 +244,18 @@ const CAU_HINH_MAC_DINH = [
     'này. ĐỂ TRỐNG khi công ty chưa chốt: báo cáo vẫn ra đủ, cột "Tỷ lệ đạt" hiện "—", ' +
     'và khối "CƠ SỞ ĐỂ CHỌN NGƯỠNG" vẫn tính sẵn tỷ lệ đạt ở 5 mức để chọn. ' +
     'Chốt xong chỉ cần gõ số vào đây rồi xuất lại báo cáo, không phải sửa code.'],
+  ['TELEGRAM_BAT', 'TAT',
+    'THÔNG BÁO TELEGRAM — công tắc tổng. Gõ BAT để bot nhắn cho thợ, gõ bất cứ thứ ' +
+    'gì khác (kể cả để trống) là TẮT hẳn phần Telegram. Có sự cố gì thì gõ TAT vào ' +
+    'đây là dừng ngay lập tức, không cần chờ ai sửa code. Chỉ bật lên sau khi đã ' +
+    'gửi thử thành công và ghép đủ Telegram_Chat_ID cho thợ.'],
+  ['NHAC_LAN_1_PHUT', '10',
+    'THÔNG BÁO TELEGRAM — phiếu sự cố chưa ai nhận quá ngần này PHÚT thì bot nhắc ' +
+    'lần 1, gửi lại đúng những thợ đang trực. Đặt 0 để tắt riêng phần nhắc.'],
+  ['NHAC_LAN_2_PHUT', '20',
+    'THÔNG BÁO TELEGRAM — quá ngần này PHÚT vẫn chưa ai nhận thì bot nhắc lần 2, ' +
+    'lời gắt hơn và kèm SDT_KHAN_CAP. Mỗi phiếu tối đa 2 lần nhắc, không bao giờ ' +
+    'nhiều hơn. Phải lớn hơn NHAC_LAN_1_PHUT. Đặt 0 để tắt riêng lần nhắc thứ hai.'],
   ['HUONG_DAN_KHOA_LINK_THO', '',
     'KHOÁ LINK KHI THỢ NGHỈ VIỆC: xoá trắng ô Token của người đó trong sheet ' +
     'Danh_Muc_Tho, bỏ tick Hoat_Dong, rồi chạy menu 🔧 Bảo trì → "4. Sinh lại ' +
@@ -728,6 +742,13 @@ function setupSystem() {
   // SĐT phải là text, nếu không Sheets sẽ nuốt số 0 đầu (0912... → 912...).
   shTho.getRange(2, HEADER_THO.indexOf('So_Dien_Thoai') + 1, shTho.getMaxRows() - 1, 1)
     .setNumberFormat('@');
+  // Telegram_Chat_ID cũng phải là text. Chat id dài 10–13 chữ số; để dạng số thì
+  // Sheets hiển thị thành dạng mũ (1.23457E+11) khi cột hẹp, mà chuanHoaChatId_
+  // cố ý CHẶN dạng mũ — gửi tới một id đã bị làm tròn là nhắn nhầm người khác.
+  // Quên dòng này thì thợ đó bị bỏ qua im lặng, không ai biết vì sao.
+  shTho.getRange(2, HEADER_THO.indexOf('Telegram_Chat_ID') + 1, shTho.getMaxRows() - 1, 1)
+    .setNumberFormat('@');
+  shTho.setColumnWidth(HEADER_THO.indexOf('Telegram_Chat_ID') + 1, 150);
   ketQua.push(SHEET.THO);
 
   // --- Ca làm việc ----------------------------------------------------------

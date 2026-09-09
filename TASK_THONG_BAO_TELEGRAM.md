@@ -157,11 +157,22 @@ vẫn báo được sự cố và vẫn thấy danh bạ như cũ.
 **sau** dòng đó. Đặt nhầm vào trong khoá thì mọi người báo sự cố phải xếp hàng chờ một cuộc
 gọi mạng, đúng thứ mà chú thích ở dòng 812 đã cảnh báo.
 
-### 5.3 Cột mới chỉ ĐỌC, không ghi
+### 5.3 Cột mới không làm tràn vùng ghi
 
-`Danh_Muc_Tho` đi từ 9 lên 10 cột. Sheet mặc định rộng 26 cột, nên `docSheet_` gọi
-`getRange(2, 1, n, 10)` vẫn nằm trong vùng, **không văng lỗi tràn cột kể cả khi chưa chạy
-`setupSystem`**. Khác hẳn đợt `Su_Co` 28 lên 33 cột vốn phải nới trước vì có ghi cả dòng.
+`Danh_Muc_Tho` đi từ 9 lên 10 cột. Sheet mặc định rộng 26 cột, nên `getRange(2, 1, n, 10)`
+vẫn nằm trong vùng, **không văng lỗi tràn cột kể cả khi chưa chạy `setupSystem`**. Khác hẳn
+đợt `Su_Co` 28 lên 33 cột vốn phải nới trước.
+
+> Bản đầu mục này ghi "cột mới chỉ ĐỌC, không ghi". **Sai**, đã sửa ngày 09/09/2026 khi làm
+> bước B4. Có hai hàm đọc rồi ghi lại trọn khối `HEADER_THO.length` cột: `refreshPersonalLinks`
+> (menu 4) và `chuanBiDanhMuc` (menu 3). Sau B4 chúng ghi 10 cột thay vì 9. Vẫn an toàn vì
+> chúng ghi lại chính giá trị vừa đọc trong cùng một lượt, nên chat id không mất — nhưng lý do
+> an toàn là thế, không phải vì "không ghi".
+
+**Chat id phải để định dạng text.** Chat id dài 10–13 chữ số; để ô ở dạng số thì Sheets hiển
+thị thành dạng mũ khi cột hẹp, mà `chuanHoaChatId_` cố ý chặn dạng mũ — gửi tới một id đã bị
+làm tròn là nhắn nhầm người khác. `setupSystem` đặt `setNumberFormat('@')` cho cột này, đúng
+cách cột `So_Dien_Thoai` đang làm. Quên là thợ đó bị bỏ qua im lặng, không ai biết vì sao.
 
 Vẫn chạy `setupSystem` một lần để có tiêu đề cột, nhưng mã **không được phụ thuộc** vào việc
 đó đã chạy hay chưa.

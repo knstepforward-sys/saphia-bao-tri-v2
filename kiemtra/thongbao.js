@@ -31,7 +31,7 @@ const nguon = ['Code.gs', 'ThongBao.gs']
 const XUAT = ';globalThis.__ra = { soanTinSuCoMoi_, soanTinDaNhan_, soanTinNhac_,' +
   ' gioVN_, chuoi_, phutGiua_, ghepDong_, ghepKhoi_, tenMayDayDu_,' +
   ' chuanHoaChatId_, catTin_, nenBatCauChi_,' +
-  ' COT, HEADER_SU_CO };';
+  ' TELEGRAM, COT, HEADER_SU_CO, HEADER_THO };';
 
 // Chạy trong CHÍNH realm này. Nếu tạo context riêng thì Date của khung test và
 // Date của code là hai constructor khác nhau, mọi `instanceof Date` bên trong
@@ -292,6 +292,25 @@ bang('nenBatCauChi_ KHÔNG bật vì thợ chưa bấm Start', G.nenBatCauChi_([
 bang('nenBatCauChi_ không bật khi mọi tin đều đi được', G.nenBatCauChi_([200, 200]), false);
 bang('nenBatCauChi_ mảng rỗng thì không tự bật', G.nenBatCauChi_([]), false);
 bang('nenBatCauChi_ không tham số thì không văng lỗi', G.nenBatCauChi_(), false);
+
+// ============================================================================
+// 7. CỘT TELEGRAM_CHAT_ID TRONG DANH_MUC_THO
+// ============================================================================
+//
+// Cột bổ sung phải nằm đúng CUỐI `HEADER_THO`. Chèn vào giữa là xô lệch mọi dữ
+// liệu đã ghi của 13 thợ, và hai hàm `refreshPersonalLinks` / `chuanBiDanhMuc`
+// vốn đọc rồi ghi lại trọn khối theo chỉ số cột sẽ ghi nhầm ô.
+
+bang('Telegram_Chat_ID nằm đúng cuối HEADER_THO',
+  G.HEADER_THO[G.HEADER_THO.length - 1], 'Telegram_Chat_ID');
+bang('Danh_Muc_Tho đúng 10 cột', G.HEADER_THO.length, 10);
+// Sheet mặc định rộng 26 cột nên đọc/ghi 10 cột vẫn trong vùng — rào 5.3.
+bang('Danh_Muc_Tho chưa chạm giới hạn 26 cột mặc định',
+  G.HEADER_THO.length <= 26, true);
+// Tên cột phải khớp giữa hai nơi, nếu không chatIdTheoMaTho_ đọc ra rỗng hết
+// mà không báo lỗi gì cả.
+bang('Tên cột trong hằng TELEGRAM khớp với HEADER_THO',
+  G.HEADER_THO.indexOf(G.TELEGRAM.COT_CHAT_ID) >= 0, true);
 
 loi.forEach(function (x) { console.log(x); });
 console.log(loi.length
