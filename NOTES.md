@@ -1,3 +1,9 @@
+## [2026-09-09] Thử Telegram trên wifi nhà máy — vào được, và sửa một chỗ sai trong kế hoạch
+- **Thay đổi:** Sửa mục 3 và mục 5.12 của `TASK_THONG_BAO_TELEGRAM.md`, cập nhật bước 0 ở mục 7. Bản đầu ghi rằng nếu mạng nhà máy chặn Telegram thì mỗi lần công nhân báo sự cố phải chờ lệnh gọi mạng chết ngắc. **Sai.** Apps Script chạy trên máy chủ Google nên lời gọi tới Telegram đi thẳng từ Google sang Telegram, không qua mạng nhà máy. Mạng nhà máy chỉ quyết định thợ có nhận và đọc được tin hay không. Cầu chì ở 5.12 vẫn giữ nhưng đổi lý do: phòng Telegram lỗi hoặc chặn tốc độ, và Google gọi ra ngoài chậm.
+- **Lý do:** Chẩn đoán sai chỗ thì rào an toàn đặt sai chỗ, và một rào chặn `clasp push` không có thật sẽ giữ việc lại vô cớ.
+- **Trạng thái:** Mới là tài liệu, đã push GitHub. **Không** `clasp push`, **không** deploy. Đã thử Telegram trên wifi nhà máy ngày 09/09/2026, vào được bình thường. **Chưa thử 4G của thợ** — thợ ca đêm hoặc đi tới khu máy sóng yếu thì rớt sang 4G, đúng lúc cần nhận tin nhất.
+- **Việc cần làm tiếp theo:** Nhờ một thợ tắt wifi rồi mở Telegram để chốt phép thử 4G. Song song đó bắt đầu được bước B1 ở mục 6 của tài liệu, vì việc viết mã không phụ thuộc kết quả đó.
+
 ## [2026-09-09] Chốt phương án bot Telegram nhắc thợ, chưa viết mã
 - **Thay đổi:** Thêm `TASK_THONG_BAO_TELEGRAM.md` — kế hoạch đầy đủ cho bot Telegram nhắc thợ khi có sự cố: thiết kế file `ThongBao.gs`, ba chỗ móc vào `reportIncident` / `reportMachineStop` / `acceptIncident`, ba lớp nhắc, 13 rào an toàn, 9 bước thi công, 7 bước đưa vào chạy thật, và prompt mở chat mới. Thêm mục việc đang chờ vào `PROMPT_KHUNG_CHAT_MOI.md`. **Chưa sửa một dòng mã nào của hệ thống.**
 - **Lý do:** Công nhân quét QR báo sự cố xong thì quên gọi thợ rất nhiều, phiếu nằm `CHO_NHAN` không ai biết. Hệ thống đã biết chính xác ai đang trực, chỉ thiếu đường đẩy tin tới điện thoại thợ.

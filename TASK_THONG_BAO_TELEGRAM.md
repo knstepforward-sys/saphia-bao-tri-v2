@@ -44,18 +44,25 @@ phải mở thêm đường nhận dữ liệu từ Telegram về Apps Script.
 
 ---
 
-## 3. Việc CHƯA có câu trả lời — chặn bước `clasp push`
+## 3. Đường mạng — đã thử một nửa
 
-**Telegram có vào được mạng nhà máy và 4G của thợ không?**
+**Lệnh gửi KHÔNG đi qua mạng nhà máy.** Apps Script chạy trên máy chủ Google, nên lời gọi tới
+Telegram đi thẳng từ Google sang Telegram. Nhà mạng Việt Nam chặn hay không cũng không ảnh
+hưởng tới việc gửi. Bản đầu của tài liệu này ghi sai điều đó, đã sửa ngày 09/09/2026.
 
-Tháng 5/2025 Việt Nam có yêu cầu nhà mạng chặn Telegram. Chưa thử thực tế.
+Mạng ở nhà máy chỉ quyết định **thợ có nhận và đọc được tin hay không**.
 
-- Viết mã thì không phụ thuộc câu trả lời này, cứ làm được.
-- **Nhưng chưa có kết quả thử thì không `clasp push`.** Đẩy lên chỉ thêm mã chết, và tệ hơn là
-  mỗi lần công nhân báo sự cố phải chờ thêm hàng chục giây cho lệnh gọi mạng chết ngắc.
-- Nếu bị chặn thì bỏ hẳn hướng này, làm phương án thay thế: `Tho.html` tự làm mới mỗi 30 giây,
-  có phiếu mới chưa ai nhận thì phát chuông và rung. Miễn phí, không phụ thuộc bên thứ ba,
-  không cần cột mới. Đổi lại thợ phải để trang mở.
+| Phép thử | Kết quả |
+|---|---|
+| Telegram trên wifi nhà máy | ✅ Vào được bình thường, thử ngày 09/09/2026 |
+| Telegram trên 4G của thợ | ❓ Chưa thử |
+
+Phép thử 4G vẫn cần làm: thợ ca đêm hoặc đi tới khu máy sóng yếu thì rớt wifi sang 4G, đúng
+lúc cần nhận tin nhất. Nhờ một thợ tắt wifi rồi mở Telegram là biết.
+
+Nếu 4G cũng chặn thì cân nhắc phương án thay thế: `Tho.html` tự làm mới mỗi 30 giây, có phiếu
+mới chưa ai nhận thì phát chuông và rung. Miễn phí, không phụ thuộc bên thứ ba, không cần cột
+mới. Đổi lại thợ phải để trang mở.
 
 ---
 
@@ -207,13 +214,14 @@ lấy được khoá thì bỏ lượt, lượt sau 5 phút nữa làm tiếp. K
 Mỗi phiếu tối đa **2 lần nhắc**, đời đời. Mỗi lượt trigger gửi tối đa một số tin nhất định.
 Trường hợp phải phòng: mất điện cả xưởng, 40 máy báo cùng lúc, bot nhắn 200 tin.
 
-### 5.12 Cầu chì cho trường hợp Telegram bị chặn
+### 5.12 Cầu chì khi Telegram không trả lời
 
-Nếu mạng nhà máy chặn Telegram thì mỗi lệnh gửi sẽ treo tới lúc hết giờ chờ. Công nhân báo
-sự cố phải đứng nhìn màn hình quay.
+Không phải để phòng nhà máy chặn Telegram — lệnh gửi đi từ máy chủ Google, không qua mạng nhà
+máy. Để phòng hai thứ khác: Telegram lỗi hoặc chặn tốc độ, và Google gọi ra ngoài chậm. Cả hai
+đều làm lệnh gửi treo tới lúc hết giờ chờ, mà lệnh đó nằm ngay sau lúc công nhân bấm gửi phiếu.
 
 Rào: một lần gửi hỏng thì ghi dấu vào `CacheService` và **ngắt 10 phút**, trong 10 phút đó
-không gọi mạng lần nào nữa. Hết 10 phút thử lại một lần. Nghĩa là kể cả bị chặn hoàn toàn thì
+không gọi mạng lần nào nữa. Hết 10 phút thử lại một lần. Nghĩa là kể cả Telegram chết hẳn thì
 mỗi 10 phút chỉ có đúng một người phải chờ, thay vì tất cả mọi người.
 
 ### 5.13 Token không được lọt vào repository
@@ -248,8 +256,8 @@ Toàn bộ B1 tới B9 **không** `clasp push`, **không** deploy.
 
 Sắp xếp để phần có giá trị nhất lên trước, phần rủi ro nhất xuống cuối.
 
-**Bước 0 — thử mạng.** Mở Telegram trên wifi nhà máy và trên 4G của một thợ. Không vào được
-thì dừng hẳn hướng này.
+**Bước 0 — thử mạng.** Wifi nhà máy đã thử ngày 09/09/2026, vào được. Còn 4G của thợ chưa thử,
+xem mục 3. Việc gửi không phụ thuộc hai phép thử này, chỉ việc thợ nhận tin mới phụ thuộc.
 
 **Bước 1 — tạo bot.** Nhắn `@BotFather` trong Telegram, đặt tên, nhận token. Dán token vào
 Script Properties, khoá `TELEGRAM_BOT_TOKEN`. Việc này chủ dự án tự làm, mã không đụng tới.
