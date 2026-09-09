@@ -66,16 +66,22 @@ bị chặn deploy do không cùng domain Workspace với chủ sở hữu scrip
 
 ## Việc đang chờ, nếu chưa biết bắt đầu từ đâu
 
-Chép một trong hai dòng này vào chỗ `[điền vào đây]`:
+Chép một trong ba dòng này vào chỗ `[điền vào đây]`:
 
-**1. Đang làm dở**
+**1. Đã duyệt phương án, chờ thi công** — bot Telegram nhắc thợ. Việc này có prompt
+riêng đầy đủ ở cuối `TASK_THONG_BAO_TELEGRAM.md`, dùng prompt đó thay cho khối trên.
+```
+Làm bot Telegram nhắc thợ theo đúng TASK_THONG_BAO_TELEGRAM.md, bắt đầu từ bước B1.
+```
+
+**2. Đang làm dở**
 ```
 Cải tiến cách tính tỉ lệ hiệu dụng A trong HieuDung.gs rồi bật lại công tắc
 HIEN_HIEU_DUNG_BAO_CAO_NGAY. Cách tính cũ coi mọi máy Hoat_Dong = TRUE là có
 kế hoạch chạy đủ lịch bộ phận, không đúng thực tế.
 ```
 
-**2. Cần tôi cung cấp số liệu**
+**3. Cần tôi cung cấp số liệu**
 ```
 Quy thời gian dừng máy ra tiền. Doanh thu ước tính mỗi giờ máy chạy là: [số tiền]
 ```
