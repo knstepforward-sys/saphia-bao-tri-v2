@@ -1,0 +1,37 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git show:*)",
+      "Bash(git fetch:*)",
+      "Bash(git pull:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git branch:*)",
+      "Bash(git rev-parse:*)",
+      "Bash(git ls-files:*)",
+      "Bash(git stash list:*)",
+      "PowerShell(powershell -ExecutionPolicy Bypass -File dongbo.ps1:*)",
+      "PowerShell(powershell -ExecutionPolicy Bypass -File kiemtra\\kiem-tra.ps1:*)",
+      "Bash(node kiemtra/checkhtml.js:*)",
+      "Bash(node kiemtra/shadow.js:*)",
+      "Bash(node apps-script/test/test_dapUngKPI.js)",
+      "Bash(node apps-script/test/test_baoCaoSep.js)",
+      "Bash(node apps-script/test/test_kpiDet.js)"
+    ],
+    "deny": [
+      "Bash(clasp push:*)",
+      "Bash(clasp.cmd push:*)",
+      "Bash(clasp deploy:*)",
+      "Bash(clasp.cmd deploy:*)",
+      "PowerShell(clasp push:*)",
+      "PowerShell(clasp.cmd push:*)",
+      "PowerShell(clasp deploy:*)",
+      "PowerShell(clasp.cmd deploy:*)",
+      "Bash(git push:*)",
+      "PowerShell(git push:*)"
+    ]
+  }
+}

@@ -3,6 +3,28 @@
 Hệ thống nội bộ cho công ty dệt may Việt Nam: kỹ thuật viên quét QR trên máy →
 mở app mobile → nhập báo cáo sự cố/sửa chữa → lưu thẳng vào Google Sheets.
 
+> ## 🔄 BẮT ĐẦU MỖI PHIÊN — chạy trước khi làm bất cứ gì
+>
+> ```
+> powershell -ExecutionPolicy Bypass -File dongbo.ps1
+> ```
+>
+> Một lệnh làm đủ: chặn nếu còn thay đổi chưa commit, `git pull`, rồi tải bản đang chạy
+> trên Apps Script về thư mục tạm và so với `bao-tri-v2/`. Script chỉ đọc và báo cáo,
+> không bao giờ push, deploy hay ghi đè file trong repo.
+>
+> | Mã thoát | Nghĩa | Làm gì |
+> |---|---|---|
+> | 0 | Sạch, khớp cả GitHub lẫn Apps Script | Bắt đầu việc luôn |
+> | 1 | Có lệch cần người quyết | Đọc kết luận script in ra, hỏi chủ dự án |
+> | 2 | Thiếu môi trường (chưa login, thiếu `.clasp.json`) | Sửa theo hướng dẫn script in ra |
+>
+> **Mã nguồn tồn tại ở BỐN nơi**: máy công ty, laptop cá nhân, GitHub, và Apps Script
+> Editor. Trước khi rời một máy phải commit và push, nếu không lần sau ngồi máy kia sẽ
+> lệch. Đã có lần repo tụt ~1000 dòng vì có người sửa thẳng trên Editor.
+>
+> Cài đặt máy mới: xem `README.md`. Prompt mở chat: xem `PROMPT_KHUNG_CHAT_MOI.md`.
+
 > ## ⚠️ Thư mục này chứa HAI hệ thống riêng biệt
 >
 > | Thư mục | Hệ thống | Tài liệu |
