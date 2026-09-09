@@ -1182,6 +1182,198 @@ function chayTest() {
   t.bang('Chưa khai kế hoạch thì A là null, không phải 0', kqThieu.may[0].tiLe, null);
   t.bang('Và bộ phận đó được nêu tên để đi khai', kqThieu.thieuKeHoach, ['TEST']);
 
+  // --- 20. Thông báo Telegram ------------------------------------------------
+  //
+  // ⚠️ Phần lớn các ca dưới đây là bản SAO của `kiemtra/thongbao.js`. Sửa kỳ vọng
+  // ở một bên mà quên bên kia thì bộ chạy tại máy vẫn xanh trong khi bộ này đỏ —
+  // đã dính đúng một lần ngày 03/09/2026 với `kpi-tho.js`. Sửa ca nào thì sửa CẢ
+  // HAI chỗ rồi chạy lại cả hai.
+  //
+  // Phần CHỈ có ở đây, không chép được sang bộ tại máy, là nhóm ca cuối: thay hàm
+  // gửi và hàm đọc sheet bằng hàm giả để chạy thử hai hàm ghép. Bộ tại máy không
+  // làm được vì `lienLacTho_` đọc `Danh_Muc_Tho`.
+
+  const _phieuTg_ = function (o) {
+    const v = new Array(HEADER_SU_CO.length).fill('');
+    Object.keys(o).forEach(function (k) { v[COT[k]] = o[k]; });
+    return v;
+  };
+  const _mauTg_ = {
+    Ma_Su_Co: 'SC-0909-014', Ma_May: 'DET12', Ten_May: 'MÁY DỆT 12', Bo_Phan: 'DET',
+    Nhom_Loi: 'Lỗi cơ khí', Mo_Ta: 'Máy kêu to rồi dừng đột ngột',
+    Thoi_Gian_Bao: _luc_('2026-09-09T14:32'),
+    Ten_Tho: 'Nhân', Thoi_Gian_Nhan: _luc_('2026-09-09T14:35'),
+  };
+  const _LINK_ = 'https://x.io/baotri.html?tho=TH01&token=abc';
+
+  // Việt Nam không có giờ mùa hè nên +07:00 là hằng số, không phải xấp xỉ.
+  t.bang('gioVN_ đổi đúng mốc UTC sang giờ Việt Nam',
+    gioVN_(new Date('2026-09-09T07:32:00Z')), '14:32');
+  t.bang('gioVN_ vắt qua nửa đêm', gioVN_(new Date('2026-09-09T18:30:00Z')), '01:30');
+  t.bang('gioVN_ với ô trống trả rỗng', gioVN_(''), '');
+  // In ra số phút âm là người đọc mất tin tưởng vào cả cái bot.
+  t.bang('phutGiua_ giờ ngược nhau trả 0',
+    phutGiua_(_luc_('2026-09-09T15:00'), _luc_('2026-09-09T14:00')), 0);
+
+  t.bang('Tin sự cố đầy đủ khớp nguyên văn mẫu mục 4.3',
+    soanTinSuCoMoi_(_phieuTg_(_mauTg_), _LINK_),
+    '🔴 MÁY DỆT 12 (DET) đã dừng\n' +
+    'Lỗi cơ khí\n' +
+    '"Máy kêu to rồi dừng đột ngột"\n' +
+    'Báo lúc 14:32 · phiếu SC-0909-014\n' +
+    '\n' +
+    '➡️ Bấm để nhận việc: ' + _LINK_);
+  // Phiếu DM- không có nhóm lỗi. In ra dòng trắng là tin trông như lỗi hiển thị.
+  t.bang('Thiếu nhóm lỗi thì rụng đúng dòng đó',
+    soanTinSuCoMoi_(_phieuTg_({ Ten_May: 'MÁY SOI 4', Bo_Phan: 'SOI',
+      Ma_Su_Co: 'DM-0909-003', Thoi_Gian_Bao: _luc_('2026-09-09T08:00') }), ''),
+    '🔴 MÁY SOI 4 (SOI) đã dừng\nBáo lúc 08:00 · phiếu DM-0909-003');
+  // Tin là văn bản trơn, cố ý không dùng parse_mode.
+  t.bang('Ký tự đặc biệt trong mô tả giữ nguyên văn',
+    soanTinSuCoMoi_(_phieuTg_({ Ten_May: 'M', Mo_Ta: 'Kêu <to> *gấp* _cần_ sửa' }), '')
+      .indexOf('"Kêu <to> *gấp* _cần_ sửa"') > 0, true);
+
+  t.bang('Tin đã nhận khớp nguyên văn mẫu mục 4.3',
+    soanTinDaNhan_(_phieuTg_(_mauTg_)),
+    '✅ Nhân đã nhận SC-0909-014 lúc 14:35. Bạn không cần xử lý.');
+
+  const _nhac1_ = soanTinNhac_(_phieuTg_(_mauTg_), 1, _luc_('2026-09-09T14:52'),
+    _LINK_, '0912345678');
+  const _nhac2_ = soanTinNhac_(_phieuTg_(_mauTg_), 2, _luc_('2026-09-09T15:12'),
+    _LINK_, '0912345678');
+  t.bang('Nhắc lần 1 nêu số phút máy nằm im',
+    _nhac1_.indexOf('Máy đã nằm im 20 phút.') > 0, true);
+  // Lớp 3 ở mục 4.4: số khẩn cấp chỉ xuất hiện ở lần nhắc thứ hai. Đưa ra sớm là
+  // mất hết sức nặng của nó.
+  t.bang('Nhắc lần 1 KHÔNG kèm số khẩn cấp', _nhac1_.indexOf('0912345678') < 0, true);
+  t.bang('Nhắc lần 2 kèm số khẩn cấp', _nhac2_.indexOf('0912345678') > 0, true);
+
+  // Sheets đọc ô số lớn ra dạng mũ nếu người dùng dán đè định dạng. Gửi tới một
+  // id đã bị làm tròn là nhắn nhầm người khác, nên thà không gửi.
+  t.bang('chuanHoaChatId_ chặn dạng mũ của Sheets', chuanHoaChatId_('1.23457E+11'), '');
+  t.bang('chuanHoaChatId_ nhận id âm của nhóm',
+    chuanHoaChatId_('-1001234567890'), '-1001234567890');
+  t.bang('catTin_ cắt tin quá dài và đánh dấu bị cắt', catTin_('abcdefgh', 5), 'abcd…');
+  // 429 và 5xx hỏng phía hệ thống; 400 và 403 hỏng ở một chat id cụ thể.
+  t.bang('nenBatCauChi_ bật khi bị chặn tốc độ', nenBatCauChi_([200, 429]), true);
+  t.bang('nenBatCauChi_ KHÔNG bật vì một chat id sai', nenBatCauChi_([200, 400]), false);
+
+  const _llTg_ = {
+    TH01: { chatId: '111', link: 'https://x/?tho=TH01' },
+    TH02: { chatId: '222', link: 'https://x/?tho=TH02' },
+  };
+  t.bang('Bỏ số khẩn cấp ở cuối danh bạ',
+    locNguoiNhan_({ ds: [{ maTho: 'TH01' }, { maTho: '', khanCap: true }] }, _llTg_, '')
+      .length, 1);
+  t.bang('Bỏ chính người vừa bấm nhận',
+    locNguoiNhan_({ ds: [{ maTho: 'TH01' }, { maTho: 'TH02' }] }, _llTg_, 'TH01')
+      .map(function (n) { return n.maTho; }), ['TH02']);
+
+  const _bay_ = _luc_('2026-09-09T15:00');
+  const _phieuCho_ = function (ma, phutTruoc, trangThai) {
+    return { dong: 1, v: _phieuTg_({ Ma_Su_Co: ma, Ma_May: 'DET12', Bo_Phan: 'DET',
+      Trang_Thai: trangThai || TRANG_THAI.CHO_NHAN,
+      Thoi_Gian_Bao: new Date(_bay_.getTime() - phutTruoc * 60000) }) };
+  };
+  const _chNhac_ = { NHAC_LAN_1_PHUT: '10', NHAC_LAN_2_PHUT: '20' };
+
+  t.bang('Lần 2 đè lên lần 1 trong nhật ký',
+    demLanDaNhac_([{ Ma_Su_Co: 'SC-1', Actor: 'BOT', Hanh_Dong: 'NHAC_LAN_1' },
+      { Ma_Su_Co: 'SC-1', Actor: 'BOT', Hanh_Dong: 'NHAC_LAN_2' }]), { 'SC-1': 2 });
+  t.bang('Chỉ đếm dòng của BOT, bỏ dòng của người',
+    demLanDaNhac_([{ Ma_Su_Co: 'SC-1', Actor: 'TH01', Hanh_Dong: 'NHAN_VIEC' }]), {});
+  t.bang('Quá ngưỡng 1 thì nhắc lần 1',
+    chonPhieuCanNhac_([_phieuCho_('SC-1', 12)], {}, _chNhac_, _bay_)
+      .map(function (m) { return m.lan; }), [1]);
+  // Rào 5.11: hai lần là hết, đời đời.
+  t.bang('Đã nhắc lần 2 thì thôi hẳn',
+    chonPhieuCanNhac_([_phieuCho_('SC-1', 300)], { 'SC-1': 2 }, _chNhac_, _bay_), []);
+  // Trigger chạy trễ: nhắc "lần 1" cho phiếu đã treo 3 tiếng là nói sai sự thật.
+  t.bang('Quá cả hai ngưỡng ngay lần xét đầu thì nhảy thẳng lên lần 2',
+    chonPhieuCanNhac_([_phieuCho_('SC-1', 90)], {}, _chNhac_, _bay_)
+      .map(function (m) { return m.lan; }), [2]);
+  t.bang('Phiếu đã có thợ nhận thì không nhắc',
+    chonPhieuCanNhac_([_phieuCho_('SC-1', 60, TRANG_THAI.DANG_XU_LY)], {}, _chNhac_, _bay_), []);
+  // Rào chặn lúc gõ BAT lần đầu: không có nó thì công tắc vừa bật là bot bắn một
+  // loạt tin về những phiếu cũ còn treo từ trước.
+  t.bang('Phiếu treo quá một ngày thì thôi',
+    chonPhieuCanNhac_([_phieuCho_('SC-1', 1500)], {}, _chNhac_, _bay_), []);
+
+  // --- 20b. Hai hàm ghép, chạy với hàm gửi GIẢ -------------------------------
+  //
+  // Nhóm ca duy nhất không chép sang `kiemtra/thongbao.js` được, vì `lienLacTho_`
+  // đọc `Danh_Muc_Tho` và `thongBaoDaNhan_` gọi `getOnDutyContacts_`.
+  //
+  // Thay hàm bằng cách gán đè rồi TRẢ LẠI trong `finally`. Quên trả lại là mọi
+  // test chạy sau đó dùng nhầm hàm giả — nguy hiểm hơn hẳn một test đỏ, vì nó
+  // xanh mà sai.
+
+  const _gocGui_ = guiTelegram_;
+  const _gocLienLac_ = lienLacTho_;
+  const _gocDanhBa_ = getOnDutyContacts_;
+  let _daGui_ = [];
+
+  try {
+    guiTelegram_ = function (ds) { _daGui_ = ds || []; return _daGui_.length; };
+    lienLacTho_ = function () { return _llTg_; };
+
+    // Mỗi thợ phải nhận LINK CỦA CHÍNH MÌNH. Gửi nhầm link của người khác là thợ
+    // A bấm nhận rồi hệ thống ghi tên thợ B.
+    _daGui_ = [];
+    const _so1_ = thongBaoSuCoMoi_(_phieuTg_(_mauTg_),
+      { ds: [{ maTho: 'TH01' }, { maTho: 'TH02' }] }, { TELEGRAM_BAT: 'BAT' });
+    t.bang('Gửi đúng 2 tin cho 2 thợ', _so1_, 2);
+    t.bang('Đúng chat id của từng người',
+      _daGui_.map(function (x) { return x.chatId; }), ['111', '222']);
+    t.bang('Mỗi thợ nhận link riêng của mình',
+      _daGui_.map(function (x) { return x.text.indexOf('?tho=TH0') > 0; }), [true, true]);
+    t.bang('Thợ TH02 nhận đúng link TH02',
+      _daGui_[1].text.indexOf('https://x/?tho=TH02') > 0, true);
+
+    // Rào 5.4: ghép chat id cho 15 thợ làm dần, ai chưa có thì im lặng bỏ qua.
+    _daGui_ = [];
+    t.bang('Thợ chưa ghép chat id thì bỏ qua, không lỗi',
+      thongBaoSuCoMoi_(_phieuTg_(_mauTg_), { ds: [{ maTho: 'TH09' }] }, {}), 0);
+    t.bang('Và không gửi tin nào cả', _daGui_.length, 0);
+
+    // Rào 5.1: hàm gửi hỏng KHÔNG được kéo theo thứ gì khác.
+    guiTelegram_ = function () { throw new Error('Telegram chết hẳn'); };
+    t.bang('Hàm gửi ném lỗi thì hàm ghép vẫn trả 0, không ném ra ngoài',
+      thongBaoSuCoMoi_(_phieuTg_(_mauTg_), { ds: [{ maTho: 'TH01' }] }, {}), 0);
+    t.bang('Hàm đọc sheet ném lỗi cũng vậy', (function () {
+      lienLacTho_ = function () { throw new Error('Sheet hỏng'); };
+      return thongBaoSuCoMoi_(_phieuTg_(_mauTg_), { ds: [{ maTho: 'TH01' }] }, {});
+    })(), 0);
+
+    // Báo đã có người nhận: gửi cho những người CÒN LẠI.
+    lienLacTho_ = function () { return _llTg_; };
+    guiTelegram_ = function (ds) { _daGui_ = ds || []; return _daGui_.length; };
+    getOnDutyContacts_ = function () { return { ds: [{ maTho: 'TH01' }, { maTho: 'TH02' }] }; };
+
+    _daGui_ = [];
+    t.bang('Báo đã nhận chỉ gửi cho người còn lại',
+      thongBaoDaNhan_(_phieuTg_(_mauTg_), 'TH01', {}), 1);
+    t.bang('Đúng người còn lại', _daGui_[0].chatId, '222');
+    t.bang('Và đúng nội dung tin đã nhận',
+      _daGui_[0].text, '✅ Nhân đã nhận SC-0909-014 lúc 14:35. Bạn không cần xử lý.');
+
+    // Ca trực chỉ có một người: nhận xong thì không còn ai để báo.
+    getOnDutyContacts_ = function () { return { ds: [{ maTho: 'TH01' }] }; };
+    _daGui_ = [];
+    t.bang('Ca chỉ có một thợ thì không gửi tin nào',
+      thongBaoDaNhan_(_phieuTg_(_mauTg_), 'TH01', {}), 0);
+    t.bang('Thật sự không gửi gì', _daGui_.length, 0);
+
+  } finally {
+    guiTelegram_ = _gocGui_;
+    lienLacTho_ = _gocLienLac_;
+    getOnDutyContacts_ = _gocDanhBa_;
+  }
+
+  t.bang('Đã trả lại hàm gửi thật sau khi thay', guiTelegram_ === _gocGui_, true);
+  t.bang('Đã trả lại hàm đọc danh mục thợ', lienLacTho_ === _gocLienLac_, true);
+  t.bang('Đã trả lại hàm dựng danh bạ', getOnDutyContacts_ === _gocDanhBa_, true);
+
   // --- Kết quả ---------------------------------------------------------------
   const tong = kq.dat + kq.loi.length;
   const bao = kq.loi.length

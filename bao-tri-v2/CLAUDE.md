@@ -47,7 +47,7 @@ người dùng để hiện cửa sổ đăng nhập.
 
 ---
 
-## 2. Cấu trúc file — 21 file
+## 2. Cấu trúc file — 22 file
 
 | File | Vai trò |
 |---|---|
@@ -63,7 +63,8 @@ người dùng để hiện cửa sổ đăng nhập.
 | `DanhMuc.gs` | Đồng bộ danh mục máy theo bộ phận, thêm máy lẻ |
 | `DonDuLieu.gs` | Xoá phiếu / dọn dữ liệu chạy thử, có thùng rác. **Chỉ menu, không có route web** |
 | `DoTai.gs` | Đo chi phí thật của từng hàm RPC, chỉ đọc |
-| `Test.gs` | ~210 test chạy bằng dữ liệu giả, **không đụng sheet nào** |
+| `ThongBao.gs` | Bot Telegram nhắc thợ: soạn tin, gửi, công tắc, cầu chì, hai mục menu, trigger nhắc |
+| `Test.gs` | ~250 test chạy bằng dữ liệu giả, **không đụng sheet nào** |
 | `Index.html` | Trang công nhân |
 | `Tho.html` | Trang thợ |
 | `InQr.html` | Trang in QR |
@@ -86,6 +87,10 @@ thì `clasp push` sẽ đẩy nhầm chúng lên Apps Script.
 `Danh_Muc_May` · `Danh_Muc_Tho` · `Ca_Lam_Viec` · `Ke_Hoach_Chay_May` ·
 `Khung_Ngung_Ke_Hoach` · `Cau_Hinh` ·
 `Lich_Truc_Thang` · `Su_Co` · `Nhat_Ky_Su_Co` · `Tong_Hop` · `Luu_Tru` · `Thung_Rac`
+
+`Danh_Muc_Tho` có **10 cột**: 9 cột gốc + `Telegram_Chat_ID` thêm vào cuối (09/2026).
+Cột đó phải để **định dạng text** — chat id dài 10–13 chữ số, để dạng số thì Sheets hiện
+thành dạng mũ và `chuanHoaChatId_` sẽ chặn, thợ đó bị bỏ qua im lặng.
 
 Tất cả do `setupSystem()` tạo. Chạy lại **an toàn**: không xoá dữ liệu, chỉ ghi lại header,
 và bổ sung khoá cấu hình còn thiếu.
@@ -260,6 +265,62 @@ vừa gọi mà không ai bắt máy.
 
 Trang thợ dùng **lại đúng điều kiện nấc 1** để quyết định có gập phiếu ngoài chuyên môn
 hay không — hai bên không bao giờ nói ngược nhau.
+
+---
+
+## 6b. Thông báo Telegram — bot nhắc thợ
+
+Bệnh: công nhân báo sự cố xong thì màn hình hiện danh bạ để gọi điện, **rất nhiều người
+quên gọi**, phiếu nằm `CHO_NHAN` mà không ai biết. Chi tiết thiết kế và 13 rào an toàn ở
+[`../TASK_THONG_BAO_TELEGRAM.md`](../TASK_THONG_BAO_TELEGRAM.md).
+
+Toàn bộ nằm trong **một file `ThongBao.gs`**, chia theo một ranh giới quan trọng:
+
+| Mục | Nội dung | Thuần? |
+|---|---|---|
+| 1–3 | Hàm phụ, ba hàm soạn tin, hàm quyết định của trigger | ✅ kiểm thử tại máy được |
+| 4–5 | Token, công tắc, cầu chì, gửi thật, đọc `Danh_Muc_Tho` | ❌ |
+| 6 | Hai mục menu | ❌ |
+| 7–8 | Hai hàm ghép, trigger nhắc | ❌ |
+
+**Kéo một lời gọi mạng lên mục 1–3 là mất khả năng kiểm thử tại máy.** Lớp 5 của bộ kiểm
+tra soi mã nguồn từng hàm thuần bằng `Function.prototype.toString` và báo đỏ ngay.
+
+### Luồng đang chạy gọi vào đúng BA cửa
+
+| Cửa | Gọi từ | Khi nào |
+|---|---|---|
+| `thongBaoSuCoMoi_` | `reportIncident`, **sau** `moKhoa_()` | Công nhân báo sự cố |
+| `thongBaoDaNhan_` | `acceptIncident`, **sau** `moKhoa_()` mới thêm | Thợ bấm nhận → báo người còn lại |
+| `nhacPhieuChoNhan` | Trigger 5 phút | Quá ngưỡng mà chưa ai nhận |
+
+Cả ba **phải chạy ngoài khoá**. `acceptIncident` vốn giữ khoá tới cuối hàm nên đã thêm cặp
+`daMoKhoa` / `moKhoa_()` đúng lối `reportIncident`.
+
+**Phiếu `DM-` cố ý KHÔNG có cửa nào**: không có thợ, không đi qua màn hình nhận việc, nên
+dòng "Bấm để nhận việc" sai hẳn. Gửi tin không kèm việc gì để làm là dạy thợ lướt qua tin
+của bot, đúng lúc tin sự cố thật cần được đọc.
+
+### Bốn thứ đọc từ Sheet, sửa có hiệu lực ngay
+
+| Chỗ | Khoá | Ý nghĩa |
+|---|---|---|
+| Script Properties | `TELEGRAM_BOT_TOKEN` | Token bot. **Không** để trong `Cau_Hinh` |
+| `Cau_Hinh` | `TELEGRAM_BAT` | Công tắc tổng, mặc định `TAT`. Gõ `TAT` là dừng ngay, không cần ai push mã |
+| `Cau_Hinh` | `NHAC_LAN_1_PHUT` · `NHAC_LAN_2_PHUT` | Ngưỡng nhắc, mặc định 10 và 20. Để 0 là tắt riêng lớp đó |
+| `Danh_Muc_Tho` | `Telegram_Chat_ID` | Trống = chưa ghép, im lặng bỏ qua |
+
+### Ba thứ dễ hiểu nhầm
+
+**Bot chỉ gửi đi, không nhận về.** Không `doPost`, không webhook, không đổi deployment.
+Lấy chat id bằng `getUpdates` gọi từ menu.
+
+**Cầu chì phân biệt hai kiểu hỏng.** 429 và 5xx là hỏng phía hệ thống → ngắt 10 phút. 400 và
+403 là hỏng ở một chat id cụ thể (ghép nhầm, hoặc thợ chưa bấm START) → **không** ngắt, vì
+ngắt là cắt tin của cả 14 người còn lại.
+
+**Trigger không dùng `LockService`.** Khoá script là khoá dùng chung; giữ nó suốt lượt trigger
+là chặn luôn công nhân báo sự cố trong lúc bot gọi mạng. Dùng cờ trong `CacheService`.
 
 ---
 
@@ -659,7 +720,8 @@ nghỉ việc còn sống thêm vài phút.
 | 📤 Xuất báo cáo (chọn ngày, bộ phận, thợ) | Cuối tháng, hoặc khi sếp hỏi một khoảng ngày |
 | 📈 Báo cáo tỉ lệ khả dụng máy | Xuất báo cáo A độc lập theo ngày hoặc tháng, đủ máy hoạt động |
 | 🗄️ Dọn phiếu cũ sang Lưu trữ | Trigger tự chạy ngày 1 hằng tháng |
-| ⏰ Cài trigger tự chạy | **Một lần duy nhất**, phải chạy tay |
+| ⏰ Cài trigger tự chạy | **Một lần duy nhất**, phải chạy tay. Cài 4 trigger |
+| 📨 Thông báo Telegram | Lấy Telegram ID của thợ · Gửi tin thử. Hai mục này **không** đi qua công tắc `TELEGRAM_BAT` |
 | 🧹 Dọn dữ liệu (Admin) | Xoá phiếu theo mã · Dọn sạch dữ liệu thử · Mở thùng rác |
 | 🧪 Chạy test logic | Trước mỗi lần deploy |
 | ⏱️ Đo tải hệ thống | Định kỳ vài tháng |
@@ -708,6 +770,8 @@ clasp deploy --deploymentId MA_TRIEN_KHAI_DA_GO_KHOI_KHO_CONG_KHAI... --descript
 | **`min-width` trên nhiều ô cùng bảng** | Tổng min-width vượt bề ngang thẻ → bảng tràn khỏi viền trên web | Bọc bảng trong `.cuon { overflow-x:auto }` |
 | **Lệnh bash `&&` trong hướng dẫn** | Nút Chạy trong chat thực thi bằng PowerShell, `&&` là lỗi cú pháp | Mỗi lệnh một khối riêng |
 | **Ca test chép làm hai bản** (`kiemtra/kpi-tho.js` và `Test.gs` mục 8b) | Sửa kỳ vọng một bên, quên bên kia → bộ chạy tại máy vẫn xanh mà bộ trong Sheet đỏ. Dính 03/09/2026 | Sửa ca nào thì sửa **cả hai**, và chạy bộ trong Sheet trước khi coi là xong |
+| **Thay hàm bằng hàm giả trong `Test.gs` mà quên trả lại** | Mọi test chạy sau đó dùng nhầm hàm giả. Nguy hiểm hơn hẳn một test đỏ, vì nó xanh mà sai | Gán đè trong `try`, trả lại trong `finally`, rồi có ca canh đã trả lại đúng chưa |
+| **Chat id để ô dạng số** | Sheets hiện thành `1.23457E+11`, `chuanHoaChatId_` chặn dạng mũ nên thợ đó bị bỏ qua **im lặng**, không ai biết vì sao | `setupSystem` đặt `setNumberFormat('@')` cho cột đó, như cột `So_Dien_Thoai` |
 | **Thêm cột vào `HEADER_DATA_GOC`** | Có test canh đúng số cột (biểu mẫu gửi sếp lệch là hỏng) — thêm cột mà quên sửa test là đỏ | Cột mới luôn thêm SAU cột 29, rồi cập nhật test đếm cột |
 
 ---
@@ -742,7 +806,7 @@ hàm thuần**: soi mã nguồn từng hàm soạn tin bằng `Function.prototyp
 thật nằm chung file — kéo nhầm một lời gọi mạng vào nhóm hàm soạn tin là mất luôn khả năng
 kiểm thử tại máy.
 
-Lớp thứ sáu: menu **🧪 Chạy test logic** trong Sheet — ~230 test bằng dữ liệu giả,
+Lớp thứ sáu: menu **🧪 Chạy test logic** trong Sheet — ~250 test bằng dữ liệu giả,
 **không đọc/ghi sheet nào**.
 
 Điều này làm được nhờ `getOnDutyContacts_` nhận tham số `duLieu` **tiêm theo từng trường**:
@@ -763,6 +827,22 @@ Lớp thứ sáu: menu **🧪 Chạy test logic** trong Sheet — ~230 test bằ
   hoãn tới chủ nhật theo yêu cầu người dùng, không deploy giữa ca sản xuất.
 
 - **Quy downtime ra tiền** — cần người dùng cung cấp doanh thu ước tính mỗi giờ máy chạy.
+
+### Bot Telegram — mã đã đủ, CHƯA chạy thật (09/09/2026)
+
+Viết xong B1–B8 theo `../TASK_THONG_BAO_TELEGRAM.md`. **Chưa `clasp push`, chưa deploy,
+chưa tạo bot.** Công tắc `TELEGRAM_BAT` mặc định `TAT` nên kể cả sau khi push thì phần
+Telegram vẫn là lệnh rỗng cho tới khi có người gõ `BAT`.
+
+Thứ tự đưa vào chạy ở mục 7 của tài liệu đó, tóm tắt:
+
+1. Nhờ một thợ tắt wifi rồi mở Telegram — **phép thử 4G chưa làm**. Wifi nhà máy đã thử, vào được.
+2. Nhắn `@BotFather` lấy token, dán vào Script Properties. Chủ dự án tự làm, mã không đụng tới.
+3. `clasp push` (cần xác nhận riêng) → chạy menu "1. Cài đặt hệ thống" một lần.
+4. Menu 📨 lấy Telegram ID → gửi thử → thấy tin trên điện thoại mới đi tiếp.
+5. Ghép đủ 15 thợ → gõ `BAT`.
+6. Cài trigger. **Từ đây phần nhắc đã chạy thật mà chưa cần deploy**, vì trigger chạy bằng mã HEAD.
+7. Deploy ghép vào lần deploy chủ nhật — sau bước này mới có thông báo tức thì lúc công nhân báo.
 
 ### Đã làm xong, chưa deploy (09/09/2026)
 

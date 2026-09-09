@@ -1,7 +1,11 @@
 # Task — Bot Telegram nhắc thợ khi có sự cố
 
 > Bổ sung cho `bao-tri-v2/CLAUDE.md`. Đọc file đó trước để nắm kiến trúc, rồi đọc file này.
-> Trạng thái: **đã duyệt phương án, chưa viết dòng mã nào.** Chốt ngày 09/09/2026.
+> Trạng thái: **B1–B8 đã viết xong, đã push GitHub. CHƯA `clasp push`, CHƯA deploy,
+> CHƯA tạo bot.** Công tắc `TELEGRAM_BAT` mặc định `TAT` nên phần Telegram vẫn là lệnh
+> rỗng cho tới khi có người gõ `BAT`. Việc còn lại là mục 7 — thứ tự đưa vào chạy thật.
+> Phương án chốt ngày 09/09/2026, ba chỗ lệch phát hiện lúc thi công đã ghi tại chỗ ở
+> mục 4.2, 5.3 và 5.10.
 
 ---
 
