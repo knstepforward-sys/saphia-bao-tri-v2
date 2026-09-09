@@ -722,6 +722,11 @@ Chạy 5 lớp tại máy: cú pháp `.gs` → biến che tham số → HTML (sc
 pháp JS, `getElementById` trỏ vào id không tồn tại) → **số học KPI đáp ứng thợ** →
 **nội dung tin Telegram**.
 
+Trước cả lớp 1 có **chốt 0** (`kiemtra/token.js`): quét cả repository tìm token bot Telegram
+bị dán nhầm vào mã nguồn, thấy là chặn push. Không phải phép thử đúng sai mà là chốt cửa —
+token lọt ra thì mọi lớp xanh cũng vô nghĩa. Nó cố ý **không in ra token tìm được**, vì in ra
+là chép thêm một lần nữa vào nhật ký chạy lệnh.
+
 Lớp 4 (`kiemtra/kpi-tho.js`) nạp thẳng `Code.gs` + `LuongTho.gs` + `XuatBaoCao.gs` vào node
 rồi gọi `phutBanTrongCho_` / `kpiThoChoPhieu_` — làm được vì nhóm hàm KPI là hàm **thuần**,
 chỉ nhận mảng và `Date`. Gồm 2000 ca ngẫu nhiên canh đẳng thức `đáp ứng = bận + KPI`.

@@ -30,7 +30,7 @@ const nguon = ['Code.gs', 'ThongBao.gs']
 // kéo ra bằng một dòng nối vào cuối chính script đó.
 const XUAT = ';globalThis.__ra = { soanTinSuCoMoi_, soanTinDaNhan_, soanTinNhac_,' +
   ' gioVN_, chuoi_, phutGiua_, ghepDong_, ghepKhoi_, tenMayDayDu_,' +
-  ' chuanHoaChatId_, catTin_, nenBatCauChi_,' +
+  ' chuanHoaChatId_, catTin_, nenBatCauChi_, gomChatIdTuUpdates_,' +
   ' TELEGRAM, COT, HEADER_SU_CO, HEADER_THO };';
 
 // Chạy trong CHÍNH realm này. Nếu tạo context riêng thì Date của khung test và
@@ -90,7 +90,7 @@ const CAM = ['UrlFetchApp', 'SpreadsheetApp', 'CacheService', 'PropertiesService
   'Utilities', 'LockService', 'SHEET.'];
 const PHAI_THUAN = ['soanTinSuCoMoi_', 'soanTinDaNhan_', 'soanTinNhac_',
   'gioVN_', 'chuoi_', 'phutGiua_', 'ghepDong_', 'ghepKhoi_', 'tenMayDayDu_',
-  'chuanHoaChatId_', 'catTin_', 'nenBatCauChi_'];
+  'chuanHoaChatId_', 'catTin_', 'nenBatCauChi_', 'gomChatIdTuUpdates_'];
 const hetThuan = [];
 PHAI_THUAN.forEach(function (ten) {
   const ma = String(G[ten]);
@@ -311,6 +311,53 @@ bang('Danh_Muc_Tho chưa chạm giới hạn 26 cột mặc định',
 // mà không báo lỗi gì cả.
 bang('Tên cột trong hằng TELEGRAM khớp với HEADER_THO',
   G.HEADER_THO.indexOf(G.TELEGRAM.COT_CHAT_ID) >= 0, true);
+
+// ============================================================================
+// 8. ĐỌC KẾT QUẢ getUpdates
+// ============================================================================
+//
+// JSON của Telegram lồng ba tầng và mỗi bản cập nhật có thể là `message`,
+// `edited_message` hay thứ khác. Tra sai một tầng là ra danh sách rỗng mà không
+// có lỗi nào để lần — người bấm menu sẽ tưởng thợ chưa nhắn cho bot.
+
+const up = function (ds) { return { ok: true, result: ds }; };
+
+bang('Bóc được chat id và tên',
+  G.gomChatIdTuUpdates_(up([
+    { message: { chat: { id: 123456789, first_name: 'Nhân', last_name: 'Trần',
+      username: 'nhan_tho' } } },
+  ])),
+  [{ id: '123456789', ten: 'Nhân Trần', username: 'nhan_tho' }]);
+
+// Người nhắn 5 tin vẫn chỉ hiện một dòng, nếu không danh sách ghép tay sẽ dài
+// gấp mấy lần số người và rất dễ chép nhầm dòng.
+bang('Mỗi chat id chỉ hiện một lần dù nhắn nhiều tin',
+  G.gomChatIdTuUpdates_(up([
+    { message: { chat: { id: 111, first_name: 'A' } } },
+    { message: { chat: { id: 111, first_name: 'A' } } },
+    { message: { chat: { id: 222, first_name: 'B' } } },
+  ])).length, 2);
+
+bang('Đọc được cả edited_message',
+  G.gomChatIdTuUpdates_(up([{ edited_message: { chat: { id: 333, first_name: 'C' } } }]))[0].id,
+  '333');
+bang('Thiếu họ thì chỉ lấy tên',
+  G.gomChatIdTuUpdates_(up([{ message: { chat: { id: 444, first_name: 'Nhị' } } }]))[0].ten,
+  'Nhị');
+bang('Không có tên thì lùi về title của nhóm',
+  G.gomChatIdTuUpdates_(up([{ message: { chat: { id: 555, title: 'Tổ điện' } } }]))[0].ten,
+  'Tổ điện');
+bang('Không username thì để rỗng, không ra undefined',
+  G.gomChatIdTuUpdates_(up([{ message: { chat: { id: 666, first_name: 'D' } } }]))[0].username,
+  '');
+
+// Bản cập nhật lạ không được làm hỏng cả danh sách.
+bang('Bản cập nhật không phải tin nhắn thì bỏ qua',
+  G.gomChatIdTuUpdates_(up([{ poll: { id: 'x' } }, { message: { chat: { id: 777 } } }])).length, 1);
+bang('Bản cập nhật rỗng thì bỏ qua', G.gomChatIdTuUpdates_(up([null, {}])).length, 0);
+bang('Kết quả rỗng ra mảng rỗng', G.gomChatIdTuUpdates_(up([])), []);
+bang('Không có trường result thì ra mảng rỗng', G.gomChatIdTuUpdates_({ ok: true }), []);
+bang('Không tham số thì không văng lỗi', G.gomChatIdTuUpdates_(), []);
 
 loi.forEach(function (x) { console.log(x); });
 console.log(loi.length

@@ -7,10 +7,11 @@
  * gọi điện, nhưng rất nhiều người quên gọi. Phiếu nằm ở CHO_NHAN mà không ai
  * biết, máy nằm im. Xem TASK_THONG_BAO_TELEGRAM.md, phương án chốt 09/09/2026.
  *
- * ĐẾN HẾT BƯỚC B3. File có phần soạn tin, phần gửi, công tắc và cầu chì, nhưng
- * CHƯA MÓC VÀO FILE NÀO ĐANG CHẠY — chưa file nào gọi tới đây. Còn lại: cột
- * `Telegram_Chat_ID` và ba khoá `Cau_Hinh` (B4), hai mục menu (B5), ba chỗ móc
- * trong `CongNhan.gs` và `LuongTho.gs` (B6), trigger nhắc (B7).
+ * ĐẾN HẾT BƯỚC B5. File có phần soạn tin, phần gửi, công tắc, cầu chì và hai mục
+ * menu. Cột `Telegram_Chat_ID` với ba khoá `Cau_Hinh` đã có trong `Code.gs`.
+ * CHƯA MÓC VÀO LUỒNG ĐANG CHẠY — ngoài hai mục menu người tự bấm, chưa chỗ nào
+ * gọi tới đây. Còn lại: ba chỗ móc trong `CongNhan.gs` và `LuongTho.gs` (B6),
+ * trigger nhắc (B7).
  *
  * ⚠️ RANH GIỚI QUAN TRỌNG NHẤT CỦA FILE NÀY nằm giữa mục 3 và mục 4.
  *
@@ -230,6 +231,35 @@ function nenBatCauChi_(dsMa) {
   return false;
 }
 
+/**
+ * Bóc danh sách người đã nhắn cho bot ra khỏi kết quả `getUpdates`.
+ *
+ * Trả về mảng `{ id, ten, username }`, mỗi chat id ĐÚNG MỘT LẦN dù người đó nhắn
+ * mấy tin. Thuần nên kiểm thử được tại máy, và đó là chỗ đáng kiểm: hình dạng
+ * JSON của Telegram lồng ba tầng, mà mỗi bản cập nhật lại có thể là `message`,
+ * `edited_message` hay thứ khác — tra sai một tầng là ra danh sách rỗng mà không
+ * có lỗi nào để lần.
+ */
+function gomChatIdTuUpdates_(ketQua) {
+  const ds = (ketQua && ketQua.result) || [];
+  const daCo = {};
+  const ra = [];
+  ds.forEach(function (u) {
+    const tin = u && (u.message || u.edited_message || u.channel_post);
+    const chat = tin && tin.chat;
+    const id = chat ? chuanHoaChatId_(chat.id) : '';
+    if (!id || daCo[id]) return;
+    daCo[id] = true;
+    ra.push({
+      id: id,
+      ten: [chuoi_(chat.first_name), chuoi_(chat.last_name)]
+        .filter(function (x) { return x; }).join(' ') || chuoi_(chat.title),
+      username: chuoi_(chat.username),
+    });
+  });
+  return ra;
+}
+
 // ============================================================================
 // 4. TOKEN, CÔNG TẮC, CẦU CHÌ
 // ============================================================================
@@ -400,4 +430,120 @@ function chatIdTheoMaTho_() {
     // không có thứ gì khác bị kéo hỏng theo.
   }
   return map;
+}
+// ============================================================================
+// 6. HAI MỤC MENU
+// ============================================================================
+//
+// ⚠️ Hai mục menu này cố ý KHÔNG đi qua công tắc `TELEGRAM_BAT` và KHÔNG đi qua
+// cầu chì. Theo mục 7 của tài liệu, thứ tự đưa vào chạy là: ghép chat id và gửi
+// thử TRƯỚC, bật công tắc SAU. Bắt chúng chờ công tắc là không cách nào gửi thử
+// được, mà bật công tắc trước khi thử là đúng thứ tài liệu bảo đừng làm.
+//
+// Chúng cũng cố ý KÊU TO khi hỏng, ngược hẳn với `guiTelegram_` vốn nuốt mọi lỗi.
+// Người bấm menu đang ngồi tìm nguyên nhân, cần thấy mã lỗi và câu trả lời của
+// Telegram; còn công nhân báo sự cố thì không cần biết gì về Telegram cả.
+
+/**
+ * Gọi một lệnh của Telegram Bot API và trả về nguyên văn câu trả lời.
+ *
+ * Dùng `fetch` chứ không `fetchAll` vì mỗi lần chỉ gọi một lệnh. KHÔNG bắt lỗi ở
+ * đây: hàm gọi là menu, và `chayVaBao_` sẽ hiện lỗi lên hộp thoại cho người bấm.
+ */
+function goiApiTelegram_(phuongThuc, payload) {
+  const token = tokenTelegram_();
+  if (!token) {
+    throw new Error('Chưa đặt token bot.\n\n' +
+      'Mở Apps Script → ⚙️ Project Settings → Script Properties → Add property, ' +
+      'khoá là ' + TELEGRAM.KHOA_TOKEN + ', giá trị là token @BotFather cấp.\n\n' +
+      'Cố ý KHÔNG cất token trong sheet Cau_Hinh: ai xem được Sheet là nhắn tin ' +
+      'được dưới danh nghĩa bot.');
+  }
+  const r = UrlFetchApp.fetch(
+    'https://api.telegram.org/bot' + token + '/' + phuongThuc, {
+      method: 'post',
+      contentType: 'application/json',
+      payload: JSON.stringify(payload || {}),
+      muteHttpExceptions: true,
+    });
+  return { ma: r.getResponseCode(), than: r.getContentText() };
+}
+
+/**
+ * Menu: lấy Telegram ID của những người đã nhắn cho bot.
+ *
+ * Dùng `getUpdates`, KHÔNG dùng webhook — rào 5.6: bot chỉ gửi đi, không nhận về.
+ * Thêm `doPost` là phải deploy lại và mở thêm một cửa vào cho script đang phục vụ
+ * 175 máy, trong khi việc này chỉ làm đúng 15 lần rồi thôi.
+ */
+function menuLayTelegramId() {
+  chayVaBao_('Lấy Telegram ID', function () {
+    const kq = goiApiTelegram_('getUpdates', { limit: 100 });
+    if (kq.ma !== 200) {
+      return 'Telegram trả mã ' + kq.ma + '.\n\n' + kq.than;
+    }
+    const ds = gomChatIdTuUpdates_(JSON.parse(kq.than));
+    if (!ds.length) {
+      return 'Chưa ai nhắn cho bot.\n\n' +
+        'Bảo thợ mở Telegram, tìm đúng tên bot, bấm START rồi nhắn một chữ bất kỳ. ' +
+        'Xong quay lại bấm mục này.\n\n' +
+        'Lưu ý: Telegram chỉ giữ tin chưa đọc trong khoảng 24 giờ, để lâu quá thì ' +
+        'bảo thợ nhắn lại.';
+    }
+    return 'Đã thấy ' + ds.length + ' người nhắn cho bot:\n\n' +
+      ds.map(function (n) {
+        return '  ' + n.id + '   ' + (n.ten || '(không tên)') +
+          (n.username ? ('  @' + n.username) : '');
+      }).join('\n') +
+      '\n\nChép cột số đầu tiên vào cột ' + TELEGRAM.COT_CHAT_ID +
+      ' của sheet ' + SHEET.THO + ', đúng dòng của từng người.';
+  });
+}
+
+/**
+ * Menu: gửi một tin thử cho một thợ.
+ *
+ * Có mục này để kiểm chứng đường gửi mà không phải chờ một sự cố thật xảy ra —
+ * bước 3 của mục 7. Hiện nguyên văn câu trả lời của Telegram khi hỏng, vì hai
+ * lỗi hay gặp nhất đều đọc ra được từ đó: thợ chưa bấm Start với bot, và chat id
+ * ghép nhầm dòng.
+ */
+function menuGuiThu() {
+  const ui = SpreadsheetApp.getUi();
+  const h = ui.prompt('Gửi tin thử',
+    'Nhập mã thợ cần gửi thử (ví dụ TH01).\n\n' +
+    'Thợ đó phải đã có ' + TELEGRAM.COT_CHAT_ID + ' trong sheet ' + SHEET.THO +
+    ', và phải đã bấm START với bot ít nhất một lần.',
+    ui.ButtonSet.OK_CANCEL);
+  if (h.getSelectedButton() !== ui.Button.OK) return;
+
+  const maTho = h.getResponseText().trim();
+  if (!maTho) { ui.alert('Chưa nhập mã thợ nào.'); return; }
+
+  chayVaBao_('Gửi tin thử', function () {
+    const map = chatIdTheoMaTho_();
+    const chatId = map[maTho];
+    if (!chatId) {
+      return 'Không tìm thấy chat id của ' + maTho + '.\n\n' +
+        'Kiểm ba thứ: mã thợ gõ đúng chưa, cột ' + TELEGRAM.COT_CHAT_ID +
+        ' của dòng đó đã điền chưa, và ô Hoat_Dong đã tick chưa.\n\n' +
+        'Nếu ô chat id hiện dạng 1.23457E+11 thì đó là Sheets đọc thành số — ' +
+        'chạy lại menu "1. Cài đặt hệ thống" để đặt cột về định dạng text, rồi ' +
+        'gõ lại chat id.';
+    }
+    const kq = goiApiTelegram_('sendMessage', {
+      chat_id: chatId,
+      text: '🔧 Tin thử từ hệ thống Bảo trì. Nhận được tin này nghĩa là đường ' +
+        'gửi đã thông. Không cần làm gì cả.',
+      disable_web_page_preview: true,
+    });
+    if (kq.ma === 200) {
+      return 'Đã gửi cho ' + maTho + ' (chat id ' + chatId + ').\n\n' +
+        'Thợ xác nhận thấy tin rồi thì ghép nốt những người còn lại, xong mới ' +
+        'gõ BAT vào ô ' + TELEGRAM.KHOA_BAT + ' của sheet ' + SHEET.CAU_HINH + '.';
+    }
+    return 'KHÔNG gửi được. Telegram trả mã ' + kq.ma + '.\n\n' + kq.than +
+      '\n\nMã 403 thường là thợ chưa bấm START với bot. ' +
+      'Mã 400 với "chat not found" thường là chat id ghép nhầm dòng.';
+  });
 }

@@ -7,6 +7,9 @@
 # Thoát mã 0 = sạch, an toàn để push.
 # Thoát mã 1 = có lỗi, KHÔNG push.
 #
+# Chốt 0 không phải phép thử đúng sai mà là một cái chốt cửa: có token bot lọt vào
+# mã nguồn thì mọi thứ khác xanh cũng vô nghĩa, nên nó chạy trước.
+#
 # Ba lớp đầu chỉ bắt lỗi TĨNH; lớp 4 và lớp 5 chạy thẳng phép thử vì hai nhóm hàm
 # đó là hàm thuần — chỉ nhận mảng, chuỗi và Date. Lớp thứ sáu — logic nghiệp vụ
 # còn lại — nằm trong Sheet: menu 🔧 Bảo trì → 🧪 Chạy test logic (~230 phép thử,
@@ -21,9 +24,17 @@ New-Item -ItemType Directory -Force $tmp | Out-Null
 
 $ok = $true
 
+# --- Chốt 0: token bot lọt vào mã nguồn --------------------------------------
+# Rào 5.13 của TASK_THONG_BAO_TELEGRAM.md. Token nằm trong Script Properties,
+# không bao giờ trong repository — ai cầm được là nhắn tin được dưới danh nghĩa
+# bot cho toàn bộ thợ. Quét cả repository chứ không riêng thư mục clasp.
+Write-Output "=== 0. Token bot lot vao ma nguon ==="
+node (Join-Path $PSScriptRoot 'token.js') $goc
+if ($LASTEXITCODE -ne 0) { $ok = $false }
+
 # --- Lớp 1: cú pháp từng file .gs -------------------------------------------
 # node --check cần đuôi .js nên chép sang thư mục tạm trước.
-Write-Output "=== 1. Cu phap cac file .gs ==="
+Write-Output "`n=== 1. Cu phap cac file .gs ==="
 foreach ($f in Get-ChildItem -Path $duAn -Filter *.gs) {
   $dich = Join-Path $tmp "$($f.BaseName).js"
   Copy-Item $f.FullName $dich -Force
