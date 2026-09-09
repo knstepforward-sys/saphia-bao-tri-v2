@@ -444,6 +444,10 @@ function getTechnicianBootstrap(maTho, token) {
  */
 function acceptIncident(maSuCo, maTho, token, requestId) {
   const lock = LockService.getScriptLock();
+  // Nhả khoá được đúng một lần, gọi thêm cũng vô hại. Cần vì phần nhắn Telegram
+  // cuối hàm phải chạy NGOÀI khoá — rào 5.2. Cùng lối với reportIncident.
+  let daMoKhoa = false;
+  function moKhoa_() { if (!daMoKhoa) { lock.releaseLock(); daMoKhoa = true; } }
   try {
     // Đọc cấu hình TRƯỚC khi giành khoá (nguyên tắc 4) — ngưỡng chỉ là con số để
     // chấm đạt/không đạt, không dính gì tới thứ tự ghi.
@@ -514,11 +518,20 @@ function acceptIncident(maSuCo, maTho, token, requestId) {
       phutKpiTho: kpi.phutKpi,
     }, requestId);
 
+    // Phiếu đã ghi xong → nhả khoá NGAY, đừng bắt người phía sau chờ thêm một
+    // lượt đọc danh mục thợ và một cuộc gọi mạng — rào 5.2.
+    moKhoa_();
+
+    // Báo cho những thợ trực CÒN LẠI biết đã có người nhận, để hai người không
+    // cùng chạy tới một máy. Đây là thứ thay cho nút "chuyển việc cho người
+    // trực cùng ca" đã bị bác ở mục 2 của TASK_THONG_BAO_TELEGRAM.md.
+    try { thongBaoDaNhan_(v, maTho); } catch (e) { /* bỏ qua */ }
+
     return { ok: true, phieu: gonPhieu_(v) };
   } catch (err) {
     return { ok: false, error: err.message };
   } finally {
-    lock.releaseLock();
+    moKhoa_();
   }
 }
 

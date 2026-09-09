@@ -30,7 +30,7 @@ const nguon = ['Code.gs', 'ThongBao.gs']
 // kéo ra bằng một dòng nối vào cuối chính script đó.
 const XUAT = ';globalThis.__ra = { soanTinSuCoMoi_, soanTinDaNhan_, soanTinNhac_,' +
   ' gioVN_, chuoi_, phutGiua_, ghepDong_, ghepKhoi_, tenMayDayDu_,' +
-  ' chuanHoaChatId_, catTin_, nenBatCauChi_, gomChatIdTuUpdates_,' +
+  ' chuanHoaChatId_, catTin_, nenBatCauChi_, gomChatIdTuUpdates_, locNguoiNhan_,' +
   ' TELEGRAM, COT, HEADER_SU_CO, HEADER_THO };';
 
 // Chạy trong CHÍNH realm này. Nếu tạo context riêng thì Date của khung test và
@@ -90,7 +90,8 @@ const CAM = ['UrlFetchApp', 'SpreadsheetApp', 'CacheService', 'PropertiesService
   'Utilities', 'LockService', 'SHEET.'];
 const PHAI_THUAN = ['soanTinSuCoMoi_', 'soanTinDaNhan_', 'soanTinNhac_',
   'gioVN_', 'chuoi_', 'phutGiua_', 'ghepDong_', 'ghepKhoi_', 'tenMayDayDu_',
-  'chuanHoaChatId_', 'catTin_', 'nenBatCauChi_', 'gomChatIdTuUpdates_'];
+  'chuanHoaChatId_', 'catTin_', 'nenBatCauChi_', 'gomChatIdTuUpdates_',
+  'locNguoiNhan_'];
 const hetThuan = [];
 PHAI_THUAN.forEach(function (ten) {
   const ma = String(G[ten]);
@@ -358,6 +359,57 @@ bang('Bản cập nhật rỗng thì bỏ qua', G.gomChatIdTuUpdates_(up([null, 
 bang('Kết quả rỗng ra mảng rỗng', G.gomChatIdTuUpdates_(up([])), []);
 bang('Không có trường result thì ra mảng rỗng', G.gomChatIdTuUpdates_({ ok: true }), []);
 bang('Không tham số thì không văng lỗi', G.gomChatIdTuUpdates_(), []);
+
+// ============================================================================
+// 9. CHỌN NGƯỜI NHẬN TIN
+// ============================================================================
+//
+// Ba phép loại trừ, sai cái nào cũng không có lỗi nào để lần: nhắn cho số khẩn
+// cấp là nhắn vào hư vô, nhắn cho người chưa ghép id là gửi hỏng, nhắn lại cho
+// chính người vừa bấm nhận là làm phiền đúng người đang chạy tới máy.
+
+const danhBaGia = function (ds) { return { ds: ds }; };
+const llMau = {
+  TH01: { chatId: '111', link: 'https://x/?tho=TH01' },
+  TH02: { chatId: '222', link: 'https://x/?tho=TH02' },
+};
+
+bang('Lấy đúng chat id và link của từng người',
+  G.locNguoiNhan_(danhBaGia([{ maTho: 'TH01' }, { maTho: 'TH02' }]), llMau, ''),
+  [{ maTho: 'TH01', chatId: '111', link: 'https://x/?tho=TH01' },
+   { maTho: 'TH02', chatId: '222', link: 'https://x/?tho=TH02' }]);
+
+// Số khẩn cấp nằm CUỐI danh bạ với khanCap:true và maTho rỗng. Nó là một số
+// điện thoại, không phải một thợ, không có Telegram.
+bang('Bỏ số khẩn cấp ở cuối danh bạ',
+  G.locNguoiNhan_(danhBaGia([{ maTho: 'TH01' },
+    { maTho: '', tenTho: 'Khang', khanCap: true }]), llMau, '').length, 1);
+
+// Ghép chat id cho 15 thợ làm dần — rào 5.4, ai chưa có thì im lặng bỏ qua.
+bang('Bỏ người chưa ghép chat id',
+  G.locNguoiNhan_(danhBaGia([{ maTho: 'TH01' }, { maTho: 'TH09' }]), llMau, '')
+    .map(function (n) { return n.maTho; }), ['TH01']);
+
+bang('Bỏ chính người vừa bấm nhận',
+  G.locNguoiNhan_(danhBaGia([{ maTho: 'TH01' }, { maTho: 'TH02' }]), llMau, 'TH01')
+    .map(function (n) { return n.maTho; }), ['TH02']);
+bang('Bỏ người vừa nhận xong thì không còn ai — không gửi tin nào',
+  G.locNguoiNhan_(danhBaGia([{ maTho: 'TH01' }]), llMau, 'TH01'), []);
+
+bang('Một người lọt vào danh bạ hai lần chỉ nhận một tin',
+  G.locNguoiNhan_(danhBaGia([{ maTho: 'TH01' }, { maTho: 'TH01' }]), llMau, '').length, 1);
+
+// Thợ có chat id nhưng chưa sinh link cá nhân: vẫn gửi, tin tự rụng dòng bấm
+// nhận việc. Biết máy hỏng vẫn hơn không biết gì.
+bang('Thiếu link vẫn gửi, link để rỗng',
+  G.locNguoiNhan_(danhBaGia([{ maTho: 'TH03' }]), { TH03: { chatId: '333' } }, ''),
+  [{ maTho: 'TH03', chatId: '333', link: '' }]);
+
+bang('Danh bạ rỗng ra mảng rỗng', G.locNguoiNhan_(danhBaGia([]), llMau, ''), []);
+bang('Danh bạ nấc 3 không có ai', G.locNguoiNhan_(null, llMau, ''), []);
+bang('Map liên lạc rỗng ra mảng rỗng',
+  G.locNguoiNhan_(danhBaGia([{ maTho: 'TH01' }]), {}, ''), []);
+bang('Không tham số nào thì không văng lỗi', G.locNguoiNhan_(), []);
 
 loi.forEach(function (x) { console.log(x); });
 console.log(loi.length

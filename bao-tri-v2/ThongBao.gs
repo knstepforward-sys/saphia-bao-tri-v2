@@ -7,11 +7,10 @@
  * gọi điện, nhưng rất nhiều người quên gọi. Phiếu nằm ở CHO_NHAN mà không ai
  * biết, máy nằm im. Xem TASK_THONG_BAO_TELEGRAM.md, phương án chốt 09/09/2026.
  *
- * ĐẾN HẾT BƯỚC B5. File có phần soạn tin, phần gửi, công tắc, cầu chì và hai mục
- * menu. Cột `Telegram_Chat_ID` với ba khoá `Cau_Hinh` đã có trong `Code.gs`.
- * CHƯA MÓC VÀO LUỒNG ĐANG CHẠY — ngoài hai mục menu người tự bấm, chưa chỗ nào
- * gọi tới đây. Còn lại: ba chỗ móc trong `CongNhan.gs` và `LuongTho.gs` (B6),
- * trigger nhắc (B7).
+ * ĐẾN HẾT BƯỚC B6. Luồng đang chạy gọi vào đây qua ĐÚNG HAI CỬA, cả hai ở mục 7:
+ * `thongBaoSuCoMoi_` từ `reportIncident`, và `thongBaoDaNhan_` từ `acceptIncident`.
+ * Giữ đúng hai cửa để sau này muốn gỡ hẳn phần Telegram thì biết chỗ mà tìm.
+ * Còn lại: trigger nhắc lần 1 và lần 2 (B7).
  *
  * ⚠️ RANH GIỚI QUAN TRỌNG NHẤT CỦA FILE NÀY nằm giữa mục 3 và mục 4.
  *
@@ -260,6 +259,42 @@ function gomChatIdTuUpdates_(ketQua) {
   return ra;
 }
 
+/**
+ * Chọn ra những người thật sự nhắn được, từ danh bạ và map liên lạc.
+ *
+ * Trả về mảng `{ maTho, chatId, link }`. Thuần nên kiểm thử được tại máy, và đây
+ * là chỗ đáng kiểm nhất của phần ghép vì nó gánh ba phép loại trừ, sai cái nào
+ * cũng không có lỗi nào để lần:
+ *
+ * - **Bỏ số khẩn cấp.** Nó nằm cuối `danhBa.ds` với `khanCap: true` và `maTho`
+ *   rỗng; nó là một số điện thoại, không phải một thợ, không có Telegram.
+ * - **Bỏ người chưa ghép chat id.** Ghép dần cho 15 thợ, ai chưa có thì im lặng
+ *   bỏ qua — rào 5.4.
+ * - **Bỏ `boQuaMaTho`.** Dùng khi báo "đã có người nhận": không nhắn lại cho
+ *   chính người vừa bấm nhận.
+ *
+ * Cũng chặn trùng theo `maTho`, phòng khi một người lọt vào danh bạ hai lần.
+ */
+function locNguoiNhan_(danhBa, lienLac, boQuaMaTho) {
+  const ds = (danhBa && danhBa.ds) || [];
+  const map = lienLac || {};
+  const bo = chuoi_(boQuaMaTho);
+  const daCo = {};
+  const ra = [];
+
+  ds.forEach(function (n) {
+    if (!n || n.khanCap) return;
+    const ma = chuoi_(n.maTho);
+    if (!ma || ma === bo || daCo[ma]) return;
+    const ll = map[ma];
+    const chatId = ll ? chuanHoaChatId_(ll.chatId) : '';
+    if (!chatId) return;
+    daCo[ma] = true;
+    ra.push({ maTho: ma, chatId: chatId, link: ll ? chuoi_(ll.link) : '' });
+  });
+  return ra;
+}
+
 // ============================================================================
 // 4. TOKEN, CÔNG TẮC, CẦU CHÌ
 // ============================================================================
@@ -403,18 +438,19 @@ function guiTelegram_(ds, cauHinh) {
 }
 
 /**
- * Map `Ma_Tho` → chat id, đọc từ `Danh_Muc_Tho`.
+ * Map `Ma_Tho` → `{ chatId, link }`, đọc từ `Danh_Muc_Tho` trong MỘT lượt.
  *
- * Đọc riêng ở đây, KHÔNG nhét chat id vào object `danhBa` — rào 5.8: `danhBa`
- * được trả thẳng về trình duyệt của công nhân, nhét chat id vào đó là phát tán
- * ra ngoài. Đổi lại tốn thêm một lượt đọc sheet khoảng 150 ms, chấp nhận được.
+ * Lấy cả hai thứ cùng lúc vì mỗi lượt `getValues` tốn ~150 ms bất kể đọc mấy
+ * cột. Đọc riêng ở đây, KHÔNG nhét chat id vào object `danhBa` — rào 5.8:
+ * `danhBa` được trả thẳng về trình duyệt của công nhân, nhét chat id vào đó là
+ * phát tán ra ngoài.
  *
  * Tự nối thêm cột `Telegram_Chat_ID` khi `HEADER_THO` chưa có nó, nên hàm chạy
  * đúng cả TRƯỚC và SAU bước B4. Sheet mặc định rộng 26 cột nên đọc 10 cột vẫn
  * nằm trong vùng, không văng lỗi tràn cột kể cả khi chưa chạy `setupSystem` —
  * rào 5.3. Thợ chưa ghép thì vắng mặt trong map, im lặng bỏ qua — rào 5.4.
  */
-function chatIdTheoMaTho_() {
+function lienLacTho_() {
   const map = {};
   try {
     const header = HEADER_THO.indexOf(TELEGRAM.COT_CHAT_ID) >= 0
@@ -423,13 +459,23 @@ function chatIdTheoMaTho_() {
       const ma = chuoi_(t.Ma_Tho);
       const id = chuanHoaChatId_(t[TELEGRAM.COT_CHAT_ID]);
       // Thợ nghỉ việc thì bỏ tick Hoat_Dong — từ đó không nhắn cho họ nữa.
-      if (ma && id && laTrue_(t.Hoat_Dong)) map[ma] = id;
+      if (ma && id && laTrue_(t.Hoat_Dong)) {
+        map[ma] = { chatId: id, link: chuoi_(t.Link_Ca_Nhan) };
+      }
     });
   } catch (e) {
     // Thiếu sheet hay đọc hỏng thì trả map rỗng: không ai nhận được tin, nhưng
     // không có thứ gì khác bị kéo hỏng theo.
   }
   return map;
+}
+
+/** Map `Ma_Tho` → chat id. Vỏ bọc mỏng của `lienLacTho_`, cho mục menu gửi thử. */
+function chatIdTheoMaTho_() {
+  const ra = {};
+  const ll = lienLacTho_();
+  Object.keys(ll).forEach(function (ma) { ra[ma] = ll[ma].chatId; });
+  return ra;
 }
 // ============================================================================
 // 6. HAI MỤC MENU
@@ -546,4 +592,70 @@ function menuGuiThu() {
       '\n\nMã 403 thường là thợ chưa bấm START với bot. ' +
       'Mã 400 với "chat not found" thường là chat id ghép nhầm dòng.';
   });
+}
+
+// ============================================================================
+// 7. GHÉP — hai hàm được luồng đang chạy gọi tới
+// ============================================================================
+//
+// Đây là hai cửa duy nhất mà `CongNhan.gs` và `LuongTho.gs` gọi vào file này.
+// Giữ đúng hai cửa để sau này muốn tắt hẳn phần Telegram thì biết chỗ mà tìm.
+//
+// ⚠️ CẢ HAI PHẢI GỌI NGOÀI KHOÁ — rào 5.2. Chúng đọc một lượt sheet rồi gọi mạng;
+// làm việc đó trong khoá là bắt mọi người báo sự cố xếp hàng chờ theo.
+//
+// Phiếu DUNG_MAY cố ý KHÔNG có cửa nào. Tài liệu mục 4.2 có liệt kê
+// `reportMachineStop`, nhưng khi vào mã thì thấy không hợp: phiếu DM- không có
+// thợ nào, không đi qua màn hình nhận việc, nên dòng "Bấm để nhận việc" là sai
+// hẳn với loại phiếu đó. Thiếu chỉ hay vệ sinh máy cũng không phải bệnh mà dự án
+// này chữa. Gửi tin không kèm việc gì để làm là dạy thợ lướt qua tin của bot,
+// đúng lúc tin sự cố thật cần được đọc. Chủ dự án chọn bỏ, ngày 09/09/2026.
+
+/**
+ * Lớp 1 — gửi ngay lúc công nhân báo sự cố, cho thợ đang trực trong `danhBa`.
+ *
+ * Trả về số tin gửi được, chỉ để ghi nhật ký khi cần; chỗ gọi không dùng tới.
+ * Không bao giờ ném lỗi ra ngoài, và chỗ gọi vẫn bọc thêm try/catch của nó.
+ */
+function thongBaoSuCoMoi_(v, danhBa, cauHinh) {
+  try {
+    const nhan = locNguoiNhan_(danhBa, lienLacTho_(), '');
+    if (!nhan.length) return 0;
+    return guiTelegram_(nhan.map(function (n) {
+      return { chatId: n.chatId, text: soanTinSuCoMoi_(v, n.link) };
+    }), cauHinh);
+  } catch (e) {
+    return 0;
+  }
+}
+
+/**
+ * Báo cho những người CÒN LẠI biết đã có người nhận việc.
+ *
+ * Đây là thứ thay cho nút "chuyển việc cho người trực cùng ca" đã bị bác ở mục 2
+ * của tài liệu. Gửi cho cả ca rồi ai bấm trước thì người kia biết ngay, nên
+ * không cần ai chuyển việc cho ai.
+ *
+ * Dựng lại danh bạ bằng mốc **giờ báo hỏng**, không phải giờ hiện tại: mục đích
+ * là ra đúng nhóm người đã nhận tin lần đầu, kể cả khi ca đã đổi giữa chừng.
+ * Dùng lại `getOnDutyContacts_`, không sửa nó — rào 5.7.
+ */
+function thongBaoDaNhan_(v, maThoNhan, cauHinh) {
+  try {
+    const khi = v[COT.Thoi_Gian_Bao];
+    const danhBa = getOnDutyContacts_(
+      chuoi_(v[COT.Bo_Phan]), chuoi_(v[COT.Nhom_Loi]),
+      (khi instanceof Date) ? khi : null,
+      cauHinh ? { cauHinh: cauHinh } : undefined);
+
+    const nhan = locNguoiNhan_(danhBa, lienLacTho_(), maThoNhan);
+    if (!nhan.length) return 0;
+
+    const tin = soanTinDaNhan_(v);
+    return guiTelegram_(nhan.map(function (n) {
+      return { chatId: n.chatId, text: tin };
+    }), cauHinh);
+  } catch (e) {
+    return 0;
+  }
 }

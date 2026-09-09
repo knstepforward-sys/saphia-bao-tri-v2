@@ -91,16 +91,32 @@ Toàn bộ phần Telegram nằm trong một file. Không rải rác vào các f
 Ba hàm `soan…` là hàm thuần, chỉ nhận mảng và `Date`, nên kiểm thử được ngay tại máy bằng
 node, không cần mở Sheet. Đây là lý do tách riêng phần soạn tin khỏi phần gửi.
 
-### 4.2 Ba chỗ móc vào mã đang chạy
+### 4.2 Hai chỗ móc vào mã đang chạy
 
 | File | Chỗ | Việc |
 |---|---|---|
-| `CongNhan.gs` | `reportIncident`, **sau** `moKhoa_()` ở dòng ~817 | Gửi tin cho thợ trong `danhBa` |
-| `CongNhan.gs` | `reportMachineStop` | Như trên, cho phiếu dừng máy |
-| `LuongTho.gs` | `acceptIncident`, ngay trước `return { ok: true …}` | Báo cho người còn lại |
+| `CongNhan.gs` | `reportIncident`, **sau** `moKhoa_()` | Gửi tin cho thợ trong `danhBa` |
+| `LuongTho.gs` | `acceptIncident`, **sau** `moKhoa_()` mới thêm | Báo cho người còn lại |
 
 Mỗi chỗ chỉ thêm **một** lời gọi, bọc try/catch tại chỗ. Không sửa logic sẵn có, không đổi
 giá trị trả về, không đổi thứ tự ghi sheet.
+
+> **Bản đầu ghi BA chỗ, có cả `reportMachineStop`. Bỏ chỗ đó, chốt ngày 09/09/2026 khi làm
+> bước B6.** Vào đọc mã mới thấy không hợp: phiếu `DM-` không có thợ nào, không đi qua màn
+> hình nhận việc, nên dòng "Bấm để nhận việc" sai hẳn với loại phiếu đó; hàm cũng không hề
+> dựng danh bạ. Năm trong sáu lý do dừng máy đang khai không ai gọi thợ, và phiếu chờ phụ
+> tùng thì do chính thợ tự tạo nên bot sẽ nhắn lại cho người vừa bấm. Cái hại nặng hơn là
+> **thợ chai với thông báo**: tin không kèm việc gì để làm sẽ dạy người ta lướt qua, đến lúc
+> tin sự cố thật tới thì phản xạ đã thành bỏ qua, mà không có dấu hiệu nào báo trước.
+>
+> Điểm mất duy nhất là ca **mất điện**, lúc đó tổ điện có việc thật. Nếu sau này thấy đáng
+> thì làm bản hẹp: chỉ gửi với những lý do khai trong một khoá cấu hình mới, mặc định để mỗi
+> mất điện. Không làm trong đợt này.
+
+`acceptIncident` **giữ khoá tới cuối hàm và nhả trong `finally`**, nên chỗ tài liệu bảo đặt
+lời gọi ("ngay trước `return`") thực ra vẫn nằm TRONG khoá. Đã thêm cặp `daMoKhoa` /
+`moKhoa_()` đúng lối `reportIncident` đang dùng, rồi nhả khoá trước khi gửi — nếu không thì
+vi phạm thẳng rào 5.2.
 
 ### 4.3 Nội dung tin
 

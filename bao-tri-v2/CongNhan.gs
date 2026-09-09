@@ -815,8 +815,17 @@ function reportIncident(payload) {
     moKhoa_();
 
     // Truyền lại cấu hình đã đọc ở trên để không phải đọc sheet Cau_Hinh lần hai.
-    return { ok: true, maSuCo: maSuCo,
-      danhBa: getOnDutyContacts_(boPhan, nhomLoi, luc, { cauHinh: cauHinh }) };
+    const danhBa = getOnDutyContacts_(boPhan, nhomLoi, luc, { cauHinh: cauHinh });
+
+    // Nhắn Telegram cho đúng những thợ vừa hiện trong danh bạ. Đặt ở ĐÂY, sau
+    // moKhoa_(), là bắt buộc — rào 5.2 của TASK_THONG_BAO_TELEGRAM.md: đặt vào
+    // trong khoá thì mọi người báo sự cố phải xếp hàng chờ một cuộc gọi mạng.
+    // Hàm kia đã tự nuốt mọi lỗi, try/catch này là lớp thứ hai: phiếu ghi xong
+    // rồi, không được để phần thông báo làm hỏng việc trả danh bạ về cho công
+    // nhân. Công tắc TELEGRAM_BAT tắt thì nó thành lệnh rỗng.
+    try { thongBaoSuCoMoi_(dong, danhBa, cauHinh); } catch (e) { /* bỏ qua */ }
+
+    return { ok: true, maSuCo: maSuCo, danhBa: danhBa };
 
   } catch (err) {
     return { ok: false, error: err.message };
