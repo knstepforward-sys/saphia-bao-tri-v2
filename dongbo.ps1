@@ -169,7 +169,12 @@ Get-ChildItem $repoDir -File | Where-Object {
   ($_.Extension -in @('.gs', '.html')) -or ($_.Name -eq 'appsscript.json')
 } | ForEach-Object {
   if (-not $tenTrenServer.ContainsKey($_.Name)) {
-    $soDong = (Get-Content $_.FullName | Measure-Object -Line).Lines
+    # Dem y het nhanh so sanh o tren, khong dung Measure-Object -Line: lenh do
+    # BO QUA dong trong. ThongBao.gs 826 dong bi bao thanh 763 vi co 63 dong
+    # trong - hai con so trong cung mot ban bao cao ma dem hai kieu khac nhau
+    # thi nguoi doc khong biet tin cai nao.
+    $noiDung = (Get-Content $_.FullName -Raw -Encoding UTF8) -replace "`r`n", "`n"
+    $soDong  = ($noiDung -split "`n").Count
     $chiTrongRepo += [pscustomobject]@{ File = $_.Name; Dong = $soDong }
   }
 }

@@ -1,3 +1,9 @@
+## [2026-09-10] `dongbo.ps1` — sửa cách đếm dòng ở vòng duyệt ngược
+- **Thay đổi:** Bỏ `Measure-Object -Line`, đếm bằng `-split` y hệt nhánh so sánh phía trên.
+- **Lý do:** Bản vá điểm mù chạy đúng ngay lần đầu trên máy công ty — `ThongBao.gs` hiện ra trong nhóm "có trong repo nhưng CHƯA có trên Apps Script" — nhưng báo **763 dòng** trong khi file có **826**. `Measure-Object -Line` bỏ qua dòng trống, mà file có đúng 63 dòng trống. Nguy ở chỗ nó không sai kiểu văng lỗi mà sai kiểu im lặng, và trong cùng một bản báo cáo có hai con số đếm theo hai kiểu khác nhau: nhóm "khác nội dung" đếm bằng `-split` (tính cả dòng trống), nhóm mới đếm bỏ dòng trống. Người đọc đem hai con số ra so là ra kết luận sai về việc bên nào nhiều hơn bao nhiêu.
+- **Trạng thái:** Đã sửa, đã commit. **Không** `clasp push`, **không** deploy. Chưa chạy lại — phiên này không có PowerShell. Lần chạy tới phải thấy `ThongBao.gs` báo **826 dòng**, không phải 763.
+- **Việc cần làm tiếp theo:** Chạy lại `dongbo.ps1` canh đúng con số 826. Rồi quay lại bot Telegram: phép thử 4G, `@BotFather`, `clasp push`.
+
 ## [2026-09-10] Vá điểm mù bước 4 của `dongbo.ps1` — nay so hai chiều
 - **Thay đổi:** `dongbo.ps1` bước 4 thêm vòng duyệt ngược từ `bao-tri-v2/` sang bản tải về, liệt kê **file có trong repo mà Apps Script chưa có**, kèm số dòng. Thêm `$chiTrongRepo` và bảng tra `$tenTrenServer` dựng ngay trong vòng duyệt xuôi. Điều kiện "sạch" nay phải cả ba mảng cùng rỗng. Cập nhật khối chú thích đầu file. Không đụng mã `.gs` nào.
 - **Lý do:** Vòng duyệt cũ chỉ đi từ server sang repo, nên file mới trong repo không bao giờ hiện ra. Sáng nay nó liệt kê 5 file lệch và kết luận "CO LECH", nhưng `ThongBao.gs` 826 dòng — file mới nhất, file sắp `clasp push` — **vắng mặt hoàn toàn**. Cái nguy không phải là báo thiếu, mà là báo thiếu đúng lúc người ta tin nhất: ngay trước khi quyết định push lên hệ thống 175 máy đang chạy.
