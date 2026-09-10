@@ -5,6 +5,8 @@
     1. Kiem tra co thay doi chua commit khong (co thi DUNG, khong tu dong gop).
     2. git pull de lay ban moi nhat tu GitHub.
     3. clasp clone ra thu muc tam, so ma repo voi ban dang chay tren Apps Script.
+       So HAI CHIEU: file server co ma repo khong, file khac noi dung, VA file
+       repo co ma server chua co.
     4. In ket luan: sach hay lech, lech o dau, ben nao moi hon.
 
   KHONG bao gio push, KHONG bao gio deploy, KHONG bao gio ghi de file trong repo.
@@ -132,11 +134,15 @@ if ($maLoi -ne 0 -or -not (Get-ChildItem $tam -Filter "*.js" -ErrorAction Silent
 $repoDir = Join-Path $goc "bao-tri-v2"
 $khac = @()
 $chiTrenServer = @()
+$chiTrongRepo = @()
+$tenTrenServer = @{}
 
 Get-ChildItem $tam -File | Where-Object { $_.Name -ne ".clasp.json" } | ForEach-Object {
   $ten = $_.Name
   if ($ten -like "*.js") { $tenRepo = ($ten -replace '\.js$', '.gs') } else { $tenRepo = $ten }
   $duong = Join-Path $repoDir $tenRepo
+
+  $tenTrenServer[$tenRepo] = $true
 
   if (-not (Test-Path $duong)) {
     $chiTrenServer += $tenRepo
@@ -154,13 +160,33 @@ Get-ChildItem $tam -File | Where-Object { $_.Name -ne ".clasp.json" } | ForEach-
 
 Remove-Item -Recurse -Force $tam -ErrorAction SilentlyContinue
 
-if ($chiTrenServer.Count -eq 0 -and $khac.Count -eq 0) {
+# Duyet nguoc: file co trong repo ma Apps Script chua co. Vong tren chi di tu
+# server sang repo nen file MOI trong repo khong bao gio hien ra - dung cai file
+# dang can nhin nhat lai la cai bi bo qua im lang. Da tra gia mot lan: ThongBao.gs
+# 826 dong vang mat hoan toan trong ban doi chieu ngay 10/09/2026.
+# Chi xet dung nhung duoi ma clasp day len: .gs, .html, appsscript.json.
+Get-ChildItem $repoDir -File | Where-Object {
+  ($_.Extension -in @('.gs', '.html')) -or ($_.Name -eq 'appsscript.json')
+} | ForEach-Object {
+  if (-not $tenTrenServer.ContainsKey($_.Name)) {
+    $soDong = (Get-Content $_.FullName | Measure-Object -Line).Lines
+    $chiTrongRepo += [pscustomobject]@{ File = $_.Name; Dong = $soDong }
+  }
+}
+
+if ($chiTrenServer.Count -eq 0 -and $khac.Count -eq 0 -and $chiTrongRepo.Count -eq 0) {
   Xanh "OK - repo khop hoan toan voi ban dang chay tren Apps Script"
 } else {
   $coLech = $true
   if ($chiTrenServer.Count -gt 0) {
     Vang "File co tren Apps Script nhung khong co trong repo:"
     $chiTrenServer | ForEach-Object { Write-Host "  $_" }
+  }
+  if ($chiTrongRepo.Count -gt 0) {
+    Vang "File co trong repo nhung CHUA co tren Apps Script:"
+    $chiTrongRepo | ForEach-Object {
+      Write-Host ("  {0,-22} {1} dong, chua bao gio duoc clasp push" -f $_.File, $_.Dong)
+    }
   }
   if ($khac.Count -gt 0) {
     Vang "File khac noi dung (so dong):"
