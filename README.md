@@ -9,17 +9,35 @@ Repository riêng cho hai ứng dụng Google Apps Script thuộc nghiệp vụ 
 Hai ứng dụng dùng Spreadsheet và Apps Script project khác nhau. Đọc `CLAUDE.md` và
 `bao-tri-v2/CLAUDE.md` trước khi chỉnh sửa.
 
-## Bắt đầu mỗi phiên làm việc
+## Hai lệnh của một phiên làm việc
+
+Ngồi xuống:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File dongbo.ps1
 ```
 
-Script kiểm tra thay đổi chưa commit, `git pull`, rồi so mã trong repo với bản đang chạy
-trên Apps Script. Chỉ đọc và báo cáo; không push, không deploy, không ghi đè file.
+Kiểm thay đổi chưa commit, `git pull`, rồi so mã trong repo với bản đang chạy trên
+Apps Script. Chỉ đọc và báo cáo; không push, không deploy, không ghi đè file.
+
+Đứng dậy, **trước khi rời máy**:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File roi-may.ps1
+```
+
+Chạy `kiemtra\kiem-tra.ps1`, hỏi xác nhận rồi commit, `git pull --rebase`, `git push`,
+rồi so `HEAD` với `origin` để chắc là hết lệch. Hỏng ở bước nào dừng ở bước đó. Không
+`clasp push`, không deploy — chỉ làm việc git.
+
+Cả hai chạy trong PowerShell **thường**. Cửa sổ quyền Administrator dùng hồ sơ người
+dùng khác nên thường không có `git` lẫn `clasp.cmd` trong PATH, và lỗi hiện ra là
+`The term 'git' is not recognized`.
 
 Mã nguồn tồn tại ở **bốn nơi**: máy công ty, laptop cá nhân, GitHub, Apps Script Editor.
-Trước khi rời một máy phải commit và push, nếu không lần sau ngồi máy kia sẽ lệch.
+Hai script trên lo ba nơi đầu. Nơi thứ tư chỉ có một luật: **đừng sửa thẳng trên Apps
+Script Editor**. `dongbo.ps1` phát hiện được lệch, nhưng phát hiện sau khi đã lệch thì
+vẫn mất công gỡ.
 
 ## Cài đặt trên một máy Windows mới
 

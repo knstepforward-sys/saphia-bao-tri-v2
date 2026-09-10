@@ -3,25 +3,37 @@
 Hệ thống nội bộ cho công ty dệt may Việt Nam: kỹ thuật viên quét QR trên máy →
 mở app mobile → nhập báo cáo sự cố/sửa chữa → lưu thẳng vào Google Sheets.
 
-> ## 🔄 BẮT ĐẦU MỖI PHIÊN — chạy trước khi làm bất cứ gì
+> ## 🔄 HAI LỆNH CỦA MỘT PHIÊN — chạy trước khi làm bất cứ gì, và trước khi rời máy
 >
 > ```
-> powershell -ExecutionPolicy Bypass -File dongbo.ps1
+> powershell -ExecutionPolicy Bypass -File dongbo.ps1     # ngồi xuống
+> powershell -ExecutionPolicy Bypass -File roi-may.ps1    # đứng dậy
 > ```
 >
-> Một lệnh làm đủ: chặn nếu còn thay đổi chưa commit, `git pull`, rồi tải bản đang chạy
+> `dongbo.ps1` chặn nếu còn thay đổi chưa commit, `git pull`, rồi tải bản đang chạy
 > trên Apps Script về thư mục tạm và so với `bao-tri-v2/`. Script chỉ đọc và báo cáo,
 > không bao giờ push, deploy hay ghi đè file trong repo.
 >
-> | Mã thoát | Nghĩa | Làm gì |
-> |---|---|---|
-> | 0 | Sạch, khớp cả GitHub lẫn Apps Script | Bắt đầu việc luôn |
-> | 1 | Có lệch cần người quyết | Đọc kết luận script in ra, hỏi chủ dự án |
-> | 2 | Thiếu môi trường (chưa login, thiếu `.clasp.json`) | Sửa theo hướng dẫn script in ra |
+> `roi-may.ps1` lo nửa còn lại: chạy `kiemtra\kiem-tra.ps1`, hỏi xác nhận rồi commit,
+> `git pull --rebase`, `git push`, rồi so `HEAD` với `origin` để chắc là hết lệch. Hỏng
+> ở bước nào dừng ở bước đó, xung đột rebase thì để nguyên hiện trường cho người tự gỡ.
+> Nó **không** `clasp push`, **không** deploy — chỉ làm việc git.
+>
+> Chạy cả hai trong PowerShell **thường**. Cửa sổ quyền Administrator dùng hồ sơ người
+> dùng khác nên thường không có `git` lẫn `clasp.cmd` trong PATH.
+>
+> Mã thoát giống nhau ở cả hai script:
+>
+> | Mã thoát | `dongbo.ps1` | `roi-may.ps1` | Làm gì |
+> |---|---|---|---|
+> | 0 | Sạch, khớp cả GitHub lẫn Apps Script | Đã đẩy xong, GitHub có đủ | Bắt đầu việc / rời máy được |
+> | 1 | Có lệch cần người quyết | Kiểm tra đỏ, chưa commit, hoặc xung đột rebase | Đọc kết luận script in ra, hỏi chủ dự án |
+> | 2 | Thiếu môi trường (chưa login, thiếu `.clasp.json`) | Không phải repo, thiếu `kiem-tra.ps1` | Sửa theo hướng dẫn script in ra |
 >
 > **Mã nguồn tồn tại ở BỐN nơi**: máy công ty, laptop cá nhân, GitHub, và Apps Script
-> Editor. Trước khi rời một máy phải commit và push, nếu không lần sau ngồi máy kia sẽ
-> lệch. Đã có lần repo tụt ~1000 dòng vì có người sửa thẳng trên Editor.
+> Editor. Hai script trên lo ba nơi đầu; nơi thứ tư chỉ có một luật là đừng sửa thẳng
+> trên Editor. Đã có lần repo tụt ~1000 dòng vì có người sửa thẳng trên Editor, và một
+> lần 7 file kẹt lại trên laptop vì quên push trước khi rời máy.
 >
 > Cài đặt máy mới: xem `README.md`. Prompt mở chat: xem `PROMPT_KHUNG_CHAT_MOI.md`.
 
