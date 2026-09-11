@@ -895,9 +895,10 @@ Thứ tự đưa vào chạy ở mục 7 của tài liệu đó, tóm tắt:
 4. Menu 📨 lấy Telegram ID → gửi thử → thấy tin trên điện thoại mới đi tiếp.
 5. Ghép đủ 15 thợ → gõ `BAT`.
 6. Cài trigger. **Từ đây phần nhắc đã chạy thật mà chưa cần deploy**, vì trigger chạy bằng mã HEAD.
-7. Deploy ghép vào lần deploy chủ nhật — sau bước này mới có thông báo tức thì lúc công nhân báo.
+7. ~~Deploy~~ **đã deploy ngày 11/09/2026** cùng đợt phiếu `HT-`. Phần còn thiếu để bot chạy
+   thật chỉ còn là các bước 1–6 ở trên, đặc biệt là gõ `BAT` vào `TELEGRAM_BAT`.
 
-### Gọi kỹ thuật lúc máy dừng (`HT-`) — ĐÃ `clasp push`, CHƯA deploy (11/09/2026)
+### Gọi kỹ thuật lúc máy dừng (`HT-`) — ĐÃ DEPLOY, ĐANG CHẠY THẬT (11/09/2026)
 
 Viết xong toàn bộ: loại phiếu `HO_TRO` trong `Code.gs`, RPC `requestTechnician` +
 `ghepMoTaHoTro_` trong `CongNhan.gs`, nút gọi thợ trên màn hình "Máy này đang dừng"
@@ -906,10 +907,21 @@ Viết xong toàn bộ: loại phiếu `HO_TRO` trong `Code.gs`, RPC `requestTec
 tổng trong báo cáo xuất (`XuatBaoCao.gs`), hai chốt chặn downtime (`HieuDung.gs`).
 Thiết kế và các quyết định ở mục 4.
 
-**ĐÃ `clasp push`** lúc 09:07 ngày 11/09/2026, 22 file. **CHƯA deploy** — công nhân quét QR
-vẫn vào bản cũ, chưa có nút gọi thợ. Trước khi push chạy `dongbo.ps1`: 12 file lệch, **cả 12
-đều repo nhiều dòng hơn**, không có tên lạ nào, nên `--force` an toàn và không ai sửa thẳng
-trên Editor. Bộ kiểm tra sạch cả 5 lớp ngay trước push.
+**ĐÃ `clasp push`** lúc 09:07 và **ĐÃ DEPLOY** ngày 11/09/2026 — version 6 lên version mới,
+**cùng deployment ID cũ**, URL không đổi, QR không phải in lại. Trước khi push chạy
+`dongbo.ps1`: 12 file lệch, **cả 12 đều repo nhiều dòng hơn**, không có tên lạ nào, nên
+`--force` an toàn và không ai sửa thẳng trên Editor. Bộ kiểm tra sạch cả 5 lớp ngay trước push.
+
+**Đã chạy thật một vòng đầy đủ** trên máy `4T-08` (Máy 08 dệt 4 thoi, bộ phận DET):
+`DM-1109-001` lý do *Đổi mặt hàng* lúc 09:25 → quét lại QR thấy nút **🔧 Gọi kỹ thuật** →
+`HT-1109-001` lúc 09:26, danh bạ hiện đúng 3 thợ cơ khí ca ngày cộng số khẩn cấp. Khoá
+`LY_DO_DUNG_MAY` đã thêm `Đổi mặt hàng`.
+
+**`clasp deploy` KHÔNG chạy được**, báo *Only users in the same domain as the script owner may
+deploy this script* — tài khoản clasp đang đăng nhập không cùng domain Workspace với chủ sở
+hữu script. Deploy bằng Editor: **Triển khai → Quản lý bản triển khai → chọn bản đang có →
+bút chì → Phiên bản mới → Triển khai**. Đường này giữ nguyên deployment ID nên an toàn;
+tuyệt đối không bấm "Bản triển khai mới".
 
 Kiểm thử: 18 ca mới ở mục 14b của `Test.gs`, **đã chạy thật trong Sheet: 340/340 đạt**. Trước
 đó chạy bằng khung tạm tại máy 18/18, và kiểm chứng ngược bằng bản cố tình bỏ chốt chặn thì
@@ -920,10 +932,10 @@ báo đúng 3 ca đỏ. Thêm 3 ca trong `kiemtra/kpi-tho.js` — KPI tổng 204
 xem một ca đổi mặt hàng thật từ đầu tới cuối: quét QR → báo dừng → quét lại → gọi kỹ thuật
 → thợ nhận → thợ hoàn thành → công nhân bấm máy đã chạy lại.
 
-### Đã làm xong, chưa deploy (09/09/2026)
+### Đã deploy kèm đợt 11/09/2026 (viết xong 09/09/2026)
 
-Hai khối dưới đây đã có trên Apps Script Editor và đã kéo về repository, nhưng **bản web
-đang chạy thật vẫn là version cũ chưa có chúng**:
+Hai khối dưới đây nằm sẵn trên Apps Script HEAD từ 09/09, và **đã lên bản chạy thật cùng lần
+deploy ngày 11/09** — deploy lấy trọn mã HEAD chứ không lấy riêng phần mới:
 
 - **So sánh với kỳ trước** trong báo cáo xuất — `soSanhKy_()`, `ghiTomTat_()` dựng thêm một
   trang tóm tắt đứng đầu file xuất, kèm `tyLeDatKpi_()`, `tbDapUngSuCo_()`, `phanVi_()`,
