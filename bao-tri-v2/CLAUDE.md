@@ -54,7 +54,7 @@ người dùng để hiện cửa sổ đăng nhập.
 | `Code.gs` | Cấu hình, schema, hàm nền (ca/lịch trực/mã phiếu/log), `setupSystem`, menu |
 | `CongNhan.gs` | `doGet` routing, `getWorkerBootstrap`, `getOnDutyContacts_`, `reportIncident`, `reportMachineStop`, `reportMachineRestart` |
 | `LuongTho.gs` | Xác thực thợ, nhận việc, cập nhật hiện trạng, hoàn thành, sửa phiếu đã đóng, việc chung, bảo trì |
-| `BaoCao.gs` | `refreshReports` (sheet `Tong_Hop`), `archiveOldTickets`, `caiDatTrigger` |
+| `BaoCao.gs` | `refreshReports` (sheet `Tong_Hop`), `archiveOldTickets` + `donPhieuCuHangThang`, `caiDatTrigger` |
 | `BaoCaoNgay.gs` | Báo cáo trong ngày một trang + sửa nội dung tại chỗ |
 | `HieuDung.gs` | Tỉ lệ hiệu dụng A: đọc kế hoạch chạy máy, cắt/hợp khoảng dừng, khối cho `Tong_Hop` và sheet `Hieu_Dung` |
 | `BaoCaoKhaDung.gs` | Chức năng báo cáo khả dụng độc lập: xuất ngày/tháng, đủ máy hoạt động, chia theo bộ phận |
@@ -64,7 +64,7 @@ người dùng để hiện cửa sổ đăng nhập.
 | `DonDuLieu.gs` | Xoá phiếu / dọn dữ liệu chạy thử, có thùng rác. **Chỉ menu, không có route web** |
 | `DoTai.gs` | Đo chi phí thật của từng hàm RPC, chỉ đọc |
 | `ThongBao.gs` | Bot Telegram nhắc thợ: soạn tin, gửi, công tắc, cầu chì, hai mục menu, trigger nhắc |
-| `Test.gs` | 340 test chạy bằng dữ liệu giả, **không đụng sheet nào** |
+| `Test.gs` | 356 test chạy bằng dữ liệu giả, **không đụng sheet nào** |
 | `Index.html` | Trang công nhân |
 | `Tho.html` | Trang thợ |
 | `InQr.html` | Trang in QR |
@@ -118,6 +118,36 @@ Năm cột cuối do `tinhLaiKpiTho()` (menu 🎯) tính lại được cho **to
 cũ** — mọi mốc giờ cần thiết đã nằm sẵn trên sheet. Chạy lại nhiều lần vô hại.
 Phải chạy `setupSystem()` một lần trước để nới sheet lên 33 cột; hàm có chốt chặn
 báo rõ nếu quên.
+
+### `Luu_Tru` — dọn phiếu theo THÁNG LỊCH (09/2026)
+
+Cùng schema với `Su_Co`. Ngày 1 hằng tháng lúc ~2h sáng, trigger chạy
+`donPhieuCuHangThang()`: **tính lại KPI trước, dọn sau**. Phiếu đã `HOAN_THANH`
+thuộc các tháng trước được dời sang `Luu_Tru`, nên `Su_Co` chỉ còn việc của tháng
+đang chạy cộng mọi phiếu chưa đóng.
+
+Số tháng giữ lại đọc từ `Cau_Hinh` khoá **`SO_THANG_GIU_LAI`**, mặc định `1` = chỉ
+tháng hiện tại. Đổi trên sheet là có hiệu lực ngay, không cần deploy. Nhỏ nhất là 1:
+`sinhMaPhieu_` đếm mã phiếu trong ngày ngay trên `Su_Co`, dọn cả tháng đang chạy là
+mã phiếu đánh trùng.
+
+Cắt theo **tháng lịch** (`mocThangLuuTru_` + `thangCuaPhieu_`, ưu tiên `Ngay_Ca` nên
+ca đêm vắt qua nửa đêm vẫn thuộc đúng tháng), **không** phải mốc trượt n tháng kể từ
+hôm nay — bản đầu tiên dùng mốc trượt và nó cắt ngang giữa tháng.
+
+Không mất dữ liệu: báo cáo ngày, `Tong_Hop`, xuất Excel, tỉ lệ khả dụng và phép chống
+bù chồng khoảng dừng đều đọc qua `docSuCoVaLuuTru_()`.
+
+**Hai bẫy đã gài chốt, đừng gỡ.** (1) `tinhLaiKpiTho()` chỉ chạy trên `Su_Co`: dọn
+trước rồi tính sau là cột KPI của tháng đó trống **vĩnh viễn** — đúng cái đã vấp khi
+xuất báo cáo tháng 8/2026. Vì vậy trigger lẫn menu đều gọi `donPhieuCuHangThang()`
+chứ không gọi thẳng `archiveOldTickets()`, và phép tách còn giữ lại mọi phiếu có
+`KPI_Ap_Dung` trống rồi báo số lượng ra. (2) `refreshReports()` từng đọc mỗi `Su_Co`:
+tính lại `Tong_Hop` cho một tháng đã dọn sẽ ra bảng rỗng mà không báo lỗi. Mốc 12
+tháng che lỗi này suốt từ đầu vì chưa lần nào có gì để dọn.
+
+`archiveOldTickets` vẫn nằm trong danh sách handler mà `caiDatTrigger()` xoá, dù không
+còn được cài mới — các trigger cài từ trước mang đúng tên đó.
 
 ### Ba trạng thái
 
@@ -769,7 +799,7 @@ nghỉ việc còn sống thêm vài phút.
 | 📊 Cập nhật báo cáo tổng hợp | Trigger tự chạy 12h và 23h |
 | 📤 Xuất báo cáo (chọn ngày, bộ phận, thợ) | Cuối tháng, hoặc khi sếp hỏi một khoảng ngày |
 | 📈 Báo cáo tỉ lệ khả dụng máy | Xuất báo cáo A độc lập theo ngày hoặc tháng, đủ máy hoạt động |
-| 🗄️ Dọn phiếu cũ sang Lưu trữ | Trigger tự chạy ngày 1 hằng tháng |
+| 🗄️ Dọn phiếu tháng cũ sang Lưu trữ | Trigger tự chạy ngày 1 hằng tháng. Tính lại KPI trước, dọn sau |
 | ⏰ Cài trigger tự chạy | **Một lần duy nhất**, phải chạy tay. Cài 4 trigger |
 | 📨 Thông báo Telegram | Lấy Telegram ID của thợ · Gửi tin thử. Hai mục này **không** đi qua công tắc `TELEGRAM_BAT` |
 | 🧹 Dọn dữ liệu (Admin) | Xoá phiếu theo mã · Dọn sạch dữ liệu thử · Mở thùng rác |
@@ -859,7 +889,7 @@ hàm thuần**: soi mã nguồn từng hàm soạn tin bằng `Function.prototyp
 thật nằm chung file — kéo nhầm một lời gọi mạng vào nhóm hàm soạn tin là mất luôn khả năng
 kiểm thử tại máy.
 
-Lớp thứ sáu: menu **🧪 Chạy test logic** trong Sheet — 340 test bằng dữ liệu giả,
+Lớp thứ sáu: menu **🧪 Chạy test logic** trong Sheet — 356 test bằng dữ liệu giả,
 **không đọc/ghi sheet nào**.
 
 Điều này làm được nhờ `getOnDutyContacts_` nhận tham số `duLieu` **tiêm theo từng trường**:

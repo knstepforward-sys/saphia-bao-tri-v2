@@ -27,7 +27,10 @@ function refreshReports(thang) {
   }
   const khoaThang = thangCan.slice(3) + '-' + thangCan.slice(0, 2); // 'yyyy-MM'
 
-  const ds = docToanBoSuCo_().filter(function (v) {
+  // Đọc CẢ Luu_Tru, không riêng Su_Co: từ khi cắt theo tháng lịch thì tháng
+  // trước đã nằm bên lưu trữ, đọc mỗi Su_Co là tính lại Tong_Hop tháng cũ ra
+  // bảng rỗng mà không báo lỗi gì.
+  const ds = docSuCoVaLuuTru_().filter(function (v) {
     return thangCuaPhieu_(v) === khoaThang;
   });
 
@@ -358,8 +361,65 @@ function dinhDangTongHop_(sh, out) {
 // ============================================================================
 
 /**
- * Chuyển các phiếu HOAN_THANH cũ hơn CONFIG.SO_THANG_GIU_LAI tháng sang sheet
- * Luu_Tru, để Su_Co luôn gọn và tốc độ đọc/ghi ổn định qua nhiều năm.
+ * Khoá tháng 'yyyy-MM' của mốc cắt: phiếu thuộc tháng NHỎ HƠN chuỗi này thì dọn.
+ *
+ * soThang tính CẢ tháng của `khi`, nên soThang = 1 cho ra đúng tháng hiện tại và
+ * mọi tháng trước đó đều bị dọn. Cộng trừ trên tổng số tháng (năm×12 + tháng)
+ * thay vì Date.setMonth để khỏi vướng chuyện ngày 31 tràn sang tháng sau.
+ */
+function mocThangLuuTru_(khi, soThang) {
+  const n = Math.max(1, Math.round(Number(soThang) || 1));
+  const y = Number(Utilities.formatDate(khi, CONFIG.MUI_GIO, 'yyyy'));
+  const m = Number(Utilities.formatDate(khi, CONFIG.MUI_GIO, 'MM'));
+  const tong = y * 12 + (m - 1) - (n - 1);
+  return Math.floor(tong / 12) + '-' + pad2_((tong % 12) + 1);
+}
+
+/**
+ * Tách danh sách phiếu thành nhóm giữ lại và nhóm dời sang Luu_Tru.
+ *
+ * Hàm THUẦN: nhận mảng dòng, trả kết quả, không đọc sheet nào — để Test.gs kiểm
+ * được bằng dữ liệu giả thay vì phải dựng một Spreadsheet thật.
+ *
+ * Bốn nhóm ở lại, theo đúng thứ tự kiểm tra:
+ *  1. Phiếu chưa HOÀN THÀNH — còn đang treo thì còn phải nhìn thấy, dù cũ mấy tháng.
+ *  2. Phiếu không đọc được tháng — dời một dòng hỏng đi là giấu luôn cái hỏng đó.
+ *  3. Phiếu thuộc tháng còn trong hạn giữ.
+ *  4. Phiếu CHƯA TÍNH KPI lần nào (cột KPI_Ap_Dung trống). `tinhLaiKpiTho()` chỉ
+ *     chạy trên Su_Co, nên dời trước khi tính là cột KPI của tháng đó trống vĩnh
+ *     viễn — đúng cái đã vấp khi xuất báo cáo tháng 8/2026. KPI_Ap_Dung mới là
+ *     dấu hiệu đúng chứ không phải Phut_KPI_Tho: phiếu CV-/BT-/DM- không vào KPI
+ *     vẫn để trống số phút, nhưng KPI_Ap_Dung có ghi 'KHONG — <lý do>'.
+ */
+function chonPhieuLuuTru_(ds, mocThang) {
+  const giuLai = [], luuTru = [];
+  let giuViKpi = 0;
+
+  ds.forEach(function (v) {
+    if (v[COT.Trang_Thai] !== TRANG_THAI.HOAN_THANH) { giuLai.push(v); return; }
+
+    const thang = thangCuaPhieu_(v);
+    if (!thang || thang >= mocThang) { giuLai.push(v); return; }
+
+    if (String(v[COT.KPI_Ap_Dung] || '').trim() === '') {
+      giuLai.push(v);
+      giuViKpi++;
+      return;
+    }
+
+    luuTru.push(v);
+  });
+
+  return { giuLai: giuLai, luuTru: luuTru, giuViKpi: giuViKpi };
+}
+
+/**
+ * Chuyển phiếu HOAN_THANH của các tháng đã quá hạn giữ sang sheet Luu_Tru, để
+ * Su_Co chỉ còn việc của tháng đang chạy cộng phiếu chưa đóng.
+ *
+ * Cắt theo THÁNG LỊCH (xem mocThangLuuTru_), số tháng giữ lại đọc từ sheet
+ * Cau_Hinh khoá SO_THANG_GIU_LAI. Không mất dữ liệu: báo cáo ngày, báo cáo
+ * tháng, xuất Excel và tỉ lệ khả dụng đều đọc qua docSuCoVaLuuTru_().
  *
  * Cách làm: đọc hết → tách 2 nhóm → ghi nhóm lưu trữ vào Luu_Tru (1 setValues)
  * → ghi lại nhóm giữ vào Su_Co (1 setValues) rồi xoá phần thừa. Không dùng
@@ -374,24 +434,22 @@ function archiveOldTickets() {
       return 'Hệ thống đang bận, bỏ qua lần dọn này.';
     }
 
-    const moc = new Date();
-    moc.setMonth(moc.getMonth() - CONFIG.SO_THANG_GIU_LAI);
+    const soThang = soThangGiuLai_();
+    const mocThang = mocThangLuuTru_(nowVN_(), soThang);
 
     const tatCa = docToanBoSuCo_();
-    const giuLai = [], luuTru = [];
+    const tach = chonPhieuLuuTru_(tatCa, mocThang);
+    const giuLai = tach.giuLai, luuTru = tach.luuTru;
 
-    tatCa.forEach(function (v) {
-      const xong = v[COT.Thoi_Gian_Hoan_Thanh];
-      if (v[COT.Trang_Thai] === TRANG_THAI.HOAN_THANH &&
-          xong instanceof Date && xong < moc) {
-        luuTru.push(v);
-      } else {
-        giuLai.push(v);
-      }
-    });
+    const nhacKpi = tach.giuViKpi
+      ? '\n\nGiữ lại ' + tach.giuViKpi + ' phiếu cũ vì chưa tính KPI lần nào. ' +
+        'Chạy menu 🔧 Bảo trì → "🎯 Tính lại KPI đáp ứng của thợ" rồi dọn lại, ' +
+        'kẻo dọn đi trước là cột KPI của tháng đó trống vĩnh viễn.'
+      : '';
 
     if (!luuTru.length) {
-      return 'Không có phiếu nào quá ' + CONFIG.SO_THANG_GIU_LAI + ' tháng để dọn.';
+      return 'Không có phiếu nào trước tháng ' + mocThang + ' để dọn (đang giữ ' +
+        soThang + ' tháng).' + nhacKpi;
     }
 
     const shLuu = sheet_(SHEET.LUU_TRU);
@@ -410,13 +468,31 @@ function archiveOldTickets() {
     }
 
     ghiNhatKy_('', '', 'HE_THONG', 'LUU_TRU',
-      { soPhieu: luuTru.length, mocTruoc: fmtNgay_(moc) }, '');
+      { soPhieu: luuTru.length, truocThang: mocThang, soThangGiuLai: soThang,
+        giuViKpi: tach.giuViKpi }, '');
 
-    return 'Đã chuyển ' + luuTru.length + ' phiếu sang Luu_Tru (còn lại ' +
-      giuLai.length + ' phiếu trong Su_Co).';
+    return 'Đã chuyển ' + luuTru.length + ' phiếu trước tháng ' + mocThang +
+      ' sang Luu_Tru (còn lại ' + giuLai.length + ' phiếu trong Su_Co).' + nhacKpi;
   } finally {
     lock.releaseLock();
   }
+}
+
+/**
+ * Việc của ngày 1 hằng tháng: TÍNH KPI TRƯỚC, DỌN SAU.
+ *
+ * Thứ tự này là bắt buộc, không phải cho gọn. `tinhLaiKpiTho()` chỉ tính trên
+ * Su_Co; dọn trước rồi tính sau thì những phiếu vừa bị dời không còn đường nào
+ * được tính, và báo cáo tháng ấy in ra cột KPI toàn dấu gạch ngang — đã xảy ra
+ * thật khi xuất báo cáo tháng 8/2026.
+ *
+ * Hai hàm dưới đây mỗi hàm tự giành rồi tự nhả LockService, chạy nối tiếp chứ
+ * không lồng nhau.
+ */
+function donPhieuCuHangThang() {
+  const kpi = tinhLaiKpiTho();
+  const don = archiveOldTickets();
+  return kpi + '\n\n— — —\n\n' + don;
 }
 
 // ============================================================================
@@ -431,8 +507,11 @@ function archiveOldTickets() {
  * không bao giờ nhân đôi.
  */
 function caiDatTrigger() {
+  // archiveOldTickets nằm lại trong danh sách dù không còn được cài mới: các
+  // trigger đã cài từ trước mang đúng tên đó, phải xoá được thì lần cài lại mới
+  // không để sót một trigger dọn KHÔNG tính KPI trước.
   const cuaTa = { refreshReportsThangNay: true, archiveOldTickets: true,
-    nhacPhieuChoNhan: true };
+    donPhieuCuHangThang: true, nhacPhieuChoNhan: true };
 
   let daXoa = 0;
   ScriptApp.getProjectTriggers().forEach(function (t) {
@@ -444,7 +523,9 @@ function caiDatTrigger() {
   ScriptApp.newTrigger('refreshReportsThangNay').timeBased().atHour(23).everyDays(1).create();
 
   // Dọn dữ liệu: ngày 1 hằng tháng, lúc rạng sáng cho khỏi vướng giờ làm việc.
-  ScriptApp.newTrigger('archiveOldTickets').timeBased().onMonthDay(1).atHour(2).create();
+  // Gọi donPhieuCuHangThang chứ không gọi thẳng archiveOldTickets — phải tính
+  // KPI trước khi dời phiếu đi, xem chú thích của hàm đó.
+  ScriptApp.newTrigger('donPhieuCuHangThang').timeBased().onMonthDay(1).atHour(2).create();
 
   // Nhắc phiếu chưa ai nhận: 5 phút một lượt. Chạy bằng mã HEAD nên KHÔNG cần
   // deploy. Công tắc Cau_Hinh.TELEGRAM_BAT tắt thì mỗi lượt chỉ đọc một ô cấu
@@ -453,7 +534,7 @@ function caiDatTrigger() {
 
   return 'Đã cài 4 trigger (xoá ' + daXoa + ' trigger cũ):\n' +
     '• Cập nhật Tong_Hop lúc ~12h và ~23h mỗi ngày\n' +
-    '• Dọn phiếu cũ sang Luu_Tru ngày 1 hằng tháng lúc ~2h sáng\n' +
+    '• Tính lại KPI rồi dọn phiếu tháng cũ sang Luu_Tru, ngày 1 hằng tháng lúc ~2h sáng\n' +
     '• Nhắc phiếu chưa ai nhận, 5 phút một lượt (chỉ chạy khi TELEGRAM_BAT = BAT)';
 }
 

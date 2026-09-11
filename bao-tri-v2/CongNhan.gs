@@ -856,7 +856,9 @@ function timKhoangDungTrung_(maMay, tu, den) {
   const bayGio = nowVN_();
   const out = [];
 
-  docToanBoSuCo_().forEach(function (v) {
+  // Đọc cả Luu_Tru: bù phiếu cho một ngày của tháng trước là đụng đúng khoảng đã
+  // được dọn sang lưu trữ, đọc mỗi Su_Co thì phép chống bù chồng im lặng bỏ sót.
+  docSuCoVaLuuTru_().forEach(function (v) {
     if (String(v[COT.Ma_May]).trim().toUpperCase() !== ma) return;
     const k = khoangDungMay_(v, bayGio);
     if (!k) return;
