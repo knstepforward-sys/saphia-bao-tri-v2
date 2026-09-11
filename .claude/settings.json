@@ -29,9 +29,7 @@
       "PowerShell(clasp push:*)",
       "PowerShell(clasp.cmd push:*)",
       "PowerShell(clasp deploy:*)",
-      "PowerShell(clasp.cmd deploy:*)",
-      "Bash(git push:*)",
-      "PowerShell(git push:*)"
+      "PowerShell(clasp.cmd deploy:*)"
     ]
   }
 }
