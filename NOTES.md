@@ -1,3 +1,11 @@
+## [2026-09-11] Phiếu `HT-` — ĐÃ `clasp push` 22 file. Chưa deploy. Test trong Sheet 340/340
+- **Thay đổi:** Không sửa dòng mã nào. Đây là mục ghi **thay đổi trạng thái** của mục phiếu `HT-` bên dưới, cộng hai chỗ sửa số trong `bao-tri-v2/CLAUDE.md` (`~270` thành `340`).
+- **Trạng thái:** **ĐÃ `clasp push`** lúc 09:07 ngày 11/09/2026, 22 file, có `CongNhan.gs` và `Index.html`. **CHƯA deploy.** Dùng `--force`, và lần này `--force` có căn cứ chứ không phải tin nhau: `dongbo.ps1` chạy ngay trước đó liệt kê đúng 12 file lệch, **cả 12 đều repo nhiều dòng hơn server**, không file lạ nào, nên không ai sửa thẳng trên Editor. Chủ dự án xác nhận riêng cho lần push này.
+- **Mục 14b đã chạy thật trong Sheet: 340/340 đạt.** Trước đó chỉ có kết quả từ khung tạm chạy bằng node (18/18). Con số tổng 340 lệch với chỗ tài liệu ghi `~250` từ trước — đã sửa thành 340 ở cả hai chỗ trong `bao-tri-v2/CLAUDE.md`.
+- **Hệ thống đang chạy chưa đổi hành vi nào.** `clasp push` chỉ cập nhật mã HEAD; công nhân quét QR vẫn vào bản đã triển khai cũ, **chưa thấy nút "Gọi kỹ thuật"**. Thứ đổi ngay là menu trong Sheet và mã mà trigger chạy.
+- **Hai chỗ vấp trên đường đi, ghi lại để lần sau khỏi mất thời gian.** (1) Máy công ty kẹt giữa một phiên `git am` còn sót từ lúc thử áp file patch — mọi lệnh checkout bị chặn cho tới khi `git am --abort`. (2) `clasp.cmd push` chạy ở gốc repo báo `Project settings not found`, vì `.clasp.json` của hệ v2 nằm trong `bao-tri-v2/`. **Phải `cd bao-tri-v2` trước.** Chạy ở gốc là trỏ vào Apps Script của SAPHIA — hệ khác hẳn.
+- **Việc cần làm tiếp theo:** Thêm `Đổi mặt hàng` vào khoá `LY_DO_DUNG_MAY` của sheet `Cau_Hinh` — **vẫn chưa làm**, sửa trên sheet là có hiệu lực ngay. Rồi deploy vào lần chủ nhật, dùng đúng deployment ID đang có. Sau deploy đi xem một ca đổi mặt hàng thật từ đầu tới cuối.
+
 ## [2026-09-11] Bỏ chặn `git push` trong `.claude/settings.json`
 - **Thay đổi:** Xoá hai dòng `"Bash(git push:*)"` và `"PowerShell(git push:*)"` khỏi mảng `deny`. Khối `deny` từ 10 dòng còn 8, **toàn bộ là `clasp`**. Không đụng `allow`, không sửa dòng mã nào.
 - **Lý do:** Phiên làm việc trên đám mây không đẩy được commit lên GitHub, hai commit phiếu `HT-` kẹt lại trong container. Mà container là thứ dùng xong bỏ — kẹt ở đó là mất hẳn. Đây đúng kiểu hỏng đã trả giá hai lần: repo tụt ~1000 dòng, và 7 file kẹt trên laptop hôm 03/09.

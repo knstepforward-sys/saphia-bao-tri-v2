@@ -64,7 +64,7 @@ người dùng để hiện cửa sổ đăng nhập.
 | `DonDuLieu.gs` | Xoá phiếu / dọn dữ liệu chạy thử, có thùng rác. **Chỉ menu, không có route web** |
 | `DoTai.gs` | Đo chi phí thật của từng hàm RPC, chỉ đọc |
 | `ThongBao.gs` | Bot Telegram nhắc thợ: soạn tin, gửi, công tắc, cầu chì, hai mục menu, trigger nhắc |
-| `Test.gs` | ~270 test chạy bằng dữ liệu giả, **không đụng sheet nào** |
+| `Test.gs` | 340 test chạy bằng dữ liệu giả, **không đụng sheet nào** |
 | `Index.html` | Trang công nhân |
 | `Tho.html` | Trang thợ |
 | `InQr.html` | Trang in QR |
@@ -859,7 +859,7 @@ hàm thuần**: soi mã nguồn từng hàm soạn tin bằng `Function.prototyp
 thật nằm chung file — kéo nhầm một lời gọi mạng vào nhóm hàm soạn tin là mất luôn khả năng
 kiểm thử tại máy.
 
-Lớp thứ sáu: menu **🧪 Chạy test logic** trong Sheet — ~270 test bằng dữ liệu giả,
+Lớp thứ sáu: menu **🧪 Chạy test logic** trong Sheet — 340 test bằng dữ liệu giả,
 **không đọc/ghi sheet nào**.
 
 Điều này làm được nhờ `getOnDutyContacts_` nhận tham số `duLieu` **tiêm theo từng trường**:
@@ -897,7 +897,7 @@ Thứ tự đưa vào chạy ở mục 7 của tài liệu đó, tóm tắt:
 6. Cài trigger. **Từ đây phần nhắc đã chạy thật mà chưa cần deploy**, vì trigger chạy bằng mã HEAD.
 7. Deploy ghép vào lần deploy chủ nhật — sau bước này mới có thông báo tức thì lúc công nhân báo.
 
-### Gọi kỹ thuật lúc máy dừng (`HT-`) — mã đã đủ, CHƯA push, CHƯA deploy (11/09/2026)
+### Gọi kỹ thuật lúc máy dừng (`HT-`) — ĐÃ `clasp push`, CHƯA deploy (11/09/2026)
 
 Viết xong toàn bộ: loại phiếu `HO_TRO` trong `Code.gs`, RPC `requestTechnician` +
 `ghepMoTaHoTro_` trong `CongNhan.gs`, nút gọi thợ trên màn hình "Máy này đang dừng"
@@ -906,10 +906,14 @@ Viết xong toàn bộ: loại phiếu `HO_TRO` trong `Code.gs`, RPC `requestTec
 tổng trong báo cáo xuất (`XuatBaoCao.gs`), hai chốt chặn downtime (`HieuDung.gs`).
 Thiết kế và các quyết định ở mục 4.
 
-**Chưa `clasp push`, chưa deploy.** Công nhân quét QR vẫn vào bản cũ, chưa có nút gọi thợ.
-Kiểm thử: 18 ca mới ở mục 14b của `Test.gs` (chạy thử bằng khung tạm tại máy, 18/18 đạt, và
-kiểm chứng ngược bằng bản cố tình bỏ chốt chặn thì báo đúng 3 ca đỏ), 3 ca mới trong
-`kiemtra/kpi-tho.js` — tổng 2042.
+**ĐÃ `clasp push`** lúc 09:07 ngày 11/09/2026, 22 file. **CHƯA deploy** — công nhân quét QR
+vẫn vào bản cũ, chưa có nút gọi thợ. Trước khi push chạy `dongbo.ps1`: 12 file lệch, **cả 12
+đều repo nhiều dòng hơn**, không có tên lạ nào, nên `--force` an toàn và không ai sửa thẳng
+trên Editor. Bộ kiểm tra sạch cả 5 lớp ngay trước push.
+
+Kiểm thử: 18 ca mới ở mục 14b của `Test.gs`, **đã chạy thật trong Sheet: 340/340 đạt**. Trước
+đó chạy bằng khung tạm tại máy 18/18, và kiểm chứng ngược bằng bản cố tình bỏ chốt chặn thì
+báo đúng 3 ca đỏ. Thêm 3 ca trong `kiemtra/kpi-tho.js` — KPI tổng 2042.
 
 **Việc cần làm khi đưa vào chạy:** thêm `Đổi mặt hàng` vào khoá `LY_DO_DUNG_MAY` của sheet
 `Cau_Hinh` (sửa trên sheet, không cần đụng mã, có hiệu lực ngay). Sau khi deploy thì đi
