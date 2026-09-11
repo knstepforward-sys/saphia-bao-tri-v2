@@ -64,7 +64,7 @@ người dùng để hiện cửa sổ đăng nhập.
 | `DonDuLieu.gs` | Xoá phiếu / dọn dữ liệu chạy thử, có thùng rác. **Chỉ menu, không có route web** |
 | `DoTai.gs` | Đo chi phí thật của từng hàm RPC, chỉ đọc |
 | `ThongBao.gs` | Bot Telegram nhắc thợ: soạn tin, gửi, công tắc, cầu chì, hai mục menu, trigger nhắc |
-| `Test.gs` | ~250 test chạy bằng dữ liệu giả, **không đụng sheet nào** |
+| `Test.gs` | ~270 test chạy bằng dữ liệu giả, **không đụng sheet nào** |
 | `Index.html` | Trang công nhân |
 | `Tho.html` | Trang thợ |
 | `InQr.html` | Trang in QR |
@@ -129,24 +129,25 @@ Với `DUNG_MAY`: `DANG_XU_LY` = máy đang dừng, `HOAN_THANH` = máy đã ch�
 
 ### Mã phiếu
 
-`SC-ddMM-###` · `CV-` · `BT-` · `DM-`, số reset mỗi ngày.
+`SC-ddMM-###` · `CV-` · `BT-` · `DM-` · `HT-`, số reset mỗi ngày.
 
 `sinhMaPhieu_` lấy **số lớn nhất đang có +1**, không đếm số dòng — nếu đếm dòng thì chỉ
 cần xoá một phiếu là số kế tiếp trùng mã đã cấp.
 
 ---
 
-## 4. Bốn loại phiếu — khác nhau ở đâu và VÌ SAO
+## 4. Năm loại phiếu — khác nhau ở đâu và VÌ SAO
 
-| | `SC-` Sự cố máy | `DM-` Dừng máy không do hư | `CV-` Việc chung | `BT-` Bảo trì hằng ngày |
-|---|---|---|---|---|
-| Ai tạo | Công nhân qua QR | Công nhân qua QR | Thợ | Thợ |
-| Trạng thái khi tạo | `CHO_NHAN` | `DANG_XU_LY` | `DANG_XU_LY` | `HOAN_THANH` |
-| Đóng bằng cách nào | Thợ bấm Hoàn thành | **Công nhân quét lại QR** bấm "Máy đã chạy lại" | Thợ bấm Hoàn thành | Đóng ngay lúc ghi |
-| Đếm là lần hỏng của máy | ✅ | ❌ | ❌ | ❌ |
-| Đo thời gian đáp ứng | ✅ | ❌ | ❌ | ❌ |
-| Đo thời gian dừng máy | ✅ | ✅ | ❌ | ❌ |
-| **Tính là "thợ đang bận"** | ✅ | ❌ | ✅ | ❌ |
+| | `SC-` Sự cố máy | `DM-` Dừng máy không do hư | `HT-` Gọi kỹ thuật lúc máy dừng | `CV-` Việc chung | `BT-` Bảo trì hằng ngày |
+|---|---|---|---|---|---|
+| Ai tạo | Công nhân qua QR | Công nhân qua QR | Công nhân qua QR | Thợ | Thợ |
+| Trạng thái khi tạo | `CHO_NHAN` | `DANG_XU_LY` | `CHO_NHAN` | `DANG_XU_LY` | `HOAN_THANH` |
+| Đóng bằng cách nào | Thợ bấm Hoàn thành | **Công nhân quét lại QR** bấm "Máy đã chạy lại" | Thợ bấm Hoàn thành | Thợ bấm Hoàn thành | Đóng ngay lúc ghi |
+| Đếm là lần hỏng của máy | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Đo thời gian đáp ứng | ✅ | ❌ | ✅ | ❌ | ❌ |
+| Đo thời gian dừng máy | ✅ | ✅ | ❌ | ❌ | ❌ |
+| **Tính là "thợ đang bận"** | ✅ | ❌ | ✅ | ✅ | ❌ |
+| Có bắn Telegram | ✅ | ❌ | ✅ | ❌ | ❌ |
 
 **`Ten_May` chỉ chứa tên máy thật.** Với `CV-` và `BT-` cột này **để TRỐNG**; tên công việc
 nằm ở `Mo_Ta`, khu vực ở `Bo_Phan`. Nhét tên việc vào `Ten_May` sẽ khiến mọi phép gom nhóm
@@ -160,6 +161,48 @@ ghi 20 việc bảo trì sẽ trông như bận suốt 8 tiếng và mọi thờ
 trừ oan. Kỹ thuật: phiếu `BT-` **cố ý để trống** `Thoi_Gian_Nhan`.
 
 **Vì sao dừng máy không tính là bận:** không có thợ nào gắn vào phiếu đó.
+
+### `HT-` — công nhân gọi kỹ thuật trong lúc máy đang dừng (11/09/2026)
+
+Ca có thật và là lý do loại phiếu này ra đời: **đổi mặt hàng**. Bước 1 công nhân tự thay
+chỉ sợi lên dàn, bước 2 tự dẫn hướng chỉ vào máy, bước 3 phải có thợ cơ khí tới chỉnh mới
+chạy tiếp được. Trước đây màn hình "Máy này đang dừng" chỉ có đúng một nút "Máy đã chạy
+lại", nên bước 3 không có đường nào trên app: công nhân đi bộ tìm thợ, và khoảng chờ đó
+không để lại vết gì trong số liệu.
+
+**Chỉ mở được khi máy đang có phiếu `DM-` chưa đóng.** Hai lý do, cả hai đều về số liệu:
+
+- Máy không dừng mà cần thợ thì đó là phiếu `SC-`. Cho mở `HT-` ở đó là mở một cửa thứ hai
+  để né phiếu sự cố, và số lần hỏng của máy sẽ tụt xuống một cách vô hình.
+- `HT-` cố ý **không đo** thời gian máy nằm im. Nó chỉ đúng khi có `DM-` chạy song song
+  gánh phần đo đó.
+
+**Vì sao không mượn luôn phiếu `SC-`** (phương án đã cân rồi bỏ): đổi mặt hàng diễn ra
+nhiều lần mỗi ngày. Mượn `SC-` là mỗi lần đổi hàng lại cộng một lần hỏng cho một cái máy
+không hỏng, mà "số lần hỏng" đúng là con số báo cáo này tồn tại để đo.
+
+**Hai chốt chặn downtime**, vì phiếu `HT-` có `Trang_Thai_May = DA_DUNG` (máy đang dừng
+thật) nên rất dễ bị các hàm đo downtime ăn nhầm: `khoangDungCuaPhieu_` (tỉ lệ hiệu dụng) và
+`mocBatDauHu_` / `khoangDungMay_` (`XuatBaoCao.gs`) đều loại `HO_TRO` ngay dòng đầu. Cột
+`Thoi_Gian_Dung_May` của phiếu `HT-` **cố ý để trống**. Phép hợp nhất khoảng theo máy đã
+chặn phần chồng nhau, nhưng thợ có thể đóng `HT-` muộn hơn lúc máy chạy lại — đuôi thừa đó
+sẽ thành máy dừng trong khi máy đã ra hàng.
+
+**Đo đáp ứng thì tính CHUNG một con số với sự cố** — chủ dự án chốt 11/09/2026. Cửa duy
+nhất quyết định điều này là `laDoDapUng_()` trong `Code.gs` (`SU_CO` hoặc `HO_TRO`); muốn
+tách ra thành hai con số về sau thì sửa đúng một chỗ đó.
+
+**Máy chạy lại KHÔNG đóng phiếu `HT-` theo.** Thợ tự đóng. Máy chạy được và thợ làm xong là
+hai việc khác nhau, đóng hộ là ghi sai giờ hoàn thành của người khác. Màn hình công nhân chỉ
+nhắc một dòng rằng phiếu đó còn mở.
+
+**Mỗi máy chỉ một phiếu `HT-` đang mở.** Bấm gọi lần hai trả lại phiếu cũ kèm danh bạ, không
+mở phiếu mới: hai phiếu cùng nội dung là hai thợ cùng chạy tới một máy, và là hai lần đo đáp
+ứng cho cùng một lần chờ.
+
+**Nối với phiếu `DM-` bằng mã trong `Mo_Ta`**, không thêm cột vào `Su_Co` — thêm cột là đụng
+schema. `ghepMoTaHoTro_` dựng chuỗi *"Gọi kỹ thuật — máy đang dừng — &lt;lý do dừng&gt; —
+&lt;ghi chú&gt; — phiếu DM-…"*, nhờ vậy thợ đọc tin Telegram là biết máy đang dừng vì gì.
 
 ### Quy trình khi phải đem đồ ra ngoài gia công
 
@@ -292,6 +335,7 @@ tra soi mã nguồn từng hàm thuần bằng `Function.prototype.toString` và
 |---|---|---|
 | `thongBaoSuCoMoi_` | `reportIncident`, **sau** `moKhoa_()` | Công nhân báo sự cố |
 | `thongBaoDaNhan_` | `acceptIncident`, **sau** `moKhoa_()` mới thêm | Thợ bấm nhận → báo người còn lại |
+| `thongBaoSuCoMoi_` | `requestTechnician`, **sau** `moKhoa_()` | Công nhân gọi kỹ thuật lúc máy đang dừng |
 | `nhacPhieuChoNhan` | Trigger 5 phút | Quá ngưỡng mà chưa ai nhận |
 
 Cả ba **phải chạy ngoài khoá**. `acceptIncident` vốn giữ khoá tới cuối hàm nên đã thêm cặp
@@ -300,6 +344,12 @@ Cả ba **phải chạy ngoài khoá**. `acceptIncident` vốn giữ khoá tới
 **Phiếu `DM-` cố ý KHÔNG có cửa nào**: không có thợ, không đi qua màn hình nhận việc, nên
 dòng "Bấm để nhận việc" sai hẳn. Gửi tin không kèm việc gì để làm là dạy thợ lướt qua tin
 của bot, đúng lúc tin sự cố thật cần được đọc.
+
+**Phiếu `HT-` thì ngược lại, và đó là phép thử cho luật trên**: cũng do công nhân mở từ màn
+hình máy đang dừng, nhưng nó CÓ việc để thợ làm và CÓ nút nhận việc, nên tin đi kèm đúng một
+hành động cụ thể. Dùng chung `soanTinSuCoMoi_` — dòng đầu *"🔴 &lt;máy&gt; đã dừng"* đúng
+nguyên văn, vì máy đang dừng thật. Vòng nhắc lọc theo `CHO_NHAN` nên tự nhận luôn phiếu
+`HT-`, không phải sửa gì.
 
 ### Bốn thứ đọc từ Sheet, sửa có hiệu lực ngay
 
@@ -772,6 +822,9 @@ clasp deploy --deploymentId MA_TRIEN_KHAI_DA_GO_KHOI_KHO_CONG_KHAI... --descript
 | **Ca test chép làm hai bản** (`kiemtra/kpi-tho.js` và `Test.gs` mục 8b) | Sửa kỳ vọng một bên, quên bên kia → bộ chạy tại máy vẫn xanh mà bộ trong Sheet đỏ. Dính 03/09/2026 | Sửa ca nào thì sửa **cả hai**, và chạy bộ trong Sheet trước khi coi là xong |
 | **Thay hàm bằng hàm giả trong `Test.gs` mà quên trả lại** | Mọi test chạy sau đó dùng nhầm hàm giả. Nguy hiểm hơn hẳn một test đỏ, vì nó xanh mà sai | Gán đè trong `try`, trả lại trong `finally`, rồi có ca canh đã trả lại đúng chưa |
 | **Chat id để ô dạng số** | Sheets hiện thành `1.23457E+11`, `chuanHoaChatId_` chặn dạng mũ nên thợ đó bị bỏ qua **im lặng**, không ai biết vì sao | `setupSystem` đặt `setNumberFormat('@')` cho cột đó, như cột `So_Dien_Thoai` |
+| **Thêm loại phiếu mới mà quên nhánh đếm** | `gomTheoMayTho_` và `duLieuBaoCaoNgay_` đếm bằng chuỗi `if/else if`, **nhánh cuối là bảo trì**. Thiếu một nhánh riêng là loại phiếu mới bị đếm thành bảo trì, không lỗi, không dấu vết | Thêm loại phiếu thì rà hết chỗ xét `loaiPhieu_`, và có test canh "không bị đếm nhầm thành bảo trì" |
+| **Thêm cột vào bảng của `Tong_Hop` mà quên nâng `SO_COT_TONG_HOP`** | `them_` cắt mọi dòng đúng ngần ấy cột → cột mới **biến mất lặng lẽ**, sheet vẫn dựng xong | Nâng hằng số cùng lúc với việc thêm cột |
+| **Dùng chung một `requestId` cho hai nút khác nhau trên cùng màn hình** | Phép chống double-tap dò `Request_ID_Cuoi` trên **mọi dòng**, nên nút thứ hai bị coi là bấm trùng và trả lại phiếu của nút thứ nhất — không ai được gọi cả | Mỗi luồng ghi một `requestId` riêng (`requestId` / `requestIdTho` trong `Index.html`) |
 | **Thêm cột vào `HEADER_DATA_GOC`** | Có test canh đúng số cột (biểu mẫu gửi sếp lệch là hỏng) — thêm cột mà quên sửa test là đỏ | Cột mới luôn thêm SAU cột 29, rồi cập nhật test đếm cột |
 
 ---
@@ -806,7 +859,7 @@ hàm thuần**: soi mã nguồn từng hàm soạn tin bằng `Function.prototyp
 thật nằm chung file — kéo nhầm một lời gọi mạng vào nhóm hàm soạn tin là mất luôn khả năng
 kiểm thử tại máy.
 
-Lớp thứ sáu: menu **🧪 Chạy test logic** trong Sheet — ~250 test bằng dữ liệu giả,
+Lớp thứ sáu: menu **🧪 Chạy test logic** trong Sheet — ~270 test bằng dữ liệu giả,
 **không đọc/ghi sheet nào**.
 
 Điều này làm được nhờ `getOnDutyContacts_` nhận tham số `duLieu` **tiêm theo từng trường**:
@@ -843,6 +896,25 @@ Thứ tự đưa vào chạy ở mục 7 của tài liệu đó, tóm tắt:
 5. Ghép đủ 15 thợ → gõ `BAT`.
 6. Cài trigger. **Từ đây phần nhắc đã chạy thật mà chưa cần deploy**, vì trigger chạy bằng mã HEAD.
 7. Deploy ghép vào lần deploy chủ nhật — sau bước này mới có thông báo tức thì lúc công nhân báo.
+
+### Gọi kỹ thuật lúc máy dừng (`HT-`) — mã đã đủ, CHƯA push, CHƯA deploy (11/09/2026)
+
+Viết xong toàn bộ: loại phiếu `HO_TRO` trong `Code.gs`, RPC `requestTechnician` +
+`ghepMoTaHoTro_` trong `CongNhan.gs`, nút gọi thợ trên màn hình "Máy này đang dừng"
+(`Index.html`), nhãn phiếu cho thợ (`Tho.html`), bảng riêng trong báo cáo ngày
+(`BaoCaoNgay.gs` + `TrangNgay.html`), khối riêng trong `Tong_Hop` (`BaoCao.gs`), cột và ô
+tổng trong báo cáo xuất (`XuatBaoCao.gs`), hai chốt chặn downtime (`HieuDung.gs`).
+Thiết kế và các quyết định ở mục 4.
+
+**Chưa `clasp push`, chưa deploy.** Công nhân quét QR vẫn vào bản cũ, chưa có nút gọi thợ.
+Kiểm thử: 18 ca mới ở mục 14b của `Test.gs` (chạy thử bằng khung tạm tại máy, 18/18 đạt, và
+kiểm chứng ngược bằng bản cố tình bỏ chốt chặn thì báo đúng 3 ca đỏ), 3 ca mới trong
+`kiemtra/kpi-tho.js` — tổng 2042.
+
+**Việc cần làm khi đưa vào chạy:** thêm `Đổi mặt hàng` vào khoá `LY_DO_DUNG_MAY` của sheet
+`Cau_Hinh` (sửa trên sheet, không cần đụng mã, có hiệu lực ngay). Sau khi deploy thì đi
+xem một ca đổi mặt hàng thật từ đầu tới cuối: quét QR → báo dừng → quét lại → gọi kỹ thuật
+→ thợ nhận → thợ hoàn thành → công nhân bấm máy đã chạy lại.
 
 ### Đã làm xong, chưa deploy (09/09/2026)
 

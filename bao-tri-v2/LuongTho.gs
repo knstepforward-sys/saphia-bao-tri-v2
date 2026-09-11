@@ -201,10 +201,13 @@ function kpiThoChoPhieu_(ds, v, nguong) {
     return { apDung: 'KHONG — ' + lyDo, phutBan: '', phutKpi: '', soDoan: '', datNguong: '' };
   };
 
-  // Chỉ phiếu sự cố mới có người "báo hỏng" để mà đo đáp ứng. CV-/BT-/DM- vẫn
-  // được tính là thợ bận ở hàm trên, nhưng bản thân chúng không vào KPI.
+  // Chỉ phiếu có người BÁO mới đo được đáp ứng: `SC-` (công nhân báo hỏng) và
+  // `HT-` (công nhân gọi kỹ thuật lúc máy đang dừng). CV-/BT-/DM- vẫn được tính
+  // là thợ bận ở hàm trên, nhưng bản thân chúng không vào KPI — CV- và BT- do
+  // chính thợ tạo nên tạo là nhận luôn, DM- thì không có thợ nào.
+  // Chủ dự án chốt `HT-` tính CHUNG một con số với sự cố, ngày 11/09/2026.
   const loai = loaiPhieu_(v);
-  if (loai !== LOAI_PHIEU.SU_CO) return khong('phiếu ' + loai);
+  if (!laDoDapUng_(v)) return khong('phiếu ' + loai);
   if (!String(v[COT.Ma_Tho]).trim()) return khong('chưa ai nhận');
 
   const bao = v[COT.Thoi_Gian_Bao];
@@ -334,6 +337,7 @@ function gonPhieu_(v) {
     phutXuLy: v[COT.Phut_Xu_Ly],
     ca: v[COT.Ca],
     laCongViec: laCongViec_(v),
+    laHoTro: laHoTro_(v),
     // Số phút phiếu đã chờ, để client tô đỏ phiếu chờ lâu.
     phutDaCho: v[COT.Thoi_Gian_Bao] instanceof Date
       ? Math.round((Date.now() - v[COT.Thoi_Gian_Bao].getTime()) / 60000) : '',
@@ -384,7 +388,8 @@ function getTechnicianBootstrap(maTho, token) {
     ds.forEach(function (r) {
       const v = r.v;
       // Phiếu dừng máy không do hư hỏng không phải việc của thợ — công nhân tự
-      // mở và tự đóng bằng cách quét lại QR.
+      // mở và tự đóng bằng cách quét lại QR. Phiếu `HT-` thì ngược lại: công
+      // nhân mở, nhưng là để gọi thợ, nên nó đi đúng luồng như phiếu sự cố.
       if (laDungMay_(v)) return;
 
       const tt = v[COT.Trang_Thai];

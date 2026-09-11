@@ -47,6 +47,30 @@
       style="margin-top:12px;background:#188038">▶️ Máy đã chạy lại</button>
   </div>
 
+  <!-- Bước 3 của quy trình đổi mặt hàng: công nhân tự thay chỉ sợi, tự dẫn
+       hướng chỉ, rồi phải có thợ cơ khí tới chỉnh mới chạy tiếp được. Trước đây
+       màn hình này chỉ có đúng nút "Máy đã chạy lại" nên không có đường nào gọi
+       thợ — công nhân phải đi bộ tìm người, và khoảng chờ đó không để lại vết. -->
+  <div class="the an" id="theGoiTho">
+    <div class="the-tieu-de">Cần thợ kỹ thuật tới máy?</div>
+    <div class="bao xanh an" id="daGoiTho"></div>
+
+    <div id="khuGoiTho">
+      <div class="chips" id="nhomGoiTho" style="grid-template-columns:repeat(2,1fr)">
+        <button class="chip" type="button" data-gt="CO_KHI" aria-pressed="true"><span class="icon">🔩</span>Cơ khí</button>
+        <button class="chip" type="button" data-gt="DIEN"><span class="icon">⚡</span>Điện</button>
+      </div>
+      <textarea id="moTaGoiTho" maxlength="120" style="min-height:44px;margin-top:8px"
+        placeholder="Ví dụ: chỉnh lại máy sau khi đổi mặt hàng"></textarea>
+      <button class="nut" id="nutGoiTho" type="button"
+        style="margin-top:10px;background:#1a73e8">🔧 Gọi kỹ thuật</button>
+      <div class="nho" style="margin-top:10px">
+        Thợ đang trực nhận được tin ngay trên điện thoại. Phiếu dừng máy ở trên
+        vẫn đang tính giờ — gọi thợ không làm đóng nó.
+      </div>
+    </div>
+  </div>
+
   <div class="the" id="theCheDo">
     <div class="the-tieu-de">Báo việc gì?</div>
     <div class="chips" id="nhomCheDo" style="grid-template-columns:repeat(2,1fr)">
@@ -135,6 +159,12 @@ var chon = { trangThaiMay: '', nhomLoi: '' };
 var cheDo = 'HU_HONG';   // 'HU_HONG' = máy hỏng cần thợ | 'DUNG_MAY' = dừng không do hư
 var PHIEU_DANG_MO = null; // phiếu chưa đóng của máy này, giữ lại để khỏi gọi server thêm
 var requestId = '';       // đổi mỗi lần bắt đầu một phiếu mới
+// requestId RIÊNG cho nút gọi kỹ thuật. Dùng chung với ô trên là hỏng: phép
+// chống double-tap ở server dò theo Request_ID_Cuoi trên MỌI dòng, nên sau khi
+// báo dừng máy xong mà gọi thợ bằng đúng mã đó thì server tưởng bấm trùng và
+// trả lại chính phiếu DM- vừa ghi, không ai được gọi cả.
+var requestIdTho = '';
+var nhomGoiTho = 'CO_KHI'; // mặc định cơ khí — nhu cầu đang có là chỉnh máy
 var dangGui = false;
 var xacNhanTrung = false; // true sau khi công nhân đồng ý tạo phiếu dù máy đang có phiếu mở
 
@@ -144,7 +174,12 @@ function an(id) { $(id).classList.add('an'); }
 
 /** requestId chống double-tap: giữ nguyên khi bấm gửi lại, chỉ đổi khi sang phiếu mới. */
 function moiRequestId() {
-  requestId = 'RQ-' + Date.now() + '-' + Math.random().toString(36).slice(2, 10);
+  requestId = maRequest_();
+  requestIdTho = maRequest_();
+}
+
+function maRequest_() {
+  return 'RQ-' + Date.now() + '-' + Math.random().toString(36).slice(2, 10);
 }
 
 // ===========================================================================
@@ -174,8 +209,8 @@ function nhanBootstrap(kq) {
 
   // Máy đang dừng thì việc duy nhất cần làm là báo chạy lại — ẩn hẳn form báo mới
   // để công nhân không phải nghĩ, và để không mở chồng thêm một khoảng dừng nữa.
-  if (kq.phieuDangMo && kq.phieuDangMo.laDungMay) {
-    veChayLai(kq.phieuDangMo);
+  if (kq.phieuDungMay) {
+    veChayLai(kq.phieuDungMay, kq.phieuHoTro, kq.danhBa);
     hien('manNhap');
     return;
   }
@@ -255,14 +290,116 @@ $('goYLyDo').addEventListener('click', function (ev) {
 });
 
 // --- Máy đang dừng ---------------------------------------------------------
-function veChayLai(p) {
+function veChayLai(p, hoTro, danhBa) {
   PHIEU_DANG_MO = p;
   $('chayLaiTt').innerHTML =
     '<b>' + thoat(p.maSuCo) + '</b><br>' +
     thoat(p.moTa || 'Không ghi lý do') + '<br>' +
     '<span class="nho">Dừng từ ' + thoat(p.thoiGianBao) + '</span>';
   hien('theChayLai');
+  hien('theGoiTho');
+  veTrangThaiGoiTho(hoTro, danhBa);
   ['theCheDo', 'khuHuHong', 'khuDungMay', 'theMoTa', 'thanhGui'].forEach(an);
+}
+
+/**
+ * Máy đã gọi thợ rồi thì cất form gọi đi và hiện trạng thái phiếu đó. Để cả hai
+ * cùng lúc là mời bấm gọi lần hai, mà hai phiếu cùng nội dung là hai thợ cùng
+ * chạy tới một máy — server cũng chặn, nhưng chặn ở màn hình thì không ai phải
+ * đọc câu từ chối.
+ */
+function veTrangThaiGoiTho(hoTro, danhBa) {
+  if (!hoTro) {
+    an('daGoiTho');
+    hien('khuGoiTho');
+    return;
+  }
+
+  var tt = hoTro.trangThai === 'DANG_XU_LY'
+    ? (hoTro.tenTho || 'Thợ') + ' đang xử lý'
+    : 'Đang chờ thợ nhận việc';
+  var sdt = (danhBa && danhBa.ds && danhBa.ds.length)
+    ? '<br>Gọi chưa được? Bấm số bên dưới: ' + danhBa.ds.map(function (t) {
+        return '<a href="tel:' + thoat(t.soDienThoai) + '">' + thoat(t.tenTho) + '</a>';
+      }).join(' · ')
+    : '';
+
+  $('daGoiTho').innerHTML =
+    '<b>Đã gọi kỹ thuật — phiếu ' + thoat(hoTro.maSuCo) + '</b><br>' +
+    thoat(tt) + ' · gọi lúc ' + thoat(hoTro.thoiGianBao) + sdt;
+  hien('daGoiTho');
+  an('khuGoiTho');
+}
+
+$('nhomGoiTho').addEventListener('click', function (ev) {
+  var nut = ev.target.closest('.chip');
+  if (!nut) return;
+  Array.prototype.forEach.call(this.querySelectorAll('.chip'), function (c) {
+    c.setAttribute('aria-pressed', String(c === nut));
+  });
+  nhomGoiTho = nut.dataset.gt;
+});
+
+$('nutGoiTho').addEventListener('click', function () {
+  if (dangGui) return;
+  dangGui = true;
+  var nut = $('nutGoiTho');
+  nut.disabled = true;
+  nut.textContent = 'Đang gọi…';
+
+  function xong_() {
+    dangGui = false;
+    nut.disabled = false;
+    nut.textContent = '🔧 Gọi kỹ thuật';
+  }
+
+  google.script.run
+    .withSuccessHandler(function (kq) {
+      xong_();
+      if (!kq || !kq.ok) return alert((kq && kq.error) || 'Không gọi được.');
+
+      // Đã có người bấm gọi trước đó (thường là người ca trước, hoặc chính mình
+      // bấm hai lần trên hai máy khác nhau) → không mở phiếu thứ hai, chỉ hiện
+      // phiếu đang có kèm số điện thoại.
+      if (kq.daGoiTruocDo) {
+        veTrangThaiGoiTho(kq.phieuHoTro, kq.danhBa);
+        alert('Máy này đã gọi kỹ thuật rồi — phiếu ' + kq.maSuCo + '.');
+        return;
+      }
+
+      veKetQuaGoiTho(kq);
+    })
+    .withFailureHandler(function (e) {
+      xong_();
+      alert('Gọi thất bại: ' + e.message + '\nBấm lại để thử tiếp.');
+    })
+    .requestTechnician({
+      machineCode: MA_MAY,
+      nhomLoi: nhomGoiTho,
+      moTa: $('moTaGoiTho').value,
+      requestId: requestIdTho
+    });
+});
+
+/** Màn hình kết quả sau khi gọi thợ — có danh bạ, vì thứ cần ngay là số gọi. */
+function veKetQuaGoiTho(kq) {
+  datDauManXong('🔧', 'Đã gọi kỹ thuật', '#1a73e8');
+  $('maPhieu').textContent = kq.maSuCo;
+  $('tomTatMay').textContent = (MAY.tenMay || MAY.maMay) +
+    ' · gọi lúc ' + kq.gioGoi +
+    '. Máy vẫn đang tính giờ dừng — khi chạy lại, quét QR rồi bấm "Máy đã chạy lại".';
+  $('theDanhBa').classList.remove('an');
+  veDanhBa(kq.danhBa);
+
+  if (!kq.danhBa || !kq.danhBa.thongDiep) {
+    $('baoDanhBa').className = 'bao xanh';
+    $('baoDanhBa').textContent =
+      'Thợ trực đã nhận được tin. Cần gấp thì bấm gọi theo số bên dưới.';
+  }
+
+  an('manNhap');
+  hien('manXong');
+  window.scrollTo(0, 0);
 }
 
 $('nutChayLai').addEventListener('click', function () {
@@ -277,9 +414,15 @@ $('nutChayLai').addEventListener('click', function () {
       $('nutChayLai').disabled = false;
       $('nutChayLai').textContent = '▶️ Máy đã chạy lại';
       if (!kq || !kq.ok) return alert((kq && kq.error) || 'Không ghi nhận được.');
-      PHIEU_DANG_MO = null; // máy đã chạy lại, không còn phiếu nào mở
+      PHIEU_DANG_MO = null; // máy đã chạy lại, không còn phiếu dừng nào mở
       veKetQuaDung('Đã ghi nhận máy chạy lại', kq.maSuCo,
-        'Máy dừng tổng cộng ' + kq.phutDung + ' phút.');
+        'Máy dừng tổng cộng ' + kq.phutDung + ' phút.' +
+        // Phiếu gọi thợ do chính thợ đóng, không đóng theo phiếu dừng máy. Nói
+        // rõ ở đây để công nhân không đi tìm nút đóng hộ.
+        (kq.hoTroConMo
+          ? ' Phiếu gọi kỹ thuật ' + kq.hoTroConMo.maSuCo +
+            ' vẫn đang mở — thợ sẽ tự đóng khi làm xong.'
+          : ''));
     })
     .withFailureHandler(function (e) {
       dangGui = false;
@@ -376,7 +519,8 @@ function guiDungMay() {
       };
       veKetQuaDung('Đã bắt đầu tính thời gian dừng máy', kq.maSuCo,
         kq.lyDo + ' · dừng từ ' + kq.gioDung +
-        '. Khi máy chạy lại, quét QR máy này rồi bấm "Máy đã chạy lại".');
+        '. Cần thợ tới chỉnh máy thì quét lại QR rồi bấm "Gọi kỹ thuật". ' +
+        'Khi máy chạy lại, quét QR máy này rồi bấm "Máy đã chạy lại".');
     })
     .withFailureHandler(function (e) {
       moKhoaNut();

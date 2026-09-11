@@ -279,7 +279,7 @@ const HEADER_SU_CO = [
   'Phut_Cho_Tho_Ban',    // máy chờ vì thợ đang bận việc khác — KHÔNG tính vào KPI thợ
   'Phut_Dap_Ung_Thuc',   // từ lúc thợ rảnh đến lúc bấm nhận — ĐÂY mới là KPI thợ
   'So_Chong_Viec',       // số phiếu khác thợ đang giữ dở lúc bấm nhận
-  'Loai_Phieu',          // SU_CO (máy hỏng, qua QR) | CONG_VIEC (việc chung, thợ tự tạo)
+  'Loai_Phieu',          // SU_CO | CONG_VIEC | BAO_TRI | DUNG_MAY | HO_TRO
   // --- Đợt KPI đáp ứng theo yêu cầu công ty (09/2026) ------------------------
   // Phut_Dap_Ung_Thuc ở trên miễn trừ thời gian bận bằng MỘT mốc rảnh (giờ hoàn
   // thành muộn nhất), nên khi thợ bận thành nhiều đoạn rời thì mọi khoảng rảnh
@@ -330,6 +330,7 @@ const LOAI_PHIEU = {
   CONG_VIEC: 'CONG_VIEC',
   BAO_TRI: 'BAO_TRI',
   DUNG_MAY: 'DUNG_MAY',
+  HO_TRO: 'HO_TRO',
 };
 
 /**
@@ -344,7 +345,8 @@ const LOAI_PHIEU = {
 function loaiPhieu_(v) {
   const t = String(v[COT.Loai_Phieu] || '').trim().toUpperCase();
   return (t === LOAI_PHIEU.CONG_VIEC || t === LOAI_PHIEU.BAO_TRI ||
-          t === LOAI_PHIEU.DUNG_MAY) ? t : LOAI_PHIEU.SU_CO;
+          t === LOAI_PHIEU.DUNG_MAY || t === LOAI_PHIEU.HO_TRO)
+    ? t : LOAI_PHIEU.SU_CO;
 }
 
 function laCongViec_(v) { return loaiPhieu_(v) === LOAI_PHIEU.CONG_VIEC; }
@@ -362,6 +364,39 @@ function laSuCo_(v) { return loaiPhieu_(v) === LOAI_PHIEU.SU_CO; }
  * DANG_XU_LY = máy đang dừng. HOAN_THANH = máy đã chạy lại.
  */
 function laDungMay_(v) { return loaiPhieu_(v) === LOAI_PHIEU.DUNG_MAY; }
+
+/**
+ * HO_TRO — công nhân gọi kỹ thuật TRONG LÚC máy đang có phiếu `DM-` mở. Ca điển
+ * hình là đổi mặt hàng: công nhân tự thay chỉ sợi lên dàn, tự dẫn hướng chỉ,
+ * tới bước chỉnh sửa thì phải có thợ cơ khí. Máy không hỏng, nhưng vẫn cần thợ.
+ *
+ * Đi đúng luồng thợ như phiếu sự cố: tạo ở CHO_NHAN, bắn Telegram cho thợ trực,
+ * vào vòng nhắc 5 phút, thợ bấm nhận rồi bấm hoàn thành. Khác phiếu `SC-` ở hai
+ * chỗ, và đó chính là lý do phải có loại riêng thay vì mượn `SC-`:
+ *
+ *   1. KHÔNG đếm là lần hỏng của máy. Đổi mặt hàng diễn ra nhiều lần mỗi ngày;
+ *      mượn `SC-` là mỗi lần đổi hàng lại cộng một lần hỏng cho máy không hỏng,
+ *      và con số "số lần hỏng" là thứ báo cáo này tồn tại để đo.
+ *   2. KHÔNG đo thời gian dừng máy — phiếu `DM-` mở song song đã đo trọn khoảng
+ *      đó rồi. Xem `khoangDungCuaPhieu_`.
+ *
+ * VẪN đo thời gian đáp ứng và VẪN tính là thợ đang bận: có người báo, có mốc
+ * báo, có máy đứng chờ, nên thợ đến nhanh hay chậm là đo được và đáng đo. Chủ
+ * dự án chốt tính chung một con số với sự cố, ngày 11/09/2026.
+ */
+function laHoTro_(v) { return loaiPhieu_(v) === LOAI_PHIEU.HO_TRO; }
+
+/**
+ * Phiếu có đo thời gian đáp ứng của thợ hay không: `SC-` và `HT-`.
+ *
+ * Cả hai đều có người báo và có mốc `Thoi_Gian_Bao` do người báo sinh ra, nên
+ * hiệu số tới lúc thợ bấm nhận là con số có nghĩa. `CV-` và `BT-` do chính thợ
+ * tạo (tạo là nhận luôn) nên hiệu số đó luôn bằng 0; `DM-` thì không có thợ nào.
+ */
+function laDoDapUng_(v) {
+  const t = loaiPhieu_(v);
+  return t === LOAI_PHIEU.SU_CO || t === LOAI_PHIEU.HO_TRO;
+}
 
 const TRANG_THAI_MAY = ['DA_DUNG', 'DANG_CHAY', 'KHONG_RO'];
 const NHOM_LOI = ['DIEN', 'CO_KHI', 'KHONG_RO'];

@@ -76,6 +76,9 @@ function duLieuBaoCaoNgay_(ngay) {
   const dungMay = ds.filter(laDungMay_);
   const congViec = ds.filter(laCongViec_);
   const baoTri = ds.filter(laBaoTri_);
+  // Gọi kỹ thuật lúc máy đang dừng: không phải máy hỏng nên KHÔNG nằm trong
+  // `suCo`, nhưng là việc thợ phải chạy tới máy nên phải có bảng riêng.
+  const hoTro = ds.filter(laHoTro_);
 
   // "Còn đang treo" quét TOÀN BỘ dữ liệu, KHÔNG lọc theo ngày đang xem.
   //
@@ -97,7 +100,8 @@ function duLieuBaoCaoNgay_(ngay) {
   const theoTho = {};
   function tho_(ten) {
     if (!theoTho[ten]) {
-      theoTho[ten] = { ten: ten, suCo: 0, congViec: 0, baoTri: 0, dapUng: [], xuLy: [] };
+      theoTho[ten] = { ten: ten, suCo: 0, congViec: 0, baoTri: 0, hoTro: 0,
+        dapUng: [], xuLy: [] };
     }
     return theoTho[ten];
   }
@@ -108,6 +112,7 @@ function duLieuBaoCaoNgay_(ngay) {
     if (laSuCo_(v)) t.suCo++;
     else if (laCongViec_(v)) t.congViec++;
     else if (laBaoTri_(v)) t.baoTri++;
+    else if (laHoTro_(v)) t.hoTro++;
     if (String(v[COT.Phut_Dap_Ung_Thuc]) !== '') t.dapUng.push(Number(v[COT.Phut_Dap_Ung_Thuc]));
     if (String(v[COT.Phut_Xu_Ly]) !== '') t.xuLy.push(Number(v[COT.Phut_Xu_Ly]));
   });
@@ -196,6 +201,7 @@ function duLieuBaoCaoNgay_(ngay) {
       dungMay: dungMay.length,
       congViec: congViec.length,
       baoTri: baoTri.length,
+      hoTro: hoTro.length,
       phutDungHong: tongDowntimeSuCo_(suCo),
       phutDungKhac: tongPhutDung_(dungMay, bayGio),
     },
@@ -203,12 +209,14 @@ function duLieuBaoCaoNgay_(ngay) {
       .sort(function (a, b) { return (b.treo || 0) - (a.treo || 0); }),
     suCo: sapTheoBoPhanRoiGio_(suCo.map(gonSuCo_)),
     dungMay: dungMay.map(gonSuCo_).sort(theoGio_),
+    hoTro: hoTro.map(gonSuCo_).sort(theoGio_),
     congViec: congViec.map(gonSuCo_).sort(theoGio_),
     baoTri: baoTri.map(gonSuCo_).sort(theoGio_),
     theoTho: Object.keys(theoTho).map(function (k) {
       const t = theoTho[k];
       return {
         ten: t.ten, suCo: t.suCo, congViec: t.congViec, baoTri: t.baoTri,
+        hoTro: t.hoTro,
         tbDapUng: trungBinh_(t.dapUng),
         // Tổng chứ không phải trung bình: câu hỏi cuối ca là "hôm nay người này
         // bỏ ra bao nhiêu thời gian sửa máy", mà trung bình thì người làm 1 việc
@@ -216,7 +224,8 @@ function duLieuBaoCaoNgay_(ngay) {
         tongXuLy: t.xuLy.reduce(function (s, n) { return s + n; }, 0),
       };
     }).sort(function (a, b) {
-      return (b.suCo + b.congViec + b.baoTri) - (a.suCo + a.congViec + a.baoTri);
+      return (b.suCo + b.congViec + b.baoTri + b.hoTro) -
+        (a.suCo + a.congViec + a.baoTri + a.hoTro);
     }),
   };
 }

@@ -7,7 +7,10 @@
  * Sheets, tránh lỗi locale/#ERROR! (nguyên tắc đã theo từ hệ thống SAPHIA).
  */
 
-const SO_COT_TONG_HOP = 9;
+// Rộng 10 cột (A..J). Mọi dòng đều bị cắt đúng ngần này trong `them_`, nên thêm
+// một cột vào bảng nào thì phải nâng con số này theo — không nâng thì cột mới
+// biến mất lặng lẽ, sheet vẫn dựng xong và không có lỗi nào để mà thấy.
+const SO_COT_TONG_HOP = 10;
 
 // ============================================================================
 // 1. refreshReports — dựng sheet Tong_Hop
@@ -34,6 +37,9 @@ function refreshReports(thang) {
   const dsCongViec = ds.filter(laCongViec_);
   const dsBaoTri = ds.filter(laBaoTri_);
   const dsDungMay = ds.filter(laDungMay_);
+  // Gọi kỹ thuật lúc máy đang dừng — không phải máy hỏng, nên tách khỏi dsSuCo,
+  // nhưng vẫn là công thợ nên phải hiện ra một dòng riêng chứ không được im.
+  const dsHoTro = ds.filter(laHoTro_);
 
   const out = [];
   function them_(arr) {
@@ -62,6 +68,15 @@ function refreshReports(thang) {
   // thiếu nguyên liệu.
   const dtHong = tongDowntimeSuCo_(dsSuCo);
   const dtKhac = tongPhutDung_(dsDungMay);
+  them_(['GỌI KỸ THUẬT TRONG LÚC MÁY DỪNG']);
+  them_(['Tổng phiếu', 'Chờ nhận', 'Đang xử lý', 'Hoàn thành',
+    'TB tiếp nhận (phút)', 'TB xử lý (phút)']);
+  const gHT = gomNhom_(dsHoTro);
+  them_([gHT.tong, gHT.cho, gHT.dangXuLy, gHT.xong, gHT.tbTiepNhan, gHT.tbXuLy]);
+  them_(['Phiếu HT- KHÔNG được tính là lần máy hỏng và KHÔNG đo thời gian máy ' +
+    'dừng — phiếu DM- mở song song đã đo khoảng đó.']);
+  them_([]);
+
   them_(['THỜI GIAN MÁY DỪNG — MỌI NGUYÊN NHÂN']);
   them_(['Do hư hỏng (phút)', 'Do nguyên nhân khác (phút)', 'TỔNG (phút)', 'TỔNG (giờ)']);
   them_([dtHong, dtKhac, dtHong + dtKhac, Math.round((dtHong + dtKhac) / 6) / 10]);
@@ -99,14 +114,15 @@ function refreshReports(thang) {
     'thợ đang bận việc khác, nên không phạt oan người đang ôm nhiều việc.']);
   them_(['Thợ', 'Tổng phiếu', 'Hoàn thành', 'Đang xử lý',
     'TB đáp ứng THỰC (phút)', 'TB chờ do bận (phút)', 'Số lần chồng việc',
-    'Việc chung', 'Bảo trì hằng ngày']);
+    'Việc chung', 'Bảo trì hằng ngày', 'Gọi kỹ thuật']);
   const theoTho = gomTheoKhoa_(
     ds.filter(function (v) { return String(v[COT.Ma_Tho]).trim(); }),
     function (v) { return String(v[COT.Ten_Tho]).trim() || String(v[COT.Ma_Tho]).trim(); }
   );
   sapTheoTong_(theoTho).forEach(function (x) {
     them_([x.khoa, x.tong, x.xong, x.dangXuLy,
-      x.tbDapUngThuc, x.tbChoThoBan, x.soLanChongViec, x.soCongViec, x.soBaoTri]);
+      x.tbDapUngThuc, x.tbChoThoBan, x.soLanChongViec, x.soCongViec, x.soBaoTri,
+      x.soHoTro]);
   });
   if (!theoTho.length) them_(['(chưa có ai nhận việc)']);
   them_([]);
@@ -206,7 +222,8 @@ function thangCuaPhieu_(v) {
 
 /** Đếm và tính trung bình cho một tập phiếu. */
 function gomNhom_(ds) {
-  let cho = 0, dangXuLy = 0, xong = 0, soLanChongViec = 0, soCongViec = 0, soBaoTri = 0;
+  let cho = 0, dangXuLy = 0, xong = 0, soLanChongViec = 0, soCongViec = 0, soBaoTri = 0,
+    soHoTro = 0;
   const tiepNhan = [], xuLy = [], dapUngThuc = [], choThoBan = [];
 
   function gom_(v, cot, dich) {
@@ -228,6 +245,7 @@ function gomNhom_(ds) {
     if (Number(v[COT.So_Chong_Viec]) > 0) soLanChongViec++;
     if (laCongViec_(v)) soCongViec++;
     if (laBaoTri_(v)) soBaoTri++;
+    if (laHoTro_(v)) soHoTro++;
   });
 
   return {
@@ -239,6 +257,7 @@ function gomNhom_(ds) {
     soLanChongViec: soLanChongViec,
     soCongViec: soCongViec,
     soBaoTri: soBaoTri,
+    soHoTro: soHoTro,
     tongPhutXuLy: xuLy.reduce(function (a, b) { return a + b; }, 0),
   };
 }

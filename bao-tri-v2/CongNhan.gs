@@ -337,14 +337,30 @@ function getWorkerBootstrap(maMay) {
     }
 
     const boPhan = String(may.Bo_Phan).trim();
-    const phieuDangMo = timPhieuDangMo_(ma);
 
-    // Máy đang có phiếu sự cố chưa đóng → trả kèm danh bạ luôn. Người quét lại QR
-    // thường là người vừa gọi mà không ai bắt máy, việc họ cần ngay là số của
-    // người tiếp theo chứ không phải cái form báo mới.
+    // Một máy có thể cùng lúc mang phiếu `DM-` (máy nằm im) và `HT-` (thợ đang
+    // tới chỉnh sửa) — đó là ca đổi mặt hàng bình thường, không phải lỗi. Nên
+    // phải tách ra tìm theo TỪNG loại: lấy chung "phiếu chưa đóng mới nhất" thì
+    // vừa bấm gọi kỹ thuật xong là màn hình "Máy này đang dừng" biến mất và nút
+    // "Máy đã chạy lại" đi theo, công nhân không còn đường đóng phiếu dừng.
+    // Đọc sheet đúng MỘT lượt rồi lọc ba lần, không đọc lại ba lượt.
+    const dsGanDay = docSuCoGanDay_();
+    const phieuDungMay = timPhieuDangMo_(ma, dsGanDay, LOAI_PHIEU.DUNG_MAY);
+    const phieuSuCo = timPhieuDangMo_(ma, dsGanDay, LOAI_PHIEU.SU_CO);
+    const phieuHoTro = timPhieuDangMo_(ma, dsGanDay, LOAI_PHIEU.HO_TRO);
+
+    // Phiếu đang chờ/đang được thợ xử lý — `SC-` trước, vì máy hỏng thật gấp hơn.
+    const phieuChoTho = phieuSuCo || phieuHoTro;
+    // Phiếu dừng máy chiếm màn hình trước: việc duy nhất chỉ công nhân làm được
+    // là bấm "Máy đã chạy lại", còn phiếu của thợ thì thợ tự đóng.
+    const phieuDangMo = phieuDungMay || phieuChoTho;
+
+    // Máy đang có phiếu chờ thợ → trả kèm danh bạ luôn. Người quét lại QR thường
+    // là người vừa gọi mà không ai bắt máy, việc họ cần ngay là số của người
+    // tiếp theo chứ không phải cái form báo mới.
     // Chỉ tốn thêm một lượt dựng danh bạ đúng trong trường hợp này.
-    const danhBa = (phieuDangMo && !phieuDangMo.laDungMay)
-      ? getOnDutyContacts_(boPhan, phieuDangMo.nhomLoi)
+    const danhBa = phieuChoTho
+      ? getOnDutyContacts_(boPhan, phieuChoTho.nhomLoi)
       : null;
 
     return {
@@ -355,6 +371,8 @@ function getWorkerBootstrap(maMay) {
         boPhan: boPhan,
       },
       phieuDangMo: phieuDangMo,
+      phieuDungMay: phieuDungMay,
+      phieuHoTro: phieuHoTro,
       danhBa: danhBa,
       lyDoDungMay: dsLyDoDungMay_(),
       gioHienTai: fmtGio_(nowVN_()),
@@ -510,6 +528,12 @@ function reportMachineRestart(payload) {
     const phut = soPhut_(v[COT.Thoi_Gian_Dung_May], luc);
     ghiNhatKy_(v[COT.Ma_Su_Co], maMay, 'CONG_NHAN', 'BAO_CHAY_LAI',
       { phutDung: phut }, requestId);
+
+    // Phiếu `HT-` đã gọi thợ mà thợ chưa bấm hoàn thành thì CỐ Ý không đóng
+    // theo. Máy chạy lại được và thợ làm xong là hai việc khác nhau: thợ có thể
+    // còn đang thu dọn, hoặc chỉnh xong mới là lúc máy chạy. Đóng hộ là ghi sai
+    // giờ hoàn thành của người khác. Chỉ trả về để màn hình nhắc một dòng.
+    const hoTroConMo = timPhieuDangMo_(maMay, dsGanDay, LOAI_PHIEU.HO_TRO);
     moKhoa_();
 
     return {
@@ -517,12 +541,178 @@ function reportMachineRestart(payload) {
       maSuCo: v[COT.Ma_Su_Co],
       phutDung: phut,
       lyDo: v[COT.Mo_Ta],
+      hoTroConMo: hoTroConMo,
     };
   } catch (err) {
     return { ok: false, error: err.message };
   } finally {
     moKhoa_();
   }
+}
+
+// ============================================================================
+// 5b. RPC — GỌI KỸ THUẬT TRONG LÚC MÁY ĐANG DỪNG
+// ============================================================================
+
+/**
+ * Công nhân bấm gọi thợ ngay trên màn hình "Máy này đang dừng" → sinh phiếu
+ * `HT-` đi đúng luồng thợ: Telegram cho người trực, vào vòng nhắc 5 phút, thợ
+ * bấm nhận rồi bấm hoàn thành.
+ *
+ * Ca thật của xưởng, và là lý do có hàm này: ĐỔI MẶT HÀNG. Bước 1 công nhân tự
+ * thay chỉ sợi lên dàn, bước 2 tự dẫn hướng chỉ vào máy, bước 3 phải có thợ cơ
+ * khí tới chỉnh. Trước đây bước 3 không có đường nào trên app — màn hình máy
+ * đang dừng chỉ có đúng một nút "Máy đã chạy lại" — nên công nhân phải đi bộ
+ * tìm thợ, và khoảng chờ đó không để lại vết gì trong số liệu.
+ *
+ * CHỈ mở được khi máy đang có phiếu `DM-` chưa đóng. Hai lý do:
+ *   - Máy không dừng mà cần thợ thì đó là phiếu `SC-` hoặc là việc ngoài app;
+ *     mở `HT-` ở đó là mở một cửa thứ hai để né phiếu sự cố, và số lần hỏng của
+ *     máy sẽ tụt xuống một cách vô hình.
+ *   - Phiếu `HT-` cố ý KHÔNG đo thời gian máy nằm im. Nó chỉ đúng khi có phiếu
+ *     `DM-` chạy song song gánh phần đo đó.
+ *
+ * KHÔNG áp bộ đếm chống spam của `reportIncident`. Bộ đếm đó đếm mọi phiếu của
+ * cùng một máy, mà luồng này bình thường đã sinh sẵn một phiếu `DM-` ngay trước
+ * đó; áp vào là ca đổi mặt hàng thứ hai trong cùng ngưỡng phút bị chặn oan.
+ * Chỗ chặn của loại phiếu này là luật "mỗi máy chỉ một phiếu `HT-` đang mở"
+ * bên dưới, chặt hơn hẳn bộ đếm.
+ *
+ * payload = { machineCode, nhomLoi, moTa, requestId }
+ */
+function requestTechnician(payload) {
+  const p = payload || {};
+
+  const maMay = String(p.machineCode || '').trim();
+  const may = timMay_(maMay);
+  if (!may) return { ok: false, error: 'Không tìm thấy máy "' + maMay + '".' };
+
+  // Mặc định cơ khí: đó là nhu cầu đang có (chỉnh máy sau khi đổi mặt hàng).
+  // Vẫn nhận DIEN để dùng được cho ca cần thợ điện mà không phải sửa mã.
+  const nhomLoi = String(p.nhomLoi || 'CO_KHI').trim().toUpperCase();
+  if (NHOM_LOI.indexOf(nhomLoi) === -1) {
+    return { ok: false, error: 'Nhóm thợ không hợp lệ.' };
+  }
+
+  const moTa = String(p.moTa || '').trim().slice(0, CONFIG.MAX_MO_TA);
+  const requestId = String(p.requestId || '').trim();
+  if (!requestId) return { ok: false, error: 'Thiếu mã request.' };
+
+  const boPhan = String(may.Bo_Phan).trim();
+  const cauHinh = docCauHinh_();
+
+  const lock = LockService.getScriptLock();
+  let daMoKhoa = false;
+  function moKhoa_() { if (!daMoKhoa) { lock.releaseLock(); daMoKhoa = true; } }
+
+  try {
+    if (!lock.tryLock(CONFIG.KHOA_CHO_GIAY * 1000)) {
+      return { ok: false, error: 'Hệ thống đang bận, vui lòng thử lại sau vài giây.' };
+    }
+
+    const dsGanDay = docSuCoGanDay_();
+
+    // Chống double-tap: mạng yếu trong xưởng, nút bấm hai lần là chuyện thường.
+    for (let i = dsGanDay.length - 1; i >= 0; i--) {
+      if (String(dsGanDay[i].v[COT.Request_ID_Cuoi]).trim() === requestId) {
+        const maCu = dsGanDay[i].v[COT.Ma_Su_Co];
+        moKhoa_(); // dựng danh bạ là việc chỉ đọc, không được giữ khoá để làm
+        return { ok: true, trung: true, maSuCo: maCu,
+          danhBa: getOnDutyContacts_(boPhan, nhomLoi, null, { cauHinh: cauHinh }) };
+      }
+    }
+
+    const dangDung = timPhieuDangMo_(maMay, dsGanDay, LOAI_PHIEU.DUNG_MAY);
+    if (!dangDung) {
+      return {
+        ok: false,
+        error: 'Máy này chưa được báo dừng. Nếu máy hư, hãy quay lại và bấm ' +
+          '"Máy hư hỏng" để báo sự cố.',
+      };
+    }
+
+    // Đã gọi rồi thì trả lại phiếu cũ kèm danh bạ, không mở phiếu thứ hai: hai
+    // phiếu cùng nội dung là hai thợ cùng chạy tới một máy, và là hai lần đo
+    // đáp ứng cho cùng một lần chờ.
+    const daGoi = timPhieuDangMo_(maMay, dsGanDay, LOAI_PHIEU.HO_TRO);
+    if (daGoi) {
+      moKhoa_();
+      return {
+        ok: true,
+        daGoiTruocDo: true,
+        maSuCo: daGoi.maSuCo,
+        phieuHoTro: daGoi,
+        danhBa: getOnDutyContacts_(boPhan, daGoi.nhomLoi, null, { cauHinh: cauHinh }),
+      };
+    }
+
+    const luc = nowVN_();
+    const caMay = xacDinhCa_(boPhan, luc); // ca của phiếu tính theo bộ phận MÁY
+    const maSuCo = sinhMaPhieu_(luc, 'HT');
+
+    const dong = new Array(HEADER_SU_CO.length).fill('');
+    dong[COT.Ma_Su_Co] = maSuCo;
+    dong[COT.Ma_May] = String(may.Ma_May).trim();
+    dong[COT.Ten_May] = String(may.Ten_May).trim();
+    dong[COT.Bo_Phan] = boPhan;
+    // Máy đang dừng thật — phiếu `DM-` bên trên là bằng chứng. Ghi đúng hiện
+    // trạng để thợ đọc phiếu biết máy đang nằm im, không phải chạy mà cần chỉnh.
+    dong[COT.Trang_Thai_May] = 'DA_DUNG';
+    dong[COT.Nhom_Loi] = nhomLoi;
+    dong[COT.Mo_Ta] = ghepMoTaHoTro_(dangDung, moTa);
+    dong[COT.Trang_Thai] = TRANG_THAI.CHO_NHAN;
+    dong[COT.Thoi_Gian_Bao] = luc;
+    // CỐ Ý để trống Thoi_Gian_Dung_May, dù máy đang dừng thật: phiếu `DM-` đã
+    // giữ mốc đó và đang đếm. Ghi vào đây là mời mọi phép tính sau này cộng
+    // khoảng dừng thêm một lần nữa. Xem `khoangDungCuaPhieu_`.
+    dong[COT.Ngay_Ca] = caMay.ngayCa;
+    dong[COT.Ca] = caMay.ca || 'NGOAI_GIO';
+    dong[COT.Cap_Nhat_Luc] = luc;
+    dong[COT.Request_ID_Cuoi] = requestId;
+    dong[COT.Phien_Ban] = 1;
+    dong[COT.Loai_Phieu] = LOAI_PHIEU.HO_TRO;
+
+    // Nguyên tắc 1: ghi cả dòng bằng ĐÚNG MỘT setValues.
+    const sh = sheet_(SHEET.SU_CO);
+    sh.getRange(sh.getLastRow() + 1, 1, 1, HEADER_SU_CO.length).setValues([dong]);
+
+    ghiNhatKy_(maSuCo, maMay, 'CONG_NHAN', 'GOI_KY_THUAT',
+      { nhomLoi: nhomLoi, phieuDung: dangDung.maSuCo, ca: dong[COT.Ca] }, requestId);
+
+    // Nhả khoá TRƯỚC khi dựng danh bạ và gọi mạng — rào 5.2.
+    moKhoa_();
+
+    const danhBa = getOnDutyContacts_(boPhan, nhomLoi, luc, { cauHinh: cauHinh });
+
+    // Cửa thứ ba vào ThongBao.gs. Khác phiếu `DM-` — vốn cố ý không có cửa nào —
+    // ở chỗ phiếu này CÓ việc để thợ làm và CÓ nút nhận việc, nên dòng "Bấm để
+    // nhận việc" trong tin là đúng, không phải tin suông dạy người ta lướt qua.
+    try { thongBaoSuCoMoi_(dong, danhBa, cauHinh); } catch (e) { /* bỏ qua */ }
+
+    return { ok: true, maSuCo: maSuCo, nhomLoi: nhomLoi, gioGoi: fmtGio_(luc),
+      danhBa: danhBa };
+
+  } catch (err) {
+    return { ok: false, error: err.message };
+  } finally {
+    moKhoa_();
+  }
+}
+
+/**
+ * Mô tả của phiếu `HT-`: lý do máy đang dừng + mã phiếu dừng + phần công nhân gõ.
+ *
+ * Nhét mã `DM-` vào mô tả là cách nối hai phiếu mà KHÔNG phải thêm cột mới vào
+ * `Su_Co` — thêm cột là đụng schema, là thứ phải hỏi. Thợ đọc tin Telegram cũng
+ * thấy luôn máy đang dừng vì lý do gì, nên tới nơi là biết việc.
+ */
+function ghepMoTaHoTro_(phieuDung, moTa) {
+  const lyDo = String((phieuDung && phieuDung.moTa) || '').trim();
+  const phan = ['Gọi kỹ thuật — máy đang dừng'];
+  if (lyDo) phan.push(lyDo);
+  if (String(moTa || '').trim()) phan.push(String(moTa).trim());
+  if (phieuDung && phieuDung.maSuCo) phan.push('phiếu ' + phieuDung.maSuCo);
+  return phan.join(' — ').slice(0, CONFIG.MAX_MO_TA);
 }
 
 // ============================================================================

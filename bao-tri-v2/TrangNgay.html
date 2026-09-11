@@ -181,6 +181,15 @@
   </div>
 
   <div class="the">
+    <h2>🔧 Gọi kỹ thuật trong lúc máy dừng</h2>
+    <p class="nhac">Công nhân bấm gọi thợ ngay trên màn hình máy đang dừng — ca hay
+      gặp nhất là đổi mặt hàng, thay chỉ xong phải có thợ cơ khí tới chỉnh. Những
+      phiếu này <b>không tính là lần máy hỏng</b>, và phút máy nằm im đã nằm ở bảng
+      dừng máy phía trên nên ở đây không cộng lại.</p>
+    <div id="bangHoTro"></div>
+  </div>
+
+  <div class="the">
     <h2>🧰 Việc chung</h2>
     <p class="nhac">Ở bảng này sửa được cả <b>Máy</b> và <b>Khu vực</b> — việc chung
       do thợ tự khai nên hay thiếu. Phiếu sự cố thì hai cột đó lấy từ danh mục máy,
@@ -290,6 +299,7 @@
     ['', t.dong, 'Đã đóng'],
     [t.treo ? 'do' : '', t.treo, 'Còn treo (mọi ngày)'],
     ['cam', tongDung, 'Phút máy dừng'],
+    ['', t.hoTro, 'Gọi kỹ thuật'],
     ['', t.congViec, 'Việc chung'],
     ['', t.baoTri, 'Bảo trì'],
   ].map(function (x) {
@@ -503,6 +513,27 @@
     }),
     'Không có máy nào dừng vì lý do ngoài hư hỏng.');
 
+  // --- Gọi kỹ thuật lúc máy dừng --------------------------------------------
+  veBang('bangHoTro',
+    [{ ten: 'Giờ' }, { ten: 'Mã' }, { ten: 'Máy' }, { ten: 'Nội dung' },
+     { ten: 'Nhóm thợ' }, { ten: 'Thợ' }, { ten: 'Trạng thái' },
+     { ten: 'Phút chờ / làm', s: true }],
+    D.hoTro.map(function (x) {
+      var xong = x.trangThai === 'HOAN_THANH';
+      var tt = xong ? 'Xong'
+        : (x.tho ? '<b style="color:#e37400">Đang làm</b>'
+                 : '<b style="color:#d93025">Chưa ai nhận</b>');
+      return '<tr><td>' + thoat(x.gioBao) + '</td>' +
+        '<td class="nw">' + thoat(x.ma) + '</td>' +
+        '<td>' + thoat(x.may) + '</td>' +
+        '<td>' + thoat(x.moTa) + '</td>' +
+        '<td>' + thoat(x.nhomLoi) + '</td>' +
+        '<td>' + thoat(x.tho) + '</td>' +
+        '<td>' + tt + '</td>' +
+        '<td class="s">' + thoat(xong ? x.xuLy : x.treo) + '</td></tr>';
+    }),
+    'Không có lần gọi kỹ thuật nào trong ngày.');
+
   // --- Việc chung -----------------------------------------------------------
   veBang('bangViecChung',
     [{ ten: 'Giờ' }, { ten: 'Mã' }, { ten: 'Nội dung công việc' }, { ten: 'Máy' },
@@ -539,12 +570,14 @@
 
   // --- Theo thợ -------------------------------------------------------------
   veBang('bangTho',
-    [{ ten: 'Thợ' }, { ten: 'Sự cố', s: true }, { ten: 'Việc chung', s: true },
+    [{ ten: 'Thợ' }, { ten: 'Sự cố', s: true }, { ten: 'Gọi kỹ thuật', s: true },
+     { ten: 'Việc chung', s: true },
      { ten: 'Bảo trì', s: true }, { ten: 'TB đáp ứng thực', s: true },
      { ten: 'Tổng thời gian sửa', s: true }],
     D.theoTho.map(function (x) {
       return '<tr><td>' + thoat(x.ten) + '</td>' +
         '<td class="s">' + x.suCo + '</td>' +
+        '<td class="s">' + x.hoTro + '</td>' +
         '<td class="s">' + x.congViec + '</td>' +
         '<td class="s">' + x.baoTri + '</td>' +
         '<td class="s">' + thoat(x.tbDapUng) + '</td>' +

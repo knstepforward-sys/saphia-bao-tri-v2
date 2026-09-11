@@ -534,7 +534,11 @@ function dauPhieu_(p) {
   var lau = (!p.laCongViec && p.phutDaCho !== '' && p.phutDaCho >= 30)
     ? '<span class="the-nho lau">chờ ' + p.phutDaCho + ' phút</span>' : '';
   var loai = p.nhomLoi === 'DIEN' ? 'dien' : (p.nhomLoi === 'CO_KHI' ? 'co' : '');
-  var nhan = p.laCongViec ? '<span class="the-nho">🧰 Việc chung</span>' : '';
+  // Nhãn để thợ biết ngay đây không phải máy hỏng: máy đang dừng sẵn (đổi mặt
+  // hàng, thiếu nguyên liệu…) và công nhân gọi người tới chỉnh. Việc vẫn gấp —
+  // máy đang nằm im — nhưng đem theo đồ nghề khác với đi sửa hỏng.
+  var nhan = p.laCongViec ? '<span class="the-nho">🧰 Việc chung</span>'
+    : (p.laHoTro ? '<span class="the-nho">🔧 Máy dừng, cần chỉnh</span>' : '');
   return '<div class="phieu-dau">' +
     '<span class="phieu-ma">' + thoat(p.maSuCo) + '</span>' + nhan +
     '<span class="the-nho ' + loai + '">' + thoat(TEN_NHOM_LOI[p.nhomLoi] || p.nhomLoi) + '</span>' +

@@ -333,7 +333,9 @@ function thuCuaNgay_(ngay) {
  * báo thiếu đúng những ca dừng lâu nhất, ví dụ máy tháo motor đi quấn lại dây.
  */
 function khoangDungMay_(v, bayGio) {
-  if (laCongViec_(v) || laBaoTri_(v)) return null;
+  // `HT-` bị loại vì phiếu `DM-` mở song song đã đo trọn khoảng máy nằm im —
+  // cộng cả hai là đếm downtime hai lần cho cùng một lần máy đứng.
+  if (laCongViec_(v) || laBaoTri_(v) || laHoTro_(v)) return null;
   if (String(v[COT.Trang_Thai_May] || '').trim().toUpperCase() !== 'DA_DUNG') return null;
 
   const tu = mocBatDauHu_(v);
@@ -457,7 +459,9 @@ function nhanCa_(ca) {
 function mocBatDauHu_(v) {
   // Việc chung và bảo trì không có khái niệm "máy hư". Nhưng phiếu DỪNG MÁY thì
   // CÓ mốc bắt đầu dừng và cần tính downtime, nên không loại nó ở đây.
-  if (laCongViec_(v) || laBaoTri_(v)) return '';
+  // `HT-` cũng không có mốc "máy hư": máy đang dừng vì phiếu `DM-`, và chính
+  // phiếu đó giữ mốc bắt đầu. Trả '' để mọi phép đo downtime bỏ qua phiếu này.
+  if (laCongViec_(v) || laBaoTri_(v) || laHoTro_(v)) return '';
   const dung = v[COT.Thoi_Gian_Dung_May];
   if (dung instanceof Date) return dung;
   return v[COT.Thoi_Gian_Bao] instanceof Date ? v[COT.Thoi_Gian_Bao] : '';
@@ -469,6 +473,7 @@ function nhanLoaiPhieu_(v) {
     CONG_VIEC: 'Việc chung',
     BAO_TRI: 'Bảo trì hằng ngày',
     DUNG_MAY: 'Dừng máy (không hư)',
+    HO_TRO: 'Gọi kỹ thuật (máy đang dừng)',
   }[loaiPhieu_(v)] || 'Sự cố máy';
 }
 
@@ -502,7 +507,7 @@ function noiDungHuHong_(v) {
  * Trạng thái đáp ứng — dịch đúng bảng trạng thái ở cột AC của file Excel gốc.
  */
 function trangThaiDapUng_(v) {
-  if (!laSuCo_(v)) return 'KHÔNG ÁP DỤNG';
+  if (!laDoDapUng_(v)) return 'KHÔNG ÁP DỤNG';
   if (!String(v[COT.Ten_Tho] || '').trim()) return 'CHƯA NHẬP NGƯỜI XỬ LÝ';
   if (!(v[COT.Thoi_Gian_Nhan] instanceof Date) ||
       !(v[COT.Thoi_Gian_Hoan_Thanh] instanceof Date)) return 'THIẾU THỜI GIAN';
@@ -655,9 +660,12 @@ function soSanhKy_(nay, truoc, thapLaTot, donVi) {
   };
 }
 
-/** Trung bình phút đáp ứng của riêng phiếu sự cố — dùng cho cả kỳ này và kỳ trước. */
+/**
+ * Trung bình phút đáp ứng của phiếu CÓ NGƯỜI BÁO — `SC-` và `HT-`, dùng cho cả
+ * kỳ này và kỳ trước. Chủ dự án chốt gộp `HT-` chung một con số, 11/09/2026.
+ */
 function tbDapUngSuCo_(ds) {
-  return trungBinh_(ds.filter(laSuCo_)
+  return trungBinh_(ds.filter(laDoDapUng_)
     .filter(function (v) { return String(v[COT.Phut_Tiep_Nhan]) !== ''; })
     .map(function (v) { return Number(v[COT.Phut_Tiep_Nhan]); }));
 }
@@ -748,7 +756,7 @@ function ghiTomTat_(ssMoi, ds, dsTruoc, ctx) {
       ' lần hỏng, ' + quyRaGio_(mayTe[0].dt) + ' giờ.');
   }
   const treo = ds.filter(function (v) {
-    return laSuCo_(v) && v[COT.Trang_Thai] === TRANG_THAI.CHO_NHAN;
+    return laDoDapUng_(v) && v[COT.Trang_Thai] === TRANG_THAI.CHO_NHAN;
   }).length;
   if (treo) {
     y.push('CÒN ' + treo + ' phiếu chưa ai nhận tính tới lúc xuất báo cáo — ' +
@@ -961,7 +969,7 @@ function gomKpiTho_(ds) {
     if (!tt) {
       // Phiếu CV-/BT-/DM- chưa tính thì cũng không bao giờ vào KPI — đừng doạ
       // người đọc bằng cảnh báo cho những phiếu vốn dĩ bị loại.
-      if (laSuCo_(v)) soChuaTinh++;
+      if (laDoDapUng_(v)) soChuaTinh++;
       return;
     }
     if (tt === 'CO') {
@@ -999,7 +1007,7 @@ function ghiTrangBaoCao_(ssMoi, ds, ctx) {
   them_([]);
 
   // --- Bốn ô số lớn ---------------------------------------------------------
-  const dapUng = ds.filter(laSuCo_)
+  const dapUng = ds.filter(laDoDapUng_)
     .filter(function (v) { return String(v[COT.Phut_Tiep_Nhan]) !== ''; })
     .map(function (v) { return Number(v[COT.Phut_Tiep_Nhan]); });
 
@@ -1017,6 +1025,8 @@ function ghiTrangBaoCao_(ssMoi, ds, ctx) {
 
   const dPhu = them_([
     'Trong kỳ còn có ' + gMT.tong.soDungMay + ' lần dừng máy không do hư hỏng' +
+    (gMT.tong.soHoTro ? ' · ' + gMT.tong.soHoTro +
+      ' lần gọi kỹ thuật trong lúc máy dừng' : '') +
     (gNgay.tong.conDung ? ' · có máy CHƯA chạy lại tính tới lúc xuất' : '') +
     (gNgay.tong.soChoBan ? ' · ' + gNgay.tong.soChoBan +
       ' phiếu phải chờ vì thợ đang bận việc khác' : '') +
@@ -1664,7 +1674,7 @@ function ghiDanhMucXuat_(ssMoi, ctx) {
  * dừng máy được đếm riêng.
  */
 function gomTheoMayTho_(ds) {
-  const t = { soSuCo: 0, soViecChung: 0, soBaoTri: 0, soDungMay: 0,
+  const t = { soSuCo: 0, soViecChung: 0, soBaoTri: 0, soDungMay: 0, soHoTro: 0,
     tongDowntime: 0, tongThoiGianSua: 0 };
   const theoMay = {};
   const theoTho = {};
@@ -1674,6 +1684,7 @@ function gomTheoMayTho_(ds) {
     if (suCo) t.soSuCo++;
     else if (laCongViec_(v)) t.soViecChung++;
     else if (laDungMay_(v)) t.soDungMay++;
+    else if (laHoTro_(v)) t.soHoTro++;
     else t.soBaoTri++;
 
     const dt = Number(phutDungMay_(v)) || 0;
@@ -1697,12 +1708,17 @@ function gomTheoMayTho_(ds) {
       if (!theoTho[tenTho]) {
         theoTho[tenTho] = { soViec: 0, dapUng: [], sauRanh: [], choBan: [],
           chong: 0, soChoBan: 0, tongCho: 0,
-          suCo: 0, viecChung: 0, baoTri: 0, tongSua: 0, tongDung: 0,
+          suCo: 0, viecChung: 0, baoTri: 0, hoTro: 0, tongSua: 0, tongDung: 0,
           kpi: [] };
       }
       const x = theoTho[tenTho];
       x.soViec++;
-      if (suCo) x.suCo++; else if (laCongViec_(v)) x.viecChung++; else x.baoTri++;
+      // Nhánh cuối là bảo trì, nên MỌI loại phiếu mới phải có nhánh riêng ở
+      // đây — thiếu một nhánh là loại đó bị đếm thành bảo trì mà không báo lỗi.
+      if (suCo) x.suCo++;
+      else if (laCongViec_(v)) x.viecChung++;
+      else if (laHoTro_(v)) x.hoTro++;
+      else x.baoTri++;
       if (String(v[COT.Phut_Tiep_Nhan]) !== '') x.dapUng.push(Number(v[COT.Phut_Tiep_Nhan]));
       if (String(v[COT.Phut_Dap_Ung_Thuc]) !== '') x.sauRanh.push(Number(v[COT.Phut_Dap_Ung_Thuc]));
       // "Chồng việc" (So_Chong_Viec) chỉ đếm lúc bấm nhận mà việc cũ CHƯA đóng.
@@ -1735,7 +1751,7 @@ function gomTheoMayTho_(ds) {
 
 function ghiDashboard_(ssMoi, ds, ctx) {
   const sh = ssMoi.insertSheet('Dashboard');
-  const SO_COT = 18; // A..R
+  const SO_COT = 19; // A..S
 
   const gom = gomTheoMayTho_(ds);
   const theoMay = gom.theoMay;
@@ -1744,6 +1760,7 @@ function ghiDashboard_(ssMoi, ds, ctx) {
   const soViecChung = gom.tong.soViecChung;
   const soBaoTri = gom.tong.soBaoTri;
   const soDungMay = gom.tong.soDungMay;
+  const soHoTro = gom.tong.soHoTro;
   const tongDowntime = gom.tong.tongDowntime;
   const tongThoiGianSua = gom.tong.tongThoiGianSua;
   const dsDungMay = ds.filter(laDungMay_);
@@ -1785,6 +1802,11 @@ function ghiDashboard_(ssMoi, ds, ctx) {
   dat_(5, 2, soDungMay);
   dat_(5, 3, 'Phút dừng do nguyên nhân khác');
   dat_(5, 4, dtKhac);
+  // Phiếu `HT-`: công nhân gọi thợ trong lúc máy đang dừng (đổi mặt hàng…).
+  // Cố ý KHÔNG cộng vào "số lần hỏng" — máy không hỏng — nhưng vẫn phải hiện ra,
+  // vì đó là công thợ thật và là thời gian máy chờ người thật.
+  dat_(5, 5, 'Lần gọi kỹ thuật (máy không hư)');
+  dat_(5, 6, soHoTro);
 
   // Tách nguyên nhân để quy trách nhiệm, nhưng vẫn phải có một con số tổng: với
   // sản xuất thì máy nằm im là máy nằm im, dù vì hỏng hay vì thiếu nguyên liệu.
@@ -1797,14 +1819,14 @@ function ghiDashboard_(ssMoi, ds, ctx) {
   dat_(1, 9, 'THỐNG KÊ THEO THỢ — LÀM GÌ TRONG KỲ');
   ['Thợ', 'Tổng việc', 'TB đáp ứng', 'TB sau khi rảnh', 'Số lần chồng',
     'Tổng phút sửa', 'Tổng phút máy dừng',
-    'Sự cố máy', 'Việc chung', 'Bảo trì hằng ngày']
+    'Sự cố máy', 'Việc chung', 'Bảo trì hằng ngày', 'Gọi kỹ thuật']
     .forEach(function (h, i) { dat_(3, 9 + i, h); });
 
   dsTho.forEach(function (t, i) {
     const ten = String(t.Ten_Tho).trim();
     const s = theoTho[ten] ||
       { soViec: 0, dapUng: [], sauRanh: [], chong: 0, suCo: 0, viecChung: 0,
-        baoTri: 0, tongSua: 0, tongDung: 0 };
+        baoTri: 0, hoTro: 0, tongSua: 0, tongDung: 0 };
     const d = 4 + i;
     dat_(d, 9, ten);
     dat_(d, 10, s.soViec);
@@ -1816,6 +1838,7 @@ function ghiDashboard_(ssMoi, ds, ctx) {
     dat_(d, 16, s.suCo);
     dat_(d, 17, ctx.kemViecChung ? s.viecChung : '—');
     dat_(d, 18, ctx.kemViecChung ? s.baoTri : '—');
+    dat_(d, 19, s.hoTro);
   });
 
   // Khối trái — bảng theo máy, bắt đầu từ dòng 7 như file gốc

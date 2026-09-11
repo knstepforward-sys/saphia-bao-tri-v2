@@ -306,13 +306,18 @@ function tongPhutKhoang_(ds) {
  * - CONG_VIEC: chỉ khi bật cấu hình. Mốc lấy từ Thoi_Gian_Nhan vì phiếu việc
  *             chung tạo là nhận luôn, không có Thoi_Gian_Dung_May.
  * - BAO_TRI : không bao giờ. Thợ làm rải rác trong ca, máy vẫn chạy.
+ * - HO_TRO  : không bao giờ. Phiếu `HT-` chỉ mở được khi máy đang có phiếu
+ *             `DM-`, mà phiếu đó đã đo trọn khoảng máy nằm im rồi. Phép hợp
+ *             nhất khoảng ở dưới chặn được phần chồng nhau, nhưng thợ có thể
+ *             đóng `HT-` muộn hơn lúc máy chạy lại — khi ấy đuôi thừa sẽ bị
+ *             tính thành máy dừng, mà máy đã ra hàng từ trước đó.
  *
  * Phiếu chưa đóng thì tính tới `bayGio` — máy vẫn đang dừng thật, bỏ qua là báo
  * thiếu đúng những ca dừng lâu nhất.
  */
 function khoangDungCuaPhieu_(v, bayGio) {
   const loai = loaiPhieu_(v);
-  if (loai === LOAI_PHIEU.BAO_TRI) return null;
+  if (loai === LOAI_PHIEU.BAO_TRI || loai === LOAI_PHIEU.HO_TRO) return null;
 
   let tu = null;
   if (loai === LOAI_PHIEU.SU_CO) {

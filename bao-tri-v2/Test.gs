@@ -623,6 +623,66 @@ function chayTest() {
   t.bang('Phiếu chưa có mốc dừng thì bỏ qua',
     tongPhutDung_([_phieu_({ Loai_Phieu: LOAI_PHIEU.DUNG_MAY }).v]), 0);
 
+  // --- 14b. Gọi kỹ thuật lúc máy đang dừng (phiếu HT-) -----------------------
+  // Loại phiếu này sinh ra để giữ đúng hai con số: "số lần máy hỏng" không được
+  // phồng lên vì đổi mặt hàng, và "phút máy dừng" không được đếm hai lần.
+  const hoTro = _phieu_({
+    Loai_Phieu: LOAI_PHIEU.HO_TRO, Trang_Thai_May: 'DA_DUNG',
+    Nhom_Loi: 'CO_KHI', Ma_Tho: 'TH02',
+    Thoi_Gian_Bao: _luc_('2026-08-03T09:00'),
+    Thoi_Gian_Nhan: _luc_('2026-08-03T09:12'),
+    Thoi_Gian_Hoan_Thanh: _luc_('2026-08-03T09:45'),
+  }).v;
+
+  t.bang('Nhận diện phiếu gọi kỹ thuật', laHoTro_(hoTro), true);
+  t.bang('Gọi kỹ thuật KHÔNG bị tính là sự cố', laSuCo_(hoTro), false);
+  t.bang('Ô Loai_Phieu lạ vẫn rơi về SU_CO, không rơi nhầm sang HO_TRO',
+    loaiPhieu_(_phieu_({ Loai_Phieu: 'LOAI_LA' }).v), LOAI_PHIEU.SU_CO);
+  t.bang('Nhãn loại phiếu gọi kỹ thuật',
+    nhanLoaiPhieu_(hoTro), 'Gọi kỹ thuật (máy đang dừng)');
+
+  // Hai phép chặn downtime. Phiếu DM- mở song song mới là phiếu đo khoảng dừng;
+  // nếu một trong hai hàm dưới đây trả về số thì phút máy nằm im bị cộng hai lần.
+  t.bang('Gọi kỹ thuật không có mốc "máy hư"', mocBatDauHu_(hoTro), '');
+  t.bang('Gọi kỹ thuật không tính downtime', phutDungMay_(hoTro), '');
+  t.bang('Gọi kỹ thuật không sinh khoảng dừng ở tỉ lệ hiệu dụng',
+    khoangDungCuaPhieu_(hoTro, _luc_('2026-08-03T10:00')), null);
+  t.bang('Dù Trang_Thai_May vẫn ghi DA_DUNG',
+    String(hoTro[COT.Trang_Thai_May]), 'DA_DUNG');
+
+  // Nhưng VẪN đo đáp ứng và VẪN là việc của thợ — chủ dự án chốt tính chung một
+  // con số với sự cố, 11/09/2026.
+  t.bang('Gọi kỹ thuật CÓ vào KPI đáp ứng',
+    kpiThoChoPhieu_([], hoTro, 0).apDung, 'CO');
+  t.bang('Dừng máy thì KHÔNG vào KPI',
+    kpiThoChoPhieu_([], _phieu_({ Ma_Su_Co: 'DM-1', Ma_Tho: 'TH02',
+      Loai_Phieu: LOAI_PHIEU.DUNG_MAY }).v, 0).apDung, 'KHONG — phiếu DUNG_MAY');
+  t.bang('Trạng thái đáp ứng không còn là KHÔNG ÁP DỤNG',
+    trangThaiDapUng_(_phieu_({ Loai_Phieu: LOAI_PHIEU.HO_TRO, Ten_Tho: 'Nhân',
+      Thoi_Gian_Nhan: _luc_('2026-08-03T09:12'),
+      Thoi_Gian_Hoan_Thanh: _luc_('2026-08-03T09:45') }).v), 'THỢ RẢNH');
+  t.bang('Vào trung bình đáp ứng chung với sự cố',
+    tbDapUngSuCo_([_phieu_({ Loai_Phieu: LOAI_PHIEU.HO_TRO,
+      Phut_Tiep_Nhan: 12 }).v]), 12);
+
+  // Nhánh đếm theo loại phiếu kết thúc bằng "còn lại là bảo trì". Thiếu một
+  // nhánh riêng là phiếu HT- bị đếm thành bảo trì mà không có lỗi nào để thấy.
+  const gomHT = gomTheoMayTho_([hoTro]);
+  t.bang('Không bị đếm nhầm thành bảo trì', gomHT.tong.soBaoTri, 0);
+  t.bang('Được đếm riêng', gomHT.tong.soHoTro, 1);
+  t.bang('Không cộng vào số lần hỏng', gomHT.tong.soSuCo, 0);
+
+  // Mô tả nối hai phiếu với nhau bằng mã DM-, không thêm cột mới vào Su_Co.
+  t.bang('Mô tả gom đủ lý do dừng, ghi chú và mã phiếu dừng',
+    ghepMoTaHoTro_({ maSuCo: 'DM-0308-002', moTa: 'Đổi mặt hàng' }, 'chỉnh lại cữ'),
+    'Gọi kỹ thuật — máy đang dừng — Đổi mặt hàng — chỉnh lại cữ — phiếu DM-0308-002');
+  t.bang('Không gõ gì thêm thì bỏ luôn phần đó',
+    ghepMoTaHoTro_({ maSuCo: 'DM-0308-002', moTa: 'Đổi mặt hàng' }, ''),
+    'Gọi kỹ thuật — máy đang dừng — Đổi mặt hàng — phiếu DM-0308-002');
+  t.bang('Phiếu dừng không ghi lý do vẫn ra câu đọc được',
+    ghepMoTaHoTro_({ maSuCo: 'DM-0308-002', moTa: '' }, ''),
+    'Gọi kỹ thuật — máy đang dừng — phiếu DM-0308-002');
+
   // --- 15. Gom nhóm lý do dừng máy gõ tự do ----------------------------------
   t.bang('Lấy phần lý do trước dấu gạch',
     lyDoHienThi_('Thiếu chỉ — chờ kho cấp'), 'Thiếu chỉ');

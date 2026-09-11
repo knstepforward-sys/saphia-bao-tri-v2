@@ -138,6 +138,21 @@ bang('Việc chung không vào KPI',
 bang('Bảo trì không vào KPI',
   kpiThoChoPhieu_([], phieu({ Ma_Su_Co: 'BT-1', Ma_Tho: 'TH02',
     Loai_Phieu: LOAI_PHIEU.BAO_TRI }).v, 0).apDung, 'KHONG — phiếu BAO_TRI');
+bang('Dừng máy không vào KPI',
+  kpiThoChoPhieu_([], phieu({ Ma_Su_Co: 'DM-1', Ma_Tho: 'TH02',
+    Loai_Phieu: LOAI_PHIEU.DUNG_MAY }).v, 0).apDung, 'KHONG — phiếu DUNG_MAY');
+// Ngược lại: gọi kỹ thuật lúc máy đang dừng CÓ người báo và CÓ mốc báo, nên vẫn
+// đo đáp ứng — chủ dự án chốt tính chung một con số với sự cố, 11/09/2026.
+bang('Gọi kỹ thuật CÓ vào KPI',
+  kpiThoChoPhieu_([], phieu({ Ma_Su_Co: 'HT-1', Ma_Tho: 'TH02',
+    Loai_Phieu: LOAI_PHIEU.HO_TRO,
+    Thoi_Gian_Bao: luc('2026-08-03T09:00'),
+    Thoi_Gian_Nhan: luc('2026-08-03T09:12') }).v, 0).apDung, 'CO');
+bang('Và chấm đúng số phút',
+  kpiThoChoPhieu_([], phieu({ Ma_Su_Co: 'HT-1', Ma_Tho: 'TH02',
+    Loai_Phieu: LOAI_PHIEU.HO_TRO,
+    Thoi_Gian_Bao: luc('2026-08-03T09:00'),
+    Thoi_Gian_Nhan: luc('2026-08-03T09:12') }).v, 0).phutKpi, 12);
 bang('Phiếu chưa ai nhận không vào KPI',
   kpiThoChoPhieu_([], phieu({ Ma_Su_Co: 'SC-3' }).v, 0).apDung, 'KHONG — chưa ai nhận');
 bang('Thiếu mốc giờ thì không chấm',

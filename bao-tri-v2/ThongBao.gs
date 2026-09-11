@@ -683,6 +683,7 @@ function menuGuiThu() {
 //
 // Đây là hai cửa duy nhất mà `CongNhan.gs` và `LuongTho.gs` gọi vào file này.
 // Giữ đúng hai cửa để sau này muốn tắt hẳn phần Telegram thì biết chỗ mà tìm.
+// Ba chỗ gọi: `reportIncident`, `requestTechnician` và `acceptIncident`.
 //
 // ⚠️ CẢ HAI PHẢI GỌI NGOÀI KHOÁ — rào 5.2. Chúng đọc một lượt sheet rồi gọi mạng;
 // làm việc đó trong khoá là bắt mọi người báo sự cố xếp hàng chờ theo.
@@ -693,6 +694,15 @@ function menuGuiThu() {
 // hẳn với loại phiếu đó. Thiếu chỉ hay vệ sinh máy cũng không phải bệnh mà dự án
 // này chữa. Gửi tin không kèm việc gì để làm là dạy thợ lướt qua tin của bot,
 // đúng lúc tin sự cố thật cần được đọc. Chủ dự án chọn bỏ, ngày 09/09/2026.
+//
+// Phiếu HO_TRO (`HT-`) thì NGƯỢC LẠI, và đó chính là phép thử cho luật trên:
+// nó cũng do công nhân mở từ màn hình máy đang dừng, nhưng nó CÓ việc để thợ
+// làm và CÓ nút nhận việc. Tin bắn đi kèm đúng một hành động cụ thể, nên nó
+// không nằm trong nhóm tin suông mà lý do ở trên loại bỏ. Dùng chung
+// `thongBaoSuCoMoi_` và `soanTinSuCoMoi_`: dòng đầu "🔴 <máy> đã dừng" đúng
+// nguyên văn với loại phiếu này, vì máy đang dừng thật — phiếu `DM-` mở song
+// song là bằng chứng. Vòng nhắc ở mục 8 lọc theo CHO_NHAN nên tự nhận luôn
+// phiếu `HT-`, không phải sửa gì. Chủ dự án chốt ngày 11/09/2026.
 
 /**
  * Lớp 1 — gửi ngay lúc công nhân báo sự cố, cho thợ đang trực trong `danhBa`.
