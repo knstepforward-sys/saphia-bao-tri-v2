@@ -64,7 +64,7 @@ người dùng để hiện cửa sổ đăng nhập.
 | `DonDuLieu.gs` | Xoá phiếu / dọn dữ liệu chạy thử, có thùng rác. **Chỉ menu, không có route web** |
 | `DoTai.gs` | Đo chi phí thật của từng hàm RPC, chỉ đọc |
 | `ThongBao.gs` | Bot Telegram nhắc thợ: soạn tin, gửi, công tắc, cầu chì, hai mục menu, trigger nhắc |
-| `Test.gs` | 356 test chạy bằng dữ liệu giả, **không đụng sheet nào** |
+| `Test.gs` | 358 test chạy bằng dữ liệu giả, **không đụng sheet nào** |
 | `Index.html` | Trang công nhân |
 | `Tho.html` | Trang thợ |
 | `InQr.html` | Trang in QR |
@@ -889,7 +889,7 @@ hàm thuần**: soi mã nguồn từng hàm soạn tin bằng `Function.prototyp
 thật nằm chung file — kéo nhầm một lời gọi mạng vào nhóm hàm soạn tin là mất luôn khả năng
 kiểm thử tại máy.
 
-Lớp thứ sáu: menu **🧪 Chạy test logic** trong Sheet — 356 test bằng dữ liệu giả,
+Lớp thứ sáu: menu **🧪 Chạy test logic** trong Sheet — 358 test bằng dữ liệu giả,
 **không đọc/ghi sheet nào**.
 
 Điều này làm được nhờ `getOnDutyContacts_` nhận tham số `duLieu` **tiêm theo từng trường**:

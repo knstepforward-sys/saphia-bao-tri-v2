@@ -1499,6 +1499,25 @@ function chayTest() {
   t.bang('Không phiếu nào biến mất giữa hai nhóm',
     _lt_.giuLai.length + _lt_.luuTru.length, _dsLt_.length);
 
+  // Phiếu không đo được đáp ứng thì ô KPI trống là chuyện bình thường, không được
+  // lấy đó làm cớ giữ lại — CV-/BT-/DM- chiếm gần một phần tư số phiếu mỗi tháng.
+  function _dongLoai_(ma, loai) {
+    const v = _dongLuuTru_('2026-08-10', TRANG_THAI.HOAN_THANH, '');
+    v[COT.Ma_Su_Co] = ma;
+    v[COT.Loai_Phieu] = loai;
+    return v;
+  }
+  const _khongDo_ = chonPhieuLuuTru_([
+    _dongLoai_('CV-1008-001', 'CONG_VIEC'),
+    _dongLoai_('BT-1008-002', 'BAO_TRI'),
+    _dongLoai_('DM-1008-003', 'DUNG_MAY'),
+    _dongLoai_('SC-1008-004', 'SU_CO'),
+  ], '2026-09');
+  t.bang('Phiếu không đo KPI, ô trống vẫn dọn được',
+    _dsMa_(_khongDo_.luuTru), ['CV-1008-001', 'BT-1008-002', 'DM-1008-003']);
+  t.bang('Chỉ phiếu sự cố chưa tính KPI mới bị giữ lại',
+    [_dsMa_(_khongDo_.giuLai), _khongDo_.giuViKpi], [['SC-1008-004'], 1]);
+
   // Biên tháng: phiếu đúng ngày cuối của tháng mốc phải ở lại.
   const _bien_ = chonPhieuLuuTru_([
     _dongLuuTru_('2026-09-01', TRANG_THAI.HOAN_THANH, 'CO'),

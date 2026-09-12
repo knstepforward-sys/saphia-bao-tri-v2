@@ -401,7 +401,10 @@ function chonPhieuLuuTru_(ds, mocThang) {
     const thang = thangCuaPhieu_(v);
     if (!thang || thang >= mocThang) { giuLai.push(v); return; }
 
-    if (String(v[COT.KPI_Ap_Dung] || '').trim() === '') {
+    // CHỈ giữ lại phiếu ĐO ĐƯỢC đáp ứng (SC-, HT-). Phiếu CV-/BT-/DM- không bao
+    // giờ vào KPI nên ô trống của chúng chẳng mất gì khi dọn đi — giữ cả nhóm đó
+    // lại là chặn oan gần một phần tư số phiếu mỗi tháng.
+    if (laDoDapUng_(v) && String(v[COT.KPI_Ap_Dung] || '').trim() === '') {
       giuLai.push(v);
       giuViKpi++;
       return;

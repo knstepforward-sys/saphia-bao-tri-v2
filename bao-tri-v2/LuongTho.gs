@@ -324,6 +324,15 @@ function tinhLaiKpiTho() {
 
     sh.getRange(2, cotDau, khoi.length, 5).setValues(khoi);
 
+    // BẮT BUỘC. Apps Script gom các lệnh ghi lại rồi mới đẩy xuống Sheet, nên hàm
+    // chạy NGAY SAU trong cùng một lượt có thể đọc lại đúng trạng thái trước khi
+    // ghi. Đã trả giá ngày 12/09/2026: nút 🗄️ gọi tinhLaiKpiTho() rồi gọi
+    // archiveOldTickets() liền, phần dọn đọc phải bản cũ nên lần nào cũng báo
+    // "còn 520 phiếu chưa tính KPI" và từ chối dọn — dù dòng ngay trên nó vừa nói
+    // đã ghi xong 748 dòng. Bấm 🎯 trước bao nhiêu lần cũng vô ích, vì 🗄️ luôn
+    // ghi lại rồi đọc lại trong cùng một lượt.
+    SpreadsheetApp.flush();
+
     ghiNhatKy_('', '', 'HE_THONG', 'TINH_LAI_KPI',
       { soDong: khoi.length, soApDung: soApDung, nguong: nguong }, '');
 
