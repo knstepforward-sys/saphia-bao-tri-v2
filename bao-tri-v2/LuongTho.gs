@@ -297,11 +297,23 @@ function tinhLaiKpiTho() {
     const khoi = [];
     let soApDung = 0, soNhieuDoan = 0, soDat = 0;
 
+    // Một dòng dữ liệu lạ KHÔNG được kéo sập cả lượt tính. Trước đây hàm ném lỗi
+    // ra ngoài là 748 dòng cùng mất phần KPI vì một dòng, và thông báo lỗi thì
+    // không nói dòng nào. Nay dòng hỏng nhận đúng lý do của nó, các dòng còn lại
+    // vẫn được tính, và mã phiếu hỏng được in ra để còn đi sửa dữ liệu.
+    const dsLoi = [];
     values.forEach(function (v) {
       if (String(v[COT.Ma_Su_Co]).trim() === '') { khoi.push(['', '', '', '', '']); return; }
 
-      const cungTho = theoTho[String(v[COT.Ma_Tho]).trim()] || [];
-      const k = kpiThoChoPhieu_(cungTho, v, nguong);
+      let k;
+      try {
+        const cungTho = theoTho[String(v[COT.Ma_Tho]).trim()] || [];
+        k = kpiThoChoPhieu_(cungTho, v, nguong);
+      } catch (err) {
+        if (dsLoi.length < 5) dsLoi.push(String(v[COT.Ma_Su_Co]) + ': ' + err.message);
+        k = { apDung: 'KHONG — lỗi tính: ' + err.message,
+              phutBan: '', phutKpi: '', soDoan: '', datNguong: '' };
+      }
       if (k.apDung === 'CO') {
         soApDung++;
         if (k.soDoan >= 2) soNhieuDoan++;
@@ -315,7 +327,9 @@ function tinhLaiKpiTho() {
     ghiNhatKy_('', '', 'HE_THONG', 'TINH_LAI_KPI',
       { soDong: khoi.length, soApDung: soApDung, nguong: nguong }, '');
 
-    return 'Đã tính lại KPI cho ' + khoi.length + ' dòng.\n' +
+    return '✅ ĐÃ GHI ' + khoi.length + ' dòng vào cột ' + cotDau + '–' + (cotDau + 4) +
+      ' của sheet ' + SHEET.SU_CO + '.\n' +
+      (dsLoi.length ? '⚠️ Có dòng tính lỗi, xem 5 mã đầu:\n  ' + dsLoi.join('\n  ') + '\n' : '') +
       '• Vào KPI: ' + soApDung + ' phiếu\n' +
       '• Có từ 2 đoạn bận rời (cách cũ tính rộng tay): ' + soNhieuDoan + ' phiếu\n' +
       (nguong
@@ -1170,6 +1184,52 @@ function chanDoanKpi() {
     });
     dong.push('  Phiếu thiếu mốc "giờ thợ nhận": ' + tk.thieuMocNhan);
   });
+
+  // Chạy THỬ đúng phép tính của "🎯 Tính lại KPI", nhưng KHÔNG ghi. Đây là chỗ
+  // phân biệt hai khả năng còn lại: phép tính ném lỗi ở một dòng dữ liệu lạ, hay
+  // phép tính chạy được mà bước ghi mới là chỗ hỏng.
+  const shSc = ssx.getSheetByName(SHEET.SU_CO);
+  dong.push('');
+  dong.push('── CHẠY THỬ PHÉP TÍNH (không ghi ô nào) ──');
+  if (!shSc || shSc.getMaxColumns() < HEADER_SU_CO.length || shSc.getLastRow() < 2) {
+    dong.push('  Bỏ qua: sheet Su_Co chưa đủ cột hoặc chưa có dòng nào.');
+  } else {
+    const batDau = Date.now();
+    const v2 = shSc.getRange(2, 1, shSc.getLastRow() - 1, HEADER_SU_CO.length).getValues();
+    const ds2 = v2.map(function (v, i) { return { dong: i + 2, v: v }; })
+      .filter(function (r) { return String(r.v[COT.Ma_Su_Co]).trim() !== ''; });
+    const theoTho2 = {};
+    ds2.forEach(function (r) {
+      const m = String(r.v[COT.Ma_Tho]).trim();
+      if (!m) return;
+      if (!theoTho2[m]) theoTho2[m] = [];
+      theoTho2[m].push(r);
+    });
+
+    const ng = nguongKpi_();
+    let seCo = 0, seKhong = 0, seLoi = 0;
+    const viDuLoi = [];
+    ds2.forEach(function (r) {
+      try {
+        const k = kpiThoChoPhieu_(theoTho2[String(r.v[COT.Ma_Tho]).trim()] || [], r.v, ng);
+        if (k.apDung === 'CO') seCo++; else seKhong++;
+      } catch (err) {
+        seLoi++;
+        if (viDuLoi.length < 5) viDuLoi.push(String(r.v[COT.Ma_Su_Co]) + ': ' + err.message);
+      }
+    });
+
+    dong.push('  Tính được, sẽ ghi "CO"    : ' + seCo);
+    dong.push('  Tính được, sẽ ghi "KHONG" : ' + seKhong);
+    dong.push('  NÉM LỖI                   : ' + seLoi +
+      (seLoi ? '  ← đây là chỗ làm hỏng cả lượt tính' : '  ✔'));
+    viDuLoi.forEach(function (x) { dong.push('      ' + x); });
+    dong.push('  Thời gian chạy thử: ' + (Date.now() - batDau) + ' ms');
+    if (!seLoi) {
+      dong.push('  Phép tính SẠCH. Vậy chỗ hỏng nằm ở bước GHI hoặc ở khoá');
+      dong.push('  LockService — bấm 🎯 và đọc kỹ dòng đầu tiên nó trả về.');
+    }
+  }
 
   // Ngưỡng: cái quyết định cột Dat_Nguong có số hay toàn dấu gạch ngang.
   const nguong = nguongKpi_();
