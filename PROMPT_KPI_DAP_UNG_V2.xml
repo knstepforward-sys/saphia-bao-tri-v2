@@ -1,0 +1,283 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  PROMPT MỘT LẦN — THIẾT KẾ LẠI KPI ĐÁP ỨNG THỢ (hệ Bảo trì Toàn nhà máy v2)
+  Soạn ngày 12/09/2026. Dán trọn file này làm tin nhắn đầu tiên của một phiên mới,
+  mở trong thư mục repository saphia-bao-tri-v2.
+-->
+<task ten="KPI đáp ứng thợ v2 — đếm số lần đáp ứng trễ theo ngưỡng riêng từng thợ">
+
+  <cach_lam_viec>
+    <dieu>Làm TRỌN GÓI trong một lượt. KHÔNG hỏi lại, KHÔNG dừng chờ duyệt từng phần,
+      KHÔNG trình bày phương án rồi đợi. Chủ dự án đã duyệt đặc tả trong file này.</dieu>
+    <dieu>Chỉ viết mã, sửa tài liệu, chạy kiểm thử, commit và push. Cuối cùng in MỘT
+      báo cáo ngắn: đã sửa file nào, kết quả từng lớp kiểm thử, những chỗ bạn phải tự
+      quyết và vì sao. Chủ dự án review ở bước đó.</dieu>
+    <dieu>Gặp chỗ đặc tả thiếu thì chọn phương án an toàn nhất, làm tiếp, và ghi vào
+      mục "phải tự quyết" của báo cáo cuối. Không dừng lại.</dieu>
+    <dieu>Đọc <tep>bao-tri-v2/CLAUDE.md</tep> TRƯỚC KHI sửa dòng nào — kiến trúc, các
+      bẫy đã trả giá và nguyên tắc kỹ thuật nằm ở đó. Đọc thêm <tep>NOTES.md</tep>
+      (mục mới nhất ở đầu) để biết hệ đang ở trạng thái nào.</dieu>
+    <dieu>Tài liệu, tên hàm mô tả, thông báo và giao diện đều bằng TIẾNG VIỆT, theo
+      đúng giọng văn đang có trong repo.</dieu>
+  </cach_lam_viec>
+
+  <boi_canh>
+    <he_thong>Hệ Bảo trì Toàn nhà máy v2, thư mục <tep>bao-tri-v2/</tep>, Apps Script
+      container-bound gắn với Google Sheet. Đang phục vụ thật 175 máy, ~15 thợ.</he_thong>
+    <du_lieu>Sheet <ten>Su_Co</ten> 33 cột. Từ 12/09/2026 phiếu HOÀN THÀNH của các
+      tháng trước được dời sang sheet <ten>Luu_Tru</ten> (cùng schema) vào ngày 1 hằng
+      tháng. Mọi phép đọc phục vụ báo cáo phải dùng <ham>docSuCoVaLuuTru_()</ham>,
+      không dùng <ham>docToanBoSuCo_()</ham>.</du_lieu>
+    <hien_trang_kpi>
+      Cột KPI hiện có trên <ten>Su_Co</ten>: <cot>Phut_Tiep_Nhan</cot> (thô),
+      <cot>Phut_Cho_Tho_Ban</cot>, <cot>Phut_Dap_Ung_Thuc</cot>, <cot>So_Chong_Viec</cot>,
+      <cot>Phut_Ban_Thuc_Te</cot>, <cot>Phut_KPI_Tho</cot>, <cot>So_Doan_Ban</cot>,
+      <cot>KPI_Ap_Dung</cot>, <cot>Dat_Nguong</cot>.
+      Hàm liên quan: <ham>kpiThoChoPhieu_</ham>, <ham>phutBanTrongCho_</ham>,
+      <ham>tinhLaiKpiTho</ham> (LuongTho.gs), <ham>gomKpiTho_</ham> (XuatBaoCao.gs),
+      <ham>nguongKpi_</ham> đọc một ngưỡng CHUNG từ Cau_Hinh.
+    </hien_trang_kpi>
+  </boi_canh>
+
+  <van_de_can_giai>
+    <loi thu_tu="1" muc="chan">
+      Báo cáo xuất ra vẫn in cảnh báo "CHƯA TÍNH KPI ĐÁP ỨNG cho N phiếu" mặc dù chủ
+      dự án đã bấm menu "🎯 Tính lại KPI đáp ứng của thợ". Phải tìm ra nguyên nhân
+      bằng cách ĐỌC MÃ, không đoán. Bạn KHÔNG mở được Google Sheet thật, nên phần nào
+      chỉ số liệu thật mới trả lời được thì làm ra công cụ chẩn đoán cho chủ dự án chạy.
+      Bốn nghi can đã thấy trước, phải kiểm hết và kết luận từng cái:
+      <nghi_can>tinhLaiKpiTho() chỉ đọc/ghi sheet Su_Co, KHÔNG đụng Luu_Tru. Từ khi dọn
+        theo tháng, phiếu tháng cũ nằm bên Luu_Tru sẽ không bao giờ được tính lại —
+        đây gần như chắc chắn là một lỗi thật, phải sửa dù nó có phải nguyên nhân của
+        lần này hay không.</nghi_can>
+      <nghi_can>tinhLaiKpiTho() trả về thông báo sớm khi Su_Co chưa đủ 33 cột, và người
+        bấm menu rất dễ bỏ qua dòng chữ đó, tưởng là đã chạy xong.</nghi_can>
+      <nghi_can>gomKpiTho_() đếm "chưa tính" dựa trên ô KPI_Ap_Dung rỗng, lọc qua
+        laDoDapUng_(). Kiểm xem có nhóm phiếu nào bị đếm oan hoặc bị bỏ sót.</nghi_can>
+      <nghi_can>kpiThoChoPhieu_() trả 'KHONG — thiếu mốc giờ' cho phiếu thiếu
+        Thoi_Gian_Nhan. Nếu nhóm này đông thì báo cáo trông như "lỗi rất nhiều" trong
+        khi thực ra là dữ liệu nhập thiếu.</nghi_can>
+    </loi>
+    <loi thu_tu="2" muc="thiet_ke">
+      Chỉ số KPI hiện tại là "số phút đáp ứng trung bình sau khi trừ lúc bận" chấm theo
+      MỘT ngưỡng chung. Chủ dự án không dùng cách đó. Cách chủ dự án cần:
+      <b>đếm SỐ LẦN thợ nhận việc trễ, so với ngưỡng RIÊNG của từng thợ, và chỉ đếm
+      những phiếu tới lúc thợ đang rảnh.</b>
+    </loi>
+  </van_de_can_giai>
+
+  <dinh_nghia_chot fromfile="BC_Dap_ung_T8.xlsx do chủ dự án lập tay, đã duyệt">
+    <muc ten="NGƯỠNG">Số phút do chủ quản chỉ định cho TỪNG THỢ, không phải máy tính ra.
+      Tháng 8/2026: Hảo, Phát, Nhị = 10 phút; bảy thợ còn lại = 5 phút. Đây là dữ liệu
+      chính sách, phải nằm trên Sheet, TUYỆT ĐỐI không hardcode tên thợ trong mã.</muc>
+    <muc ten="MỘT LẦN LỖI">Một phiếu đo được đáp ứng, có số phút đáp ứng LỚN HƠN ngưỡng
+      của chính thợ đó. Đúng bằng ngưỡng thì KHÔNG tính.</muc>
+    <muc ten="THỢ RẢNH">Phiếu chỉ bị đếm lỗi khi tới lúc thợ đang rảnh, tức
+      <cot>So_Chong_Viec</cot> = 0 VÀ <cot>Phut_Cho_Tho_Ban</cot> = 0. Chỉ cần một trong
+      hai khác 0 là xếp nhóm BẬN, vượt ngưỡng vẫn KHÔNG tính lỗi, nhưng phải liệt kê
+      riêng để chủ quản tự quyết.</muc>
+    <muc ten="SỐ PHÚT ĐEM SO">Lấy <cot>Phut_Dap_Ung_Thuc</cot>. Trên nhóm thợ rảnh thì
+      Phut_Tiep_Nhan, Phut_Dap_Ung_Thuc và Phut_KPI_Tho phải bằng nhau — viết hẳn một
+      phép thử canh đẳng thức này; lệch nhau là dấu hiệu dữ liệu hỏng, phải báo ra
+      chứ không được im.</muc>
+    <muc ten="LOẠI PHIẾU ĐƯỢC ĐẾM">Đúng tập hợp mà <ham>laDoDapUng_()</ham> trả true —
+      hiện là SC- và HT-. Chủ dự án đã chốt ngày 11/09/2026 rằng HT- tính chung một con
+      số với sự cố. Giữ nguyên cửa duy nhất đó, đừng mở cửa thứ hai.</muc>
+    <muc ten="ĐỔI VỊ TRÍ ĐÁP ỨNG ↔ SỬA">Thợ quên bấm nhận việc: sửa xong mới bấm nhận
+      rồi bấm hoàn thành luôn, nên hệ ghi thời gian SỬA thành thời gian máy CHỜ và
+      ngược lại. Quy tắc nhận diện: phút sửa ≤ 2 VÀ phút đáp ứng &gt; 5 thì hoán đổi hai
+      con số. Tháng 8 quy tắc bắt được 22 phiếu, cộng 4 phiếu chủ quản xác nhận tay
+      (sửa 3–5 phút nên quy tắc không bắt được), tổng 26. Không đổi thì số lần lỗi là
+      68 thay vì 44.</muc>
+  </dinh_nghia_chot>
+
+  <du_lieu_chuan>
+    Hai file mẫu đã trích sẵn từ báo cáo tay tháng 8 và nằm trong repo:
+    <tep vai_tro="đầu vào">kiemtra/mau/kpi-t8-nguon.json — 520 phiếu tháng 8/2026 chép
+      từ sheet Su_Co. LƯU Ý: các số trong file này ĐÃ được đổi vị trí đáp ứng ↔ sửa,
+      nên chạy phép ĐẾM trên nó thì KHÔNG áp thêm bước đổi vị trí lần nữa.</tep>
+    <tep vai_tro="kết quả phải khớp">kiemtra/mau/kpi-t8-mongdoi.json — tổng hợp toàn tổ,
+      bảng 10 thợ, danh sách 45 phiếu vượt ngưỡng, bảng 26 phiếu đổi vị trí.</tep>
+    <con_so_phai_ra_dung>
+      403 phiếu sự cố · 260 phiếu thợ rảnh · 143 phiếu thợ bận · 44 lần lỗi ·
+      1 lần vượt ngưỡng khi thợ bận · tổng 45 lần vượt ngưỡng.
+      Theo thợ: Nhân M 15, Dũng 6, Cường 5, Ly 4, Tú 4, Nhân D 4, Thắng 3, Nhị 1,
+      Hảo 1, Phát 1.
+    </con_so_phai_ra_dung>
+  </du_lieu_chuan>
+
+  <ke_hoach>
+
+    <buoc so="1" ten="Chẩn đoán lỗi 'chưa tính KPI'">
+      <viec>Đọc kỹ tinhLaiKpiTho (LuongTho.gs), gomKpiTho_ và hai chỗ in cảnh báo
+        (XuatBaoCao.gs), kpiThoChoPhieu_. Kết luận từng nghi can nêu trên: đúng, sai,
+        hay chỉ số liệu thật mới trả lời được.</viec>
+      <viec>Thêm mục menu "🩺 Chẩn đoán KPI đáp ứng" — CHỈ ĐỌC, không ghi một ô nào.
+        In ra: số cột thực tế của Su_Co và Luu_Tru; số dòng mỗi sheet; trong nhóm phiếu
+        đo được đáp ứng thì bao nhiêu ô KPI_Ap_Dung rỗng, tách theo sheet và theo tháng;
+        phân bố các lý do 'KHONG — ...'; số phiếu thiếu Thoi_Gian_Nhan; ngưỡng đang đọc
+        được của từng thợ. Đây là thứ chủ dự án chạy để trả lời phần bạn không thấy.</viec>
+      <viec>SỬA: tinhLaiKpiTho phải tính cho CẢ Su_Co lẫn Luu_Tru, mỗi sheet ghi lại
+        bằng một setValues, và phải kiểm đủ cột trước khi động vào dòng nào — thiếu cột
+        thì dừng và nói rõ, không ghi nửa chừng.</viec>
+      <viec>SỬA cảnh báo trên báo cáo cho đúng sự thật: phân biệt "chưa chạy tính KPI
+        lần nào" với "phiếu vốn không đo được đáp ứng" với "phiếu thiếu mốc giờ do nhập
+        thiếu". Ba thứ khác nhau, hiện đang bị gộp thành một dòng doạ người đọc.</viec>
+    </buoc>
+
+    <buoc so="2" ten="Ngưỡng riêng từng thợ">
+      <viec>Thêm cột <cot>Nguong_KPI_Phut</cot> vào CUỐI <hang>HEADER_THO</hang>
+        (Code.gs). Luôn thêm vào cuối, không chèn giữa. setupSystem() tạo cột, chạy lại
+        nhiều lần vô hại, không xoá dữ liệu đang có.</viec>
+      <viec>Hàm <ham>nguongKpiCuaTho_(tho, cauHinh)</ham>: lấy số ở cột của thợ; trống
+        thì lấy <hang>NGUONG_KPI_DAP_UNG_PHUT</hang> trong Cau_Hinh; trống nữa thì trả 0
+        nghĩa là công ty chưa chốt — khi đó báo cáo vẫn ra đủ nhưng cột chấm đạt/không
+        đạt hiện "—" kèm một dòng nói rõ vì sao, đúng như cách <ham>nguongKpi_</ham>
+        đang làm.</viec>
+      <viec>Ghi chú trong seed Cau_Hinh và trong CLAUDE.md: ngưỡng là con số CHÍNH SÁCH,
+        sửa trên sheet có hiệu lực ngay, không cần deploy. Không hardcode tên thợ.</viec>
+    </buoc>
+
+    <buoc so="3" ten="Phép đếm lần lỗi — viết bằng HÀM THUẦN">
+      <viec>Nhóm hàm mới, đặt trong một file riêng <tep>bao-tri-v2/LoiDapUng.gs</tep>,
+        CHỈ nhận mảng/chuỗi/Date và trả kết quả, KHÔNG gọi SpreadsheetApp, UrlFetchApp
+        hay Utilities. Ràng buộc này là để kiểm thử chạy được bằng node tại máy, y như
+        lớp 4 và lớp 5 hiện có; lớp kiểm thử mới sẽ soi bằng Function.prototype.toString
+        và báo đỏ nếu bạn kéo một lời gọi dịch vụ vào đây.</viec>
+      <viec><ham>thoRanhLucPhieuToi_(v)</ham> — trả 'RANH' / 'BAN' / 'CHUA_TINH'.
+        BẮT BUỘC có nhánh thứ ba: hai ô So_Chong_Viec và Phut_Cho_Tho_Ban còn TRỐNG
+        nghĩa là chưa tính, KHÔNG được lặng lẽ coi là bằng 0 rồi tính thành rảnh —
+        đó là kiểu hỏng im lặng mà dự án này đã trả giá nhiều lần. Nhóm CHUA_TINH bị
+        loại khỏi phép đếm và phải hiện thành một con số riêng trên báo cáo.</viec>
+      <viec><ham>soPhutDapUngDeCham_(v)</ham> — ưu tiên Phut_Dap_Ung_Thuc; trống thì
+        Phut_KPI_Tho; cả hai trống thì trả rỗng và phiếu đó vào nhóm thiếu số.</viec>
+      <viec><ham>demLoiDapUng_(ds, nguongTheoTho, tuyChon)</ham> — trả về đủ thứ báo cáo
+        cần trong MỘT lượt duyệt: tổng theo tổ, bảng theo thợ, bảng theo ngày, bảng theo
+        bộ phận, danh sách từng phiếu vượt ngưỡng (kèm cờ rảnh/bận), danh sách phiếu bị
+        loại kèm lý do, và bảng "nếu áp một ngưỡng chung thì bao nhiêu lần lỗi" ở các
+        mức 3/5/10/15/20/30 phút.</viec>
+    </buoc>
+
+    <buoc so="4" ten="Đổi vị trí đáp ứng ↔ sửa">
+      <viec>Hàm thuần <ham>apDungDoiViTri_(ds, cauHinh, dsXacNhanTay)</ham>. Trả về bản
+        sao đã đổi CỘNG danh sách phiếu bị đổi kèm số gốc và lý do. KHÔNG sửa mảng đầu
+        vào tại chỗ.</viec>
+      <viec>Ba khoá mới trong Cau_Hinh: <hang>DOI_VI_TRI_BAT</hang> (BAT/TAT, mặc định
+        BAT), <hang>DOI_VI_TRI_XU_LY_TOI_DA</hang> (2),
+        <hang>DOI_VI_TRI_DAP_UNG_TOI_THIEU</hang> (5).</viec>
+      <viec>Sheet mới <ten>KPI_Doi_Vi_Tri</ten> cột <cot>Ma_Su_Co</cot>,
+        <cot>Ly_Do</cot>, <cot>Nguoi_Xac_Nhan</cot>, <cot>Ngay</cot> — chỗ chủ quản khai
+        tay những phiếu quy tắc không bắt được (tháng 8 có 4 phiếu như vậy).</viec>
+      <viec quan_trong="true">TUYỆT ĐỐI không ghi số đã đổi ngược lại sheet Su_Co hay
+        Luu_Tru. Việc đổi chỉ diễn ra trong bộ nhớ lúc lập báo cáo, và báo cáo phải in
+        cả số GỐC lẫn số SAU ĐỔI. Dữ liệu gốc là bằng chứng, không được viết đè.</viec>
+      <viec>Báo cáo phải in cả hai con số: số lần lỗi khi CÓ đổi và khi KHÔNG đổi, để
+        chủ quản thấy quy tắc này nặng ký tới mức nào (tháng 8: 44 so với 68).</viec>
+    </buoc>
+
+    <buoc so="5" ten="Chức năng xuất báo cáo lỗi đáp ứng">
+      <viec>Hàm <ham>xuatBaoCaoDapUng(thang)</ham> với thang dạng 'MM/yyyy', bỏ trống là
+        tháng hiện tại. Đọc bằng <ham>docSuCoVaLuuTru_()</ham>. Tạo một Spreadsheet mới
+        trên Drive, đặt tên theo kiểu tên file xuất đang có.</viec>
+      <viec>Thêm mục menu "📐 Báo cáo lỗi đáp ứng theo tháng…" trong menu 🔧 Bảo trì,
+        đặt ngay dưới mục "🎯 Tính lại KPI đáp ứng của thợ".</viec>
+      <viec>Bảy trang, đặt tên và bố cục bám sát file mẫu — chủ dự án muốn báo cáo ra
+        đúng như file Excel đó:
+        <trang ten="Tom_Tat">Tiêu đề kỳ; khối "cách đếm" 5 gạch đầu dòng; bốn ô số lớn
+          (số lần lỗi · trên tổng phiếu thợ rảnh · tổng phiếu sự cố · vượt ngưỡng nhưng
+          thợ bận); bảng số lần lỗi theo thợ xếp nhiều nhất trước; khối kiểm chồng việc;
+          bảng "nếu áp một ngưỡng chung"; bảng các phiếu đã đổi vị trí; mục lục các
+          trang.</trang>
+        <trang ten="Theo_Tho">15 cột như file mẫu: thợ, ngưỡng, số phiếu sự cố, phiếu
+          rảnh, SỐ LẦN LỖI, lỗi/phiếu rảnh, lỗi khi bận, tổng vượt ngưỡng, chậm nhất,
+          đáp ứng thực TB, chờ do thợ bận TB, số lần chồng việc, xử lý TB, việc chung,
+          bảo trì. Dòng TOÀN TỔ ở cuối.</trang>
+        <trang ten="Phieu_Loi">Mỗi dòng một lần vượt ngưỡng, nhóm rảnh trước rồi nhóm
+          bận (tô nền khác), trong mỗi nhóm xếp theo số phút vượt giảm dần.</trang>
+        <trang ten="Kiem_Tra_Ranh">Ba bước: chia hai nhóm rảnh/bận kèm tỷ lệ; liệt kê
+          từng phiếu vượt ngưỡng nhưng thợ bận; mức độ chồng việc từng thợ.</trang>
+        <trang ten="Theo_Ngay">Số lần lỗi theo từng ngày có phiếu, rồi theo bộ phận.</trang>
+        <trang ten="Dien_Giai">Mỗi chỉ tiêu một dòng: định nghĩa và lấy từ đâu. Trang
+          này để người nghi ngờ số liệu tự kiểm được mà không phải hỏi ai.</trang>
+        <trang ten="Du_Lieu_Nguon">Toàn bộ phiếu trong kỳ, kèm các cột phái sinh
+          (ngưỡng áp dụng, rảnh hay bận, có tính lỗi không, số phút vượt, số gốc trước
+          khi đổi vị trí và lý do đổi). Bật bộ lọc sẵn.</trang>
+      </viec>
+      <viec>Mọi con số tính ở server-side bằng JavaScript. TUYỆT ĐỐI không viết công
+        thức Sheets vào file xuất — nguyên tắc gốc của dự án, tránh lỗi locale và
+        #ERROR!.</viec>
+      <viec>Bọc try/catch quanh từng trang phụ: hỏng một trang thì các trang còn lại
+        vẫn phải ra, và báo cáo ghi rõ trang nào thiếu vì lý do gì.</viec>
+    </buoc>
+
+    <buoc so="6" ten="Kiểm thử — bắt buộc, không được bỏ">
+      <viec>Lớp node mới <tep>kiemtra/loi-dap-ung.js</tep>: nạp Code.gs + LoiDapUng.gs
+        bằng <ham>vm.runInThisContext</ham> (KHÔNG dùng createContext — khác realm thì
+        mọi instanceof Date trả false và bộ test hoá ra chỉ kiểm chính cái khung, dự án
+        đã dính một lần), chạy trên hai file mẫu, và phải ra ĐÚNG:
+        403 / 260 / 143 / 44 / 1 / 45, khớp cả bảng 10 thợ lẫn danh sách 45 mã phiếu.
+        Lệch một con số là đỏ.</viec>
+      <viec>Cùng lớp đó soi ranh giới hàm thuần bằng Function.prototype.toString, như
+        kiemtra/thongbao.js đang làm.</viec>
+      <viec>Test riêng cho phép đổi vị trí, dựng từ bảng 26 phiếu trong file mongdoi:
+        quy tắc phải bắt đúng 22 phiếu, 4 phiếu còn lại chỉ vào khi khai tay, và tổng
+        số lần lỗi phải chuyển từ 68 xuống 44 khi bật.</viec>
+      <viec>Test cho nhánh CHUA_TINH: phiếu có hai ô rỗng KHÔNG được đếm là rảnh.</viec>
+      <viec>Nối lớp mới vào <tep>kiemtra/kiem-tra.ps1</tep> thành một lớp có số thứ tự
+        riêng, in kết quả cùng kiểu với các lớp đang có.</viec>
+      <viec>Thêm một mục test mới vào <tep>bao-tri-v2/Test.gs</tep> cho phần chạy trong
+        Sheet, dùng dữ liệu giả, không đọc/ghi sheet nào. Cập nhật lại con số tổng test
+        ghi trong CLAUDE.md (hiện là 356).</viec>
+      <viec>Kiểm chứng ngược: cố tình làm lệch một chốt chặn, chạy lại, xác nhận bộ test
+        báo đỏ đúng chỗ, rồi trả lại nguyên trạng. Ghi kết quả phép kiểm chứng ngược đó
+        vào báo cáo cuối.</viec>
+    </buoc>
+
+    <buoc so="7" ten="Tài liệu">
+      <viec><tep>bao-tri-v2/CLAUDE.md</tep>: viết lại mục 7 (KPI đáp ứng) cho khớp thiết
+        kế mới — ngưỡng riêng từng thợ, định nghĩa lần lỗi, điều kiện thợ rảnh, phép đổi
+        vị trí và vì sao không ghi đè dữ liệu gốc. Cập nhật bảng file, bảng menu, bảng
+        schema (cột mới, sheet mới), mục kiểm thử.</viec>
+      <viec><tep>NOTES.md</tep>: thêm mục mới lên ĐẦU file, theo đúng khuôn đang dùng.
+        Ghi riêng ba trạng thái: đã push GitHub / đã clasp push / đã deploy. Lần này
+        chỉ được ghi "đã push GitHub"; hai cái sau là KHÔNG. Ghi cả kết luận chẩn đoán
+        ở bước 1 và những chỗ phải chờ số liệu thật mới kết luận được.</viec>
+    </buoc>
+
+    <buoc so="8" ten="Bàn giao">
+      <viec>Commit theo từng khối việc, thông điệp tiếng Việt không dấu, mô tả VÌ SAO
+        chứ không chỉ mô tả cái gì.</viec>
+      <viec>Push lên nhánh làm việc được chỉ định của phiên. Không mở pull request trừ
+        khi được yêu cầu.</viec>
+    </buoc>
+
+  </ke_hoach>
+
+  <khong_duoc_lam>
+    <cam>Chạy <lenh>clasp push</lenh> hoặc <lenh>clasp deploy</lenh>. Đang bị chặn trong
+      .claude/settings.json và chỉ chủ dự án mới quyết, xác nhận riêng từng lần.</cam>
+    <cam>Đổi Spreadsheet ID, Apps Script ID, deployment ID, URL /exec.</cam>
+    <cam>Chèn cột vào giữa HEADER_SU_CO hay HEADER_THO, hay đổi thứ tự cột đang có.
+      Cột mới LUÔN thêm vào cuối.</cam>
+    <cam>Ghi số đã đổi vị trí, hay bất cứ số nào của báo cáo, ngược vào Su_Co / Luu_Tru.</cam>
+    <cam>Dùng công thức Google Sheets để tính chỉ số. Tính ở server-side.</cam>
+    <cam>Hardcode tên thợ, tên máy hay ngưỡng vào mã.</cam>
+    <cam>Xoá, tắt hay nới lỏng một phép thử đang có để cho bộ kiểm tra xanh.</cam>
+    <cam>Bịa số trong tài liệu. Con số nào chưa chạy thật thì ghi thẳng là chưa chạy.</cam>
+    <cam>Hỏi lại chủ dự án giữa chừng, hay dừng để chờ duyệt.</cam>
+  </khong_duoc_lam>
+
+  <bao_cao_cuoi>
+    In một lần, ngắn gọn, tiếng Việt:
+    <muc>Kết luận chẩn đoán lỗi "chưa tính KPI": nguyên nhân nào đã xác định được từ
+      mã, nguyên nhân nào phải chờ chủ dự án chạy mục 🩺 mới biết.</muc>
+    <muc>Danh sách file đã sửa và đã thêm.</muc>
+    <muc>Kết quả từng lớp kiểm thử, kèm con số. Nói rõ lớp nào chạy được tại máy và
+      phần nào phải chạy trong Sheet mới biết.</muc>
+    <muc>Kết quả chạy lại trên dữ liệu tháng 8: có ra đúng 44 lần lỗi không, lệch chỗ
+      nào nếu có.</muc>
+    <muc>Những chỗ bạn phải tự quyết vì đặc tả thiếu, và vì sao chọn như vậy.</muc>
+    <muc>Việc chủ dự án phải làm tiếp, theo đúng thứ tự bấm trong Sheet.</muc>
+  </bao_cao_cuoi>
+
+</task>

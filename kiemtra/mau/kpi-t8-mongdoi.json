@@ -1,0 +1,801 @@
+{
+ "ky": "08/2026",
+ "nguon": "BC_Dap_ung_T8.xlsx — chủ dự án lập tay ngày 04/09/2026",
+ "tongPhieu": 520,
+ "soPhieuSuCo": 403,
+ "phieuRanh": 260,
+ "phieuBan": 143,
+ "soLanLoi": 44,
+ "vuotNguongKhiBan": 1,
+ "tongVuotNguong": 45,
+ "quyTacDoiViTri": {
+  "xuLyToiDa": 2,
+  "dapUngToiThieu": 5,
+  "soPhieuQuyTac": 22,
+  "soPhieuChuQuanXacNhan": 4,
+  "soLanLoiNeuKhongDoi": 68
+ },
+ "nguongTheoTho": {
+  "Nhân M": 5,
+  "Dũng": 5,
+  "Cường": 5,
+  "Ly": 5,
+  "Tú": 5,
+  "Nhân D": 5,
+  "Thắng": 5,
+  "Nhị": 10,
+  "Hảo": 10,
+  "Phát": 10
+ },
+ "theoTho": [
+  {
+   "tenTho": "Nhân M",
+   "nguong": 5,
+   "soPhieuSuCo": 79,
+   "phieuRanh": 43,
+   "soLanLoi": 15,
+   "loiKhiBan": 0,
+   "tongVuotNguong": 15,
+   "chamNhat": 105
+  },
+  {
+   "tenTho": "Dũng",
+   "nguong": 5,
+   "soPhieuSuCo": 41,
+   "phieuRanh": 27,
+   "soLanLoi": 6,
+   "loiKhiBan": 0,
+   "tongVuotNguong": 6,
+   "chamNhat": 93
+  },
+  {
+   "tenTho": "Cường",
+   "nguong": 5,
+   "soPhieuSuCo": 49,
+   "phieuRanh": 34,
+   "soLanLoi": 5,
+   "loiKhiBan": 0,
+   "tongVuotNguong": 5,
+   "chamNhat": 20
+  },
+  {
+   "tenTho": "Ly",
+   "nguong": 5,
+   "soPhieuSuCo": 13,
+   "phieuRanh": 11,
+   "soLanLoi": 4,
+   "loiKhiBan": 0,
+   "tongVuotNguong": 4,
+   "chamNhat": 15
+  },
+  {
+   "tenTho": "Tú",
+   "nguong": 5,
+   "soPhieuSuCo": 28,
+   "phieuRanh": 25,
+   "soLanLoi": 4,
+   "loiKhiBan": 0,
+   "tongVuotNguong": 4,
+   "chamNhat": 20
+  },
+  {
+   "tenTho": "Nhân D",
+   "nguong": 5,
+   "soPhieuSuCo": 61,
+   "phieuRanh": 40,
+   "soLanLoi": 4,
+   "loiKhiBan": 0,
+   "tongVuotNguong": 4,
+   "chamNhat": 31
+  },
+  {
+   "tenTho": "Thắng",
+   "nguong": 5,
+   "soPhieuSuCo": 30,
+   "phieuRanh": 17,
+   "soLanLoi": 3,
+   "loiKhiBan": 1,
+   "tongVuotNguong": 4,
+   "chamNhat": 43
+  },
+  {
+   "tenTho": "Nhị",
+   "nguong": 10,
+   "soPhieuSuCo": 30,
+   "phieuRanh": 13,
+   "soLanLoi": 1,
+   "loiKhiBan": 0,
+   "tongVuotNguong": 1,
+   "chamNhat": 16
+  },
+  {
+   "tenTho": "Hảo",
+   "nguong": 10,
+   "soPhieuSuCo": 35,
+   "phieuRanh": 24,
+   "soLanLoi": 1,
+   "loiKhiBan": 0,
+   "tongVuotNguong": 1,
+   "chamNhat": 18
+  },
+  {
+   "tenTho": "Phát",
+   "nguong": 10,
+   "soPhieuSuCo": 37,
+   "phieuRanh": 26,
+   "soLanLoi": 1,
+   "loiKhiBan": 0,
+   "tongVuotNguong": 1,
+   "chamNhat": 16
+  }
+ ],
+ "phieuVuotNguong": [
+  {
+   "ma": "SC-1508-010",
+   "ngay": "2026-08-15",
+   "tenTho": "Nhân M",
+   "nguong": 5,
+   "dapUngThuc": 105,
+   "vuot": 100,
+   "ranh": "Rảnh"
+  },
+  {
+   "ma": "SC-2708-018",
+   "ngay": "2026-08-27",
+   "tenTho": "Dũng",
+   "nguong": 5,
+   "dapUngThuc": 93,
+   "vuot": 88,
+   "ranh": "Rảnh"
+  },
+  {
+   "ma": "SC-2108-008",
+   "ngay": "2026-08-21",
+   "tenTho": "Dũng",
+   "nguong": 5,
+   "dapUngThuc": 82,
+   "vuot": 77,
+   "ranh": "Rảnh"
+  },
+  {
+   "ma": "SC-1908-001",
+   "ngay": "2026-08-18",
+   "tenTho": "Dũng",
+   "nguong": 5,
+   "dapUngThuc": 75,
+   "vuot": 70,
+   "ranh": "Rảnh"
+  },
+  {
+   "ma": "SC-1508-001",
+   "ngay": "2026-08-15",
+   "tenTho": "Nhân M",
+   "nguong": 5,
+   "dapUngThuc": 62,
+   "vuot": 57,
+   "ranh": "Rảnh"
+  },
+  {
+   "ma": "SC-1008-002",
+   "ngay": "2026-08-10",
+   "tenTho": "Nhân M",
+   "nguong": 5,
+   "dapUngThuc": 57,
+   "vuot": 52,
+   "ranh": "Rảnh"
+  },
+  {
+   "ma": "SC-2108-007",
+   "ngay": "2026-08-21",
+   "tenTho": "Thắng",
+   "nguong": 5,
+   "dapUngThuc": 43,
+   "vuot": 38,
+   "ranh": "Rảnh"
+  },
+  {
+   "ma": "SC-1108-002",
+   "ngay": "2026-08-11",
+   "tenTho": "Nhân M",
+   "nguong": 5,
+   "dapUngThuc": 36,
+   "vuot": 31,
+   "ranh": "Rảnh"
+  },
+  {
+   "ma": "SC-1308-004",
+   "ngay": "2026-08-13",
+   "tenTho": "Nhân M",
+   "nguong": 5,
+   "dapUngThuc": 34,
+   "vuot": 29,
+   "ranh": "Rảnh"
+  },
+  {
+   "ma": "SC-2108-001",
+   "ngay": "2026-08-20",
+   "tenTho": "Nhân D",
+   "nguong": 5,
+   "dapUngThuc": 31,
+   "vuot": 26,
+   "ranh": "Rảnh"
+  },
+  {
+   "ma": "SC-0808-002",
+   "ngay": "2026-08-08",
+   "tenTho": "Dũng",
+   "nguong": 5,
+   "dapUngThuc": 29,
+   "vuot": 24,
+   "ranh": "Rảnh"
+  },
+  {
+   "ma": "SC-3108-001",
+   "ngay": "2026-08-31",
+   "tenTho": "Nhân M",
+   "nguong": 5,
+   "dapUngThuc": 21,
+   "vuot": 16,
+   "ranh": "Rảnh"
+  },
+  {
+   "ma": "SC-2308-001",
+   "ngay": "2026-08-22",
+   "tenTho": "Tú",
+   "nguong": 5,
+   "dapUngThuc": 20,
+   "vuot": 15,
+   "ranh": "Rảnh"
+  },
+  {
+   "ma": "SC-2908-009",
+   "ngay": "2026-08-29",
+   "tenTho": "Cường",
+   "nguong": 5,
+   "dapUngThuc": 20,
+   "vuot": 15,
+   "ranh": "Rảnh"
+  },
+  {
+   "ma": "SC-1408-019",
+   "ngay": "2026-08-14",
+   "tenTho": "Nhân M",
+   "nguong": 5,
+   "dapUngThuc": 18,
+   "vuot": 13,
+   "ranh": "Rảnh"
+  },
+  {
+   "ma": "SC-2108-018",
+   "ngay": "2026-08-21",
+   "tenTho": "Nhân D",
+   "nguong": 5,
+   "dapUngThuc": 18,
+   "vuot": 13,
+   "ranh": "Rảnh"
+  },
+  {
+   "ma": "SC-2608-011",
+   "ngay": "2026-08-26",
+   "tenTho": "Nhân D",
+   "nguong": 5,
+   "dapUngThuc": 16,
+   "vuot": 11,
+   "ranh": "Rảnh"
+  },
+  {
+   "ma": "SC-1808-006",
+   "ngay": "2026-08-18",
+   "tenTho": "Dũng",
+   "nguong": 5,
+   "dapUngThuc": 15,
+   "vuot": 10,
+   "ranh": "Rảnh"
+  },
+  {
+   "ma": "SC-2108-005",
+   "ngay": "2026-08-21",
+   "tenTho": "Ly",
+   "nguong": 5,
+   "dapUngThuc": 15,
+   "vuot": 10,
+   "ranh": "Rảnh"
+  },
+  {
+   "ma": "SC-2208-017",
+   "ngay": "2026-08-22",
+   "tenTho": "Thắng",
+   "nguong": 5,
+   "dapUngThuc": 15,
+   "vuot": 10,
+   "ranh": "Rảnh"
+  },
+  {
+   "ma": "SC-1708-013",
+   "ngay": "2026-08-17",
+   "tenTho": "Nhân M",
+   "nguong": 5,
+   "dapUngThuc": 14,
+   "vuot": 9,
+   "ranh": "Rảnh"
+  },
+  {
+   "ma": "SC-2108-011",
+   "ngay": "2026-08-21",
+   "tenTho": "Thắng",
+   "nguong": 5,
+   "dapUngThuc": 14,
+   "vuot": 9,
+   "ranh": "Rảnh"
+  },
+  {
+   "ma": "SC-2608-009",
+   "ngay": "2026-08-26",
+   "tenTho": "Nhân M",
+   "nguong": 5,
+   "dapUngThuc": 14,
+   "vuot": 9,
+   "ranh": "Rảnh"
+  },
+  {
+   "ma": "SC-1308-017",
+   "ngay": "2026-08-13",
+   "tenTho": "Nhân M",
+   "nguong": 5,
+   "dapUngThuc": 13,
+   "vuot": 8,
+   "ranh": "Rảnh"
+  },
+  {
+   "ma": "SC-1708-008",
+   "ngay": "2026-08-17",
+   "tenTho": "Hảo",
+   "nguong": 10,
+   "dapUngThuc": 18,
+   "vuot": 8,
+   "ranh": "Rảnh"
+  },
+  {
+   "ma": "SC-1908-006",
+   "ngay": "2026-08-19",
+   "tenTho": "Nhân M",
+   "nguong": 5,
+   "dapUngThuc": 12,
+   "vuot": 7,
+   "ranh": "Rảnh"
+  },
+  {
+   "ma": "SC-1108-022",
+   "ngay": "2026-08-11",
+   "tenTho": "Tú",
+   "nguong": 5,
+   "dapUngThuc": 11,
+   "vuot": 6,
+   "ranh": "Rảnh"
+  },
+  {
+   "ma": "SC-1308-003",
+   "ngay": "2026-08-13",
+   "tenTho": "Phát",
+   "nguong": 10,
+   "dapUngThuc": 16,
+   "vuot": 6,
+   "ranh": "Rảnh"
+  },
+  {
+   "ma": "SC-1808-040",
+   "ngay": "2026-08-18",
+   "tenTho": "Tú",
+   "nguong": 5,
+   "dapUngThuc": 11,
+   "vuot": 6,
+   "ranh": "Rảnh"
+  },
+  {
+   "ma": "SC-2908-004",
+   "ngay": "2026-08-28",
+   "tenTho": "Nhị",
+   "nguong": 10,
+   "dapUngThuc": 16,
+   "vuot": 6,
+   "ranh": "Rảnh"
+  },
+  {
+   "ma": "SC-3008-004",
+   "ngay": "2026-08-30",
+   "tenTho": "Cường",
+   "nguong": 5,
+   "dapUngThuc": 11,
+   "vuot": 6,
+   "ranh": "Rảnh"
+  },
+  {
+   "ma": "SC-1208-010",
+   "ngay": "2026-08-12",
+   "tenTho": "Nhân M",
+   "nguong": 5,
+   "dapUngThuc": 10,
+   "vuot": 5,
+   "ranh": "Rảnh"
+  },
+  {
+   "ma": "SC-1108-020",
+   "ngay": "2026-08-11",
+   "tenTho": "Nhân M",
+   "nguong": 5,
+   "dapUngThuc": 9,
+   "vuot": 4,
+   "ranh": "Rảnh"
+  },
+  {
+   "ma": "SC-1908-030",
+   "ngay": "2026-08-19",
+   "tenTho": "Tú",
+   "nguong": 5,
+   "dapUngThuc": 9,
+   "vuot": 4,
+   "ranh": "Rảnh"
+  },
+  {
+   "ma": "SC-3108-004",
+   "ngay": "2026-08-31",
+   "tenTho": "Ly",
+   "nguong": 5,
+   "dapUngThuc": 9,
+   "vuot": 4,
+   "ranh": "Rảnh"
+  },
+  {
+   "ma": "SC-0708-017",
+   "ngay": "2026-08-07",
+   "tenTho": "Ly",
+   "nguong": 5,
+   "dapUngThuc": 8,
+   "vuot": 3,
+   "ranh": "Rảnh"
+  },
+  {
+   "ma": "SC-1808-001",
+   "ngay": "2026-08-17",
+   "tenTho": "Dũng",
+   "nguong": 5,
+   "dapUngThuc": 8,
+   "vuot": 3,
+   "ranh": "Rảnh"
+  },
+  {
+   "ma": "SC-1408-001",
+   "ngay": "2026-08-14",
+   "tenTho": "Cường",
+   "nguong": 5,
+   "dapUngThuc": 7,
+   "vuot": 2,
+   "ranh": "Rảnh"
+  },
+  {
+   "ma": "SC-2408-009",
+   "ngay": "2026-08-24",
+   "tenTho": "Nhân M",
+   "nguong": 5,
+   "dapUngThuc": 7,
+   "vuot": 2,
+   "ranh": "Rảnh"
+  },
+  {
+   "ma": "SC-2508-021",
+   "ngay": "2026-08-25",
+   "tenTho": "Nhân M",
+   "nguong": 5,
+   "dapUngThuc": 7,
+   "vuot": 2,
+   "ranh": "Rảnh"
+  },
+  {
+   "ma": "SC-2608-018",
+   "ngay": "2026-08-26",
+   "tenTho": "Nhân D",
+   "nguong": 5,
+   "dapUngThuc": 7,
+   "vuot": 2,
+   "ranh": "Rảnh"
+  },
+  {
+   "ma": "SC-0708-010",
+   "ngay": "2026-08-07",
+   "tenTho": "Ly",
+   "nguong": 5,
+   "dapUngThuc": 6,
+   "vuot": 1,
+   "ranh": "Rảnh"
+  },
+  {
+   "ma": "SC-1308-012",
+   "ngay": "2026-08-13",
+   "tenTho": "Cường",
+   "nguong": 5,
+   "dapUngThuc": 6,
+   "vuot": 1,
+   "ranh": "Rảnh"
+  },
+  {
+   "ma": "SC-2608-017",
+   "ngay": "2026-08-26",
+   "tenTho": "Cường",
+   "nguong": 5,
+   "dapUngThuc": 6,
+   "vuot": 1,
+   "ranh": "Rảnh"
+  },
+  {
+   "ma": "SC-1908-003",
+   "ngay": "2026-08-19",
+   "tenTho": "Thắng",
+   "nguong": 5,
+   "dapUngThuc": 10,
+   "vuot": 5,
+   "ranh": "Bận"
+  }
+ ],
+ "doiViTri": [
+  {
+   "ma": "SC-3108-011",
+   "tenTho": "Nhân D",
+   "nguong": 5,
+   "gocDapUng": 221,
+   "gocSua": 2,
+   "sauDapUng": 2,
+   "sauSua": 221,
+   "viSao": "Quy tắc"
+  },
+  {
+   "ma": "SC-2808-001",
+   "tenTho": "Dũng",
+   "nguong": 5,
+   "gocDapUng": 135,
+   "gocSua": 2,
+   "sauDapUng": 2,
+   "sauSua": 135,
+   "viSao": "Quy tắc"
+  },
+  {
+   "ma": "SC-1308-023",
+   "tenTho": "Dũng",
+   "nguong": 5,
+   "gocDapUng": 127,
+   "gocSua": 2,
+   "sauDapUng": 2,
+   "sauSua": 127,
+   "viSao": "Quy tắc"
+  },
+  {
+   "ma": "SC-2808-017",
+   "tenTho": "Nhân M",
+   "nguong": 5,
+   "gocDapUng": 102,
+   "gocSua": 0,
+   "sauDapUng": 0,
+   "sauSua": 102,
+   "viSao": "Quy tắc"
+  },
+  {
+   "ma": "SC-2808-015",
+   "tenTho": "Nhân M",
+   "nguong": 5,
+   "gocDapUng": 100,
+   "gocSua": 0,
+   "sauDapUng": 0,
+   "sauSua": 100,
+   "viSao": "Quy tắc"
+  },
+  {
+   "ma": "SC-1808-025",
+   "tenTho": "Nhân M",
+   "nguong": 5,
+   "gocDapUng": 66,
+   "gocSua": 0,
+   "sauDapUng": 0,
+   "sauSua": 66,
+   "viSao": "Quy tắc"
+  },
+  {
+   "ma": "SC-2808-018",
+   "tenTho": "Nhân D",
+   "nguong": 5,
+   "gocDapUng": 65,
+   "gocSua": 1,
+   "sauDapUng": 1,
+   "sauSua": 65,
+   "viSao": "Quy tắc"
+  },
+  {
+   "ma": "SC-2908-026",
+   "tenTho": "Dũng",
+   "nguong": 5,
+   "gocDapUng": 59,
+   "gocSua": 1,
+   "sauDapUng": 1,
+   "sauSua": 59,
+   "viSao": "Quy tắc"
+  },
+  {
+   "ma": "SC-2208-009",
+   "tenTho": "Dũng",
+   "nguong": 5,
+   "gocDapUng": 56,
+   "gocSua": 2,
+   "sauDapUng": 2,
+   "sauSua": 56,
+   "viSao": "Quy tắc"
+  },
+  {
+   "ma": "SC-1808-012",
+   "tenTho": "Hảo",
+   "nguong": 10,
+   "gocDapUng": 51,
+   "gocSua": 5,
+   "sauDapUng": 5,
+   "sauSua": 51,
+   "viSao": "Chủ quản xác nhận kỳ trước"
+  },
+  {
+   "ma": "SC-2608-002",
+   "tenTho": "Dũng",
+   "nguong": 5,
+   "gocDapUng": 50,
+   "gocSua": 1,
+   "sauDapUng": 1,
+   "sauSua": 50,
+   "viSao": "Quy tắc"
+  },
+  {
+   "ma": "SC-2608-001",
+   "tenTho": "Dũng",
+   "nguong": 5,
+   "gocDapUng": 46,
+   "gocSua": 4,
+   "sauDapUng": 4,
+   "sauSua": 46,
+   "viSao": "Chủ quản xác nhận kỳ trước"
+  },
+  {
+   "ma": "SC-2008-013",
+   "tenTho": "Dũng",
+   "nguong": 5,
+   "gocDapUng": 41,
+   "gocSua": 4,
+   "sauDapUng": 4,
+   "sauSua": 41,
+   "viSao": "Chủ quản xác nhận kỳ trước"
+  },
+  {
+   "ma": "SC-1808-008",
+   "tenTho": "Dũng",
+   "nguong": 5,
+   "gocDapUng": 39,
+   "gocSua": 3,
+   "sauDapUng": 3,
+   "sauSua": 39,
+   "viSao": "Chủ quản xác nhận kỳ trước"
+  },
+  {
+   "ma": "SC-1808-009",
+   "tenTho": "Nhân M",
+   "nguong": 5,
+   "gocDapUng": 32,
+   "gocSua": 1,
+   "sauDapUng": 1,
+   "sauSua": 32,
+   "viSao": "Quy tắc"
+  },
+  {
+   "ma": "SC-2208-006",
+   "tenTho": "Dũng",
+   "nguong": 5,
+   "gocDapUng": 29,
+   "gocSua": 1,
+   "sauDapUng": 1,
+   "sauSua": 29,
+   "viSao": "Quy tắc"
+  },
+  {
+   "ma": "SC-3008-002",
+   "tenTho": "Dũng",
+   "nguong": 5,
+   "gocDapUng": 25,
+   "gocSua": 1,
+   "sauDapUng": 1,
+   "sauSua": 25,
+   "viSao": "Quy tắc"
+  },
+  {
+   "ma": "SC-2908-001",
+   "tenTho": "Dũng",
+   "nguong": 5,
+   "gocDapUng": 23,
+   "gocSua": 1,
+   "sauDapUng": 1,
+   "sauSua": 23,
+   "viSao": "Quy tắc"
+  },
+  {
+   "ma": "SC-1208-023",
+   "tenTho": "Dũng",
+   "nguong": 5,
+   "gocDapUng": 22,
+   "gocSua": 1,
+   "sauDapUng": 1,
+   "sauSua": 22,
+   "viSao": "Quy tắc"
+  },
+  {
+   "ma": "SC-2708-020",
+   "tenTho": "Dũng",
+   "nguong": 5,
+   "gocDapUng": 21,
+   "gocSua": 2,
+   "sauDapUng": 2,
+   "sauSua": 21,
+   "viSao": "Quy tắc"
+  },
+  {
+   "ma": "SC-2808-023",
+   "tenTho": "Dũng",
+   "nguong": 5,
+   "gocDapUng": 21,
+   "gocSua": 1,
+   "sauDapUng": 1,
+   "sauSua": 21,
+   "viSao": "Quy tắc"
+  },
+  {
+   "ma": "SC-1108-029",
+   "tenTho": "Dũng",
+   "nguong": 5,
+   "gocDapUng": 19,
+   "gocSua": 1,
+   "sauDapUng": 1,
+   "sauSua": 19,
+   "viSao": "Quy tắc"
+  },
+  {
+   "ma": "SC-2408-015",
+   "tenTho": "Tú",
+   "nguong": 5,
+   "gocDapUng": 19,
+   "gocSua": 2,
+   "sauDapUng": 2,
+   "sauSua": 19,
+   "viSao": "Quy tắc"
+  },
+  {
+   "ma": "SC-1208-019",
+   "tenTho": "Tú",
+   "nguong": 5,
+   "gocDapUng": 16,
+   "gocSua": 1,
+   "sauDapUng": 1,
+   "sauSua": 16,
+   "viSao": "Quy tắc"
+  },
+  {
+   "ma": "SC-2808-019",
+   "tenTho": "Tú",
+   "nguong": 5,
+   "gocDapUng": 8,
+   "gocSua": 2,
+   "sauDapUng": 2,
+   "sauSua": 8,
+   "viSao": "Quy tắc"
+  },
+  {
+   "ma": "SC-0708-003",
+   "tenTho": "Ly",
+   "nguong": 5,
+   "gocDapUng": 7,
+   "gocSua": 0,
+   "sauDapUng": 0,
+   "sauSua": 7,
+   "viSao": "Quy tắc"
+  }
+ ]
+}
