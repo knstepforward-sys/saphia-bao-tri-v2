@@ -253,8 +253,15 @@ function nguongKpi_(cauHinh) {
 function tinhLaiKpiTho() {
   const lock = LockService.getScriptLock();
   try {
+    // Ba đường thoát dưới đây đều KHÔNG ghi được ô nào. Chúng phải kêu to bằng
+    // ❌ và bằng chữ "CHƯA TÍNH ĐƯỢC": hàm này nay chạy nối tiếp trong
+    // donPhieuCuHangThang, hộp thoại hiện hai đoạn nối nhau, và một dòng chữ hiền
+    // lành ở đoạn đầu bị đọc lướt qua thành "đã tính xong". Đã xảy ra thật ngày
+    // 12/09/2026: chủ dự án bấm tính KPI, thấy chữ, tưởng xong, rồi không hiểu vì
+    // sao phần dọn vẫn báo thiếu KPI.
     if (!lock.tryLock(CONFIG.KHOA_CHO_GIAY * 1000)) {
-      return 'Hệ thống đang bận, thử lại sau vài giây.';
+      return '❌ CHƯA TÍNH ĐƯỢC KPI — hệ thống đang bận (có người đang ghi phiếu). ' +
+        'Không ô nào được cập nhật. Chờ vài giây rồi bấm lại.';
     }
 
     const sh = sheet_(SHEET.SU_CO);
@@ -262,12 +269,13 @@ function tinhLaiKpiTho() {
     // Sheet cũ mới có 28 cột, đọc/ghi 33 cột là văng "out of bounds" giữa chừng.
     // Nói thẳng phải làm gì, thay vì để người dùng nhận một thông báo lỗi kỹ thuật.
     if (sh.getMaxColumns() < HEADER_SU_CO.length) {
-      return 'Sheet Su_Co chưa có đủ ' + HEADER_SU_CO.length + ' cột. ' +
-        'Chạy menu 🔧 Bảo trì → "1. Cài đặt hệ thống" một lần rồi tính lại.';
+      return '❌ CHƯA TÍNH ĐƯỢC KPI — sheet Su_Co mới có ' + sh.getMaxColumns() +
+        ' cột, cần đủ ' + HEADER_SU_CO.length + '. Không ô nào được cập nhật. ' +
+        'Chạy menu 🔧 Bảo trì → "1. Cài đặt hệ thống" một lần rồi bấm lại.';
     }
 
     const soDong = sh.getLastRow() - 1;
-    if (soDong < 1) return 'Sheet Su_Co chưa có phiếu nào.';
+    if (soDong < 1) return '❌ CHƯA TÍNH ĐƯỢC KPI — sheet Su_Co chưa có phiếu nào.';
 
     const values = sh.getRange(2, 1, soDong, HEADER_SU_CO.length).getValues();
     const ds = values
@@ -1076,3 +1084,105 @@ function gopPhuTung_(ds) {
     })
     .join('; ');
 }
+
+// ============================================================================
+// CHẨN ĐOÁN KPI — CHỈ ĐỌC
+// ============================================================================
+
+/**
+ * Đếm hiện trạng KPI của một tập phiếu. Hàm THUẦN: nhận mảng dòng, trả số liệu,
+ * không đọc sheet nào — để kiểm được bằng dữ liệu giả.
+ *
+ * Ba nhóm phải tách bạch, vì gộp lại là mất hết ý nghĩa chẩn đoán:
+ *  - chuaTinh : ô KPI_Ap_Dung còn TRỐNG → chưa chạy tính KPI lần nào cho dòng đó.
+ *  - vaoKpi   : KPI_Ap_Dung = 'CO' → phiếu thật sự được chấm.
+ *  - biLoai   : KPI_Ap_Dung = 'KHONG — <lý do>' → đã tính rồi, nhưng không đo được.
+ */
+function thongKeKpi_(ds) {
+  const kq = {
+    tongPhieu: ds.length, doDapUng: 0, chuaTinh: 0, vaoKpi: 0, biLoai: 0,
+    thieuMocNhan: 0, lyDo: {}, theoThang: {}, viDuChuaTinh: [],
+  };
+
+  ds.forEach(function (v) {
+    if (!laDoDapUng_(v)) return;
+    kq.doDapUng++;
+
+    if (!(v[COT.Thoi_Gian_Nhan] instanceof Date)) kq.thieuMocNhan++;
+
+    const tt = String(v[COT.KPI_Ap_Dung] || '').trim();
+    if (!tt) {
+      kq.chuaTinh++;
+      const thang = thangCuaPhieu_(v) || '(không rõ tháng)';
+      kq.theoThang[thang] = (kq.theoThang[thang] || 0) + 1;
+      if (kq.viDuChuaTinh.length < 5) kq.viDuChuaTinh.push(String(v[COT.Ma_Su_Co]));
+      return;
+    }
+    if (tt === 'CO') { kq.vaoKpi++; return; }
+    kq.biLoai++;
+    kq.lyDo[tt] = (kq.lyDo[tt] || 0) + 1;
+  });
+
+  return kq;
+}
+
+/**
+ * Menu 🩺 — soi vì sao báo cáo còn báo "chưa tính KPI". KHÔNG ghi một ô nào.
+ *
+ * Có mặt vì phần lớn câu hỏi về KPI chỉ trả lời được bằng số liệu thật trong
+ * Sheet, mà người sửa mã thì không mở được Sheet đó.
+ */
+function chanDoanKpi() {
+  const dong = [];
+  const ssx = ss_();
+
+  [SHEET.SU_CO, SHEET.LUU_TRU].forEach(function (ten) {
+    const sh = ssx.getSheetByName(ten);
+    dong.push('── SHEET ' + ten + ' ──');
+    if (!sh) { dong.push('  KHÔNG CÓ sheet này. Chạy "1. Cài đặt hệ thống".'); return; }
+
+    const soCot = sh.getMaxColumns();
+    const soDong = Math.max(0, sh.getLastRow() - 1);
+    dong.push('  Số cột : ' + soCot + (soCot < HEADER_SU_CO.length
+      ? '  ❌ THIẾU, cần ' + HEADER_SU_CO.length + ' — đây chính là thứ chặn việc tính KPI'
+      : '  ✔ đủ ' + HEADER_SU_CO.length));
+    dong.push('  Số dòng: ' + soDong);
+
+    if (soCot < HEADER_SU_CO.length || !soDong) return;
+
+    const ds = sh.getRange(2, 1, soDong, HEADER_SU_CO.length).getValues()
+      .filter(function (v) { return v[COT.Ma_Su_Co] !== '' && v[COT.Ma_Su_Co] !== null; });
+    const tk = thongKeKpi_(ds);
+
+    dong.push('  Phiếu đo được đáp ứng (SC-, HT-): ' + tk.doDapUng);
+    dong.push('    • đã chấm, vào KPI      : ' + tk.vaoKpi);
+    dong.push('    • đã tính, không đo được: ' + tk.biLoai);
+    dong.push('    • CHƯA TÍNH LẦN NÀO     : ' + tk.chuaTinh +
+      (tk.chuaTinh ? '  ← số này làm phần dọn phiếu dừng lại' : ''));
+    if (tk.chuaTinh) {
+      Object.keys(tk.theoThang).sort().forEach(function (t) {
+        dong.push('        ' + t + ' : ' + tk.theoThang[t] + ' phiếu');
+      });
+      dong.push('        ví dụ: ' + tk.viDuChuaTinh.join(', '));
+    }
+    Object.keys(tk.lyDo).sort().forEach(function (l) {
+      dong.push('    lý do không đo được — ' + l + ' : ' + tk.lyDo[l]);
+    });
+    dong.push('  Phiếu thiếu mốc "giờ thợ nhận": ' + tk.thieuMocNhan);
+  });
+
+  // Ngưỡng: cái quyết định cột Dat_Nguong có số hay toàn dấu gạch ngang.
+  const nguong = nguongKpi_();
+  dong.push('');
+  dong.push('── NGƯỠNG KPI ──');
+  dong.push('  Cau_Hinh.NGUONG_KPI_DAP_UNG_PHUT = ' +
+    (nguong ? nguong + ' phút' : 'CHƯA CHỐT (để trống) → cột "Đạt ngưỡng" sẽ trống'));
+
+  dong.push('');
+  dong.push('Hàm này chỉ ĐỌC, không sửa ô nào.');
+  dong.push('Nếu dòng "CHƯA TÍNH LẦN NÀO" khác 0 mà sheet đã đủ cột, hãy bấm');
+  dong.push('"🎯 Tính lại KPI đáp ứng của thợ" rồi chạy lại mục này để đối chiếu.');
+
+  return dong.join('\n');
+}
+

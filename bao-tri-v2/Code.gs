@@ -1318,6 +1318,7 @@ function onOpen() {
     .addItem('➕ Bù phiếu dừng máy (thợ quên quét)…', 'menuBuPhieuDungMay')
     .addItem('📊 Cập nhật báo cáo tổng hợp', 'menuBaoCao')
     .addItem('🎯 Tính lại KPI đáp ứng của thợ', 'menuTinhLaiKpi')
+    .addItem('🩺 Chẩn đoán KPI (chỉ đọc)', 'menuChanDoanKpi')
     .addItem('📤 Xuất báo cáo (chọn ngày, bộ phận, thợ)…', 'menuXuatBaoCao')
     .addItem('📈 Báo cáo tỉ lệ khả dụng máy…', 'menuBaoCaoKhaDung')
     .addItem('🗄️ Dọn phiếu tháng cũ sang Lưu trữ', 'menuLuuTru')
@@ -1383,6 +1384,7 @@ function menuMoKeHoachKhaDung() {
 function menuLuuTru() { chayVaBao_('Dọn phiếu cũ', donPhieuCuHangThang); }
 function menuCaiTrigger() { chayVaBao_('Cài trigger', caiDatTrigger); }
 function menuTinhLaiKpi() { chayVaBao_('Tính lại KPI đáp ứng', tinhLaiKpiTho); }
+function menuChanDoanKpi() { chayVaBao_('Chẩn đoán KPI', chanDoanKpi); }
 
 function menuBaoCao() {
   const ui = SpreadsheetApp.getUi();
