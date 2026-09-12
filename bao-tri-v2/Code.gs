@@ -916,6 +916,7 @@ function setupSystem() {
   // Ngay_Ca lưu chuỗi 'yyyy-MM-dd'. Không ép dạng text thì Sheets tự đổi thành
   // Date lúc setValues, khiến việc gom nhóm theo ngày ở báo cáo so sánh sai kiểu.
   shSuCo.getRange(2, COT.Ngay_Ca + 1, shSuCo.getMaxRows() - 1, 1).setNumberFormat('@');
+  goQuyTacXacThuc_(shSuCo);
   ketQua.push(SHEET.SU_CO);
 
   // --- Nhật ký + Lưu trữ + Tổng hợp ----------------------------------------
@@ -923,7 +924,8 @@ function setupSystem() {
   dinhDangCotThoiGian_(shLog, [HEADER_NHAT_KY.indexOf('Thoi_Gian') + 1]);
   ketQua.push(SHEET.NHAT_KY);
 
-  taoSheet_(SHEET.LUU_TRU, HEADER_SU_CO); // cùng schema với Su_Co
+  const shLuuTru = taoSheet_(SHEET.LUU_TRU, HEADER_SU_CO); // cùng schema với Su_Co
+  goQuyTacXacThuc_(shLuuTru);
   ketQua.push(SHEET.LUU_TRU);
 
   taoSheet_(SHEET.TONG_HOP, null); // nội dung do refreshReports() dựng ở bước 4
@@ -944,6 +946,50 @@ function datDropdown_(sh, cot, giaTri, soCot) {
     .setAllowInvalid(false)
     .build();
   sh.getRange(2, cot, sh.getMaxRows() - 1, soCot || 1).setDataValidation(rule);
+}
+
+/** Số cột 1-based → chữ cột kiểu Sheets (1 → A, 32 → AF). Dùng khi báo lỗi cho người. */
+function chuCot_(n) {
+  let s = '', x = n;
+  while (x > 0) {
+    const du = (x - 1) % 26;
+    s = String.fromCharCode(65 + du) + s;
+    x = Math.floor((x - 1) / 26);
+  }
+  return s;
+}
+
+/** Các cột của Su_Co do MÃ ghi, người không bao giờ gõ tay vào. */
+const COT_MA_TU_GHI = [
+  'Phut_Tiep_Nhan', 'Phut_Xu_Ly', 'Thoi_Gian_Dung_May', 'Phut_Cho_Tho_Ban',
+  'Phut_Dap_Ung_Thuc', 'So_Chong_Viec', 'Loai_Phieu', 'Phut_Ban_Thuc_Te',
+  'Phut_KPI_Tho', 'So_Doan_Ban', 'KPI_Ap_Dung', 'Dat_Nguong',
+];
+
+/**
+ * Gỡ mọi quy tắc xác thực dữ liệu khỏi các cột mã tự ghi của Su_Co / Luu_Tru.
+ *
+ * VÌ SAO CẦN, và đây là bẫy đắt nhất từ trước tới nay của phần KPI: một quy tắc
+ * xác thực đặt nhầm cột sẽ **âm thầm huỷ** lệnh ghi của script. Apps Script gom
+ * lệnh ghi rồi mới đẩy xuống Sheet, nên `setValues` trả về êm ru, hàm báo "đã ghi
+ * 748 dòng", còn Google thì từ chối lúc đẩy xuống và không ai hay biết.
+ *
+ * Đã xảy ra thật ngày 12/09/2026: có người tạo tay dropdown Loai_Phieu (bản cũ,
+ * mới 4 giá trị, thiếu HO_TRO) nhưng đặt lên cột AF — tức KPI_Ap_Dung. Suốt nhiều
+ * ngày menu 🎯 báo tính xong mà không một ô nào được ghi, và cả người dùng lẫn
+ * người sửa mã đều không nhìn ra vì không có lấy một thông báo lỗi.
+ *
+ * Người vẫn gõ tay được ở các cột mô tả, ghi chú, nội dung xử lý — hàm này không
+ * đụng tới chúng.
+ */
+function goQuyTacXacThuc_(sh) {
+  const soDong = sh.getMaxRows() - 1;
+  if (soDong < 1) return;
+  COT_MA_TU_GHI.forEach(function (ten) {
+    const c = COT[ten];
+    if (c === undefined || c + 1 > sh.getMaxColumns()) return;
+    sh.getRange(2, c + 1, soDong, 1).clearDataValidations();
+  });
 }
 
 /**

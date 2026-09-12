@@ -1192,6 +1192,20 @@ function chanDoanKpi() {
       dong.push('    lý do không đo được — ' + l + ' : ' + tk.lyDo[l]);
     });
     dong.push('  Phiếu thiếu mốc "giờ thợ nhận": ' + tk.thieuMocNhan);
+
+    // Quy tắc xác thực đặt nhầm cột sẽ ÂM THẦM huỷ lệnh ghi của script: setValues
+    // trả về êm, hàm báo đã ghi xong, Google từ chối lúc đẩy dữ liệu xuống. Đúng
+    // cái đã làm mất mấy ngày ngày 12/09/2026. Soi dòng 2 là đủ vì quy tắc luôn
+    // đặt cho cả cột.
+    const dv = sh.getRange(2, 1, 1, sh.getMaxColumns()).getDataValidations()[0];
+    const cotVuong = [];
+    COT_MA_TU_GHI.forEach(function (ten) {
+      const c = COT[ten];
+      if (c !== undefined && dv[c]) cotVuong.push(ten + ' (cột ' + chuCot_(c + 1) + ')');
+    });
+    dong.push('  Quy tắc xác thực trên cột mã tự ghi: ' + (cotVuong.length
+      ? '❌ ' + cotVuong.join(', ') + ' — chính nó chặn lệnh ghi, chạy "1. Cài đặt hệ thống" để gỡ'
+      : '✔ không có'));
   });
 
   // Chạy THỬ đúng phép tính của "🎯 Tính lại KPI", nhưng KHÔNG ghi. Đây là chỗ
