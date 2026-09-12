@@ -742,14 +742,31 @@ function ghiTomTat_(ssMoi, ds, dsTruoc, ctx) {
   }).sort(function (a, b) { return b.dt - a.dt; });
 
   const gKpi = gomKpiTho_(ds);
+  // Ba nhóm, ba dòng riêng. Bản cũ gộp cả ba thành một dòng đỏ, khiến người đọc
+  // tưởng cả báo cáo sai trong khi phần lớn là phiếu vốn dĩ không đo được đáp ứng.
   if (gKpi.soChuaTinh) {
     y.push({
       chu: 'CHƯA TÍNH KPI ĐÁP ỨNG cho ' + gKpi.soChuaTinh + ' phiếu — vì vậy cột ' +
-        '"Đáp ứng sau khi trừ lúc bận" và "Đạt ngưỡng" bên dưới đang trống. ' +
+        '"Đáp ứng sau khi trừ lúc bận" và "Đạt ngưỡng" bên dưới đang thiếu phiếu. ' +
         'Vào Google Sheet gốc, chạy menu 🔧 Bảo trì → "1. Cài đặt hệ thống", rồi ' +
         '"🎯 Tính lại KPI đáp ứng của thợ", sau đó xuất lại báo cáo này.',
       do: true,
     });
+  }
+  if (gKpi.loai.thieuMoc) {
+    y.push({
+      chu: 'THIẾU MỐC "GIỜ THỢ NHẬN" ở ' + gKpi.loai.thieuMoc + ' phiếu — đây là ' +
+        'lỗi NHẬP LIỆU, khác với nhóm chưa tính ở trên: bấm 🎯 bao nhiêu lần cũng ' +
+        'không cứu được, phải sửa tay mốc giờ trên sheet Su_Co. Mã phiếu: ' +
+        gKpi.dsThieuMoc.slice(0, 10).join(', ') +
+        (gKpi.dsThieuMoc.length > 10 ? '…' : ''),
+      do: true,
+    });
+  }
+  if (gKpi.loai.loaiPhieu || gKpi.loai.chuaNhan) {
+    y.push('Không đo được đáp ứng (đúng bản chất, KHÔNG phải lỗi): ' +
+      gKpi.loai.loaiPhieu + ' phiếu việc chung / bảo trì / dừng máy · ' +
+      gKpi.loai.chuaNhan + ' phiếu chưa ai nhận.');
   }
   if (mayTe.length) {
     y.push('Máy nằm im lâu nhất: ' + mayTe[0].ten + ' — ' + mayTe[0].lan +
@@ -955,13 +972,22 @@ function tyLe_(tu, mau) {
 /**
  * Tách tập phiếu thành phần VÀO KPI và phần bị loại, kèm lý do loại.
  *
- * Đọc cột KPI_Ap_Dung đã tính sẵn (xem lý do ở gomTheoMayTho_). Ô còn trống nghĩa
- * là chưa chạy "Tính lại KPI đáp ứng" lần nào — phải nói thẳng ra trên báo cáo,
- * vì im lặng thì bảng KPI trông như thật mà thực ra thiếu phiếu.
+ * Đọc cột KPI_Ap_Dung đã tính sẵn (xem lý do ở gomTheoMayTho_).
+ *
+ * BA THỨ KHÁC NHAU, đừng gộp thành một dòng cảnh báo (bản cũ gộp, và dòng đó doạ
+ * người đọc bằng một con số vô nghĩa):
+ *   - `soChuaTinh`  : ô KPI_Ap_Dung còn TRỐNG trên phiếu vốn đo được đáp ứng →
+ *                     chưa chạy menu 🎯 lần nào. Đây là việc PHẢI LÀM.
+ *   - `loai.loaiPhieu` / `loai.chuaNhan` : phiếu vốn KHÔNG đo được đáp ứng →
+ *                     đúng bản chất, không phải lỗi, không cần làm gì.
+ *   - `loai.thieuMoc`: đã tính rồi nhưng thiếu mốc "giờ thợ nhận" → lỗi NHẬP
+ *                     LIỆU, phải sửa tay trên sheet. Tính lại KPI không cứu được.
+ * Kèm `dsThieuMoc` để báo cáo in ra đúng mã phiếu cần đi sửa.
  */
 function gomKpiTho_(ds) {
   const vaoKpi = [];
   const loai = { loaiPhieu: 0, chuaNhan: 0, thieuMoc: 0 };
+  const dsThieuMoc = [];
   let soChuaTinh = 0;
 
   ds.forEach(function (v) {
@@ -977,11 +1003,14 @@ function gomKpiTho_(ds) {
       return;
     }
     if (tt.indexOf('chưa ai nhận') >= 0) loai.chuaNhan++;
-    else if (tt.indexOf('thiếu mốc giờ') >= 0) loai.thieuMoc++;
-    else loai.loaiPhieu++;
+    else if (tt.indexOf('thiếu mốc giờ') >= 0) {
+      loai.thieuMoc++;
+      dsThieuMoc.push(String(v[COT.Ma_Su_Co]).trim());
+    } else loai.loaiPhieu++;
   });
 
-  return { vaoKpi: vaoKpi, loai: loai, soChuaTinh: soChuaTinh };
+  return { vaoKpi: vaoKpi, loai: loai, soChuaTinh: soChuaTinh,
+    dsThieuMoc: dsThieuMoc };
 }
 
 function ghiTrangBaoCao_(ssMoi, ds, ctx) {
