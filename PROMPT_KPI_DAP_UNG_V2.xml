@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
   PROMPT MỘT LẦN — THIẾT KẾ LẠI KPI ĐÁP ỨNG THỢ (hệ Bảo trì Toàn nhà máy v2)
-  Soạn ngày 12/09/2026. Dán trọn file này làm tin nhắn đầu tiên của một phiên mới,
+  Soạn ngày 12/09/2026, cập nhật 10:00 cùng ngày sau khi đã truy xong lỗi "chưa tính KPI"
+  và chạy xong đợt dọn phiếu đầu tiên. Dán trọn file này làm tin nhắn đầu tiên của một phiên mới,
   mở trong thư mục repository saphia-bao-tri-v2.
 -->
 <task ten="KPI đáp ứng thợ v2 — đếm số lần đáp ứng trễ theo ngưỡng riêng từng thợ">
@@ -27,7 +28,10 @@
     <du_lieu>Sheet <ten>Su_Co</ten> 33 cột. Từ 12/09/2026 phiếu HOÀN THÀNH của các
       tháng trước được dời sang sheet <ten>Luu_Tru</ten> (cùng schema) vào ngày 1 hằng
       tháng. Mọi phép đọc phục vụ báo cáo phải dùng <ham>docSuCoVaLuuTru_()</ham>,
-      không dùng <ham>docToanBoSuCo_()</ham>.</du_lieu>
+      không dùng <ham>docToanBoSuCo_()</ham>.
+      <b>Trạng thái thật lúc soạn prompt (12/09/2026, 10:00):</b> đợt dọn đầu tiên đã
+      chạy — <ten>Su_Co</ten> còn 229 dòng (tháng 9 + phiếu chưa đóng),
+      <ten>Luu_Tru</ten> giữ 520 phiếu tháng 8. Cả 749 dòng đều đã có đủ 5 cột KPI.</du_lieu>
     <hien_trang_kpi>
       Cột KPI hiện có trên <ten>Su_Co</ten>: <cot>Phut_Tiep_Nhan</cot> (thô),
       <cot>Phut_Cho_Tho_Ban</cot>, <cot>Phut_Dap_Ung_Thuc</cot>, <cot>So_Chong_Viec</cot>,
@@ -40,23 +44,38 @@
   </boi_canh>
 
   <van_de_can_giai>
-    <loi thu_tu="1" muc="chan">
-      Báo cáo xuất ra vẫn in cảnh báo "CHƯA TÍNH KPI ĐÁP ỨNG cho N phiếu" mặc dù chủ
-      dự án đã bấm menu "🎯 Tính lại KPI đáp ứng của thợ". Phải tìm ra nguyên nhân
-      bằng cách ĐỌC MÃ, không đoán. Bạn KHÔNG mở được Google Sheet thật, nên phần nào
-      chỉ số liệu thật mới trả lời được thì làm ra công cụ chẩn đoán cho chủ dự án chạy.
-      Bốn nghi can đã thấy trước, phải kiểm hết và kết luận từng cái:
-      <nghi_can>tinhLaiKpiTho() chỉ đọc/ghi sheet Su_Co, KHÔNG đụng Luu_Tru. Từ khi dọn
-        theo tháng, phiếu tháng cũ nằm bên Luu_Tru sẽ không bao giờ được tính lại —
-        đây gần như chắc chắn là một lỗi thật, phải sửa dù nó có phải nguyên nhân của
-        lần này hay không.</nghi_can>
-      <nghi_can>tinhLaiKpiTho() trả về thông báo sớm khi Su_Co chưa đủ 33 cột, và người
-        bấm menu rất dễ bỏ qua dòng chữ đó, tưởng là đã chạy xong.</nghi_can>
-      <nghi_can>gomKpiTho_() đếm "chưa tính" dựa trên ô KPI_Ap_Dung rỗng, lọc qua
-        laDoDapUng_(). Kiểm xem có nhóm phiếu nào bị đếm oan hoặc bị bỏ sót.</nghi_can>
-      <nghi_can>kpiThoChoPhieu_() trả 'KHONG — thiếu mốc giờ' cho phiếu thiếu
-        Thoi_Gian_Nhan. Nếu nhóm này đông thì báo cáo trông như "lỗi rất nhiều" trong
-        khi thực ra là dữ liệu nhập thiếu.</nghi_can>
+    <loi thu_tu="1" muc="chan" trang_thai="ĐÃ TÌM RA VÀ ĐÃ SỬA XONG ngày 12/09/2026">
+      Báo cáo in cảnh báo "CHƯA TÍNH KPI" dù đã bấm menu 🎯. <b>KHÔNG phải đi tìm lại
+      nữa.</b> Chép nguyên kết luận vào đây để bạn không đào lại đường cũ, và vì hai
+      cái bẫy này còn nguy hiểm cho chính phần bạn sắp viết:
+      <nguyen_nhan thu="1">Một dropdown <hang>Loai_Phieu</hang> ai đó tạo tay trên Sheet
+        nằm nhầm ở cột <b>AF</b> — tức <cot>KPI_Ap_Dung</cot>, lệch 4 cột so với
+        <cot>Loai_Phieu</cot> ở AB. Quy tắc đó từ chối mọi giá trị script ghi vào.
+        Apps Script gom lệnh ghi rồi mới đẩy xuống Sheet, nên <ham>setValues</ham> trả
+        về êm ru, hàm báo "đã ghi 748 dòng", Google từ chối lúc đẩy xuống và huỷ nguyên
+        khối — không lỗi, không cảnh báo, không dấu vết. <b>Bài học cho mã bạn sắp
+        viết: một quy tắc xác thực đặt sai chỗ âm thầm huỷ lệnh ghi.</b> Đã có hàng rào
+        <ham>goQuyTacXacThuc_()</ham> gọi từ <ham>setupSystem()</ham>, gỡ quy tắc trên
+        12 cột mã tự ghi của <ten>Su_Co</ten> và <ten>Luu_Tru</ten>. Cột KPI mới nào bạn
+        thêm thì phải thêm tên vào hằng <hang>COT_MA_TU_GHI</hang>.</nguyen_nhan>
+      <nguyen_nhan thu="2">Đọc lại ngay sau khi ghi trong CÙNG một lượt chạy thì đọc
+        phải trạng thái trước lệnh ghi. <ham>donPhieuCuHangThang()</ham> gọi tính KPI
+        rồi gọi dọn phiếu liền, phần dọn thấy "còn 520 phiếu chưa tính KPI" ngay dưới
+        dòng báo vừa ghi xong. Đã sửa bằng <ham>SpreadsheetApp.flush()</ham> ngay sau
+        <ham>setValues</ham>. <b>Bài học: hàm nào của bạn ghi rồi để hàm khác đọc lại
+        trong cùng lượt thì phải flush.</b></nguyen_nhan>
+      <con_lai>Một lỗi thật ĐÃ BIẾT nhưng CHƯA SỬA, và nay là việc gấp:
+        <ham>tinhLaiKpiTho()</ham> chỉ đọc/ghi <ten>Su_Co</ten>, không đụng
+        <ten>Luu_Tru</ten>. 520 phiếu tháng 8 vừa dời sang lưu trữ nên từ giờ **không
+        bao giờ** được tính lại — bấm menu 🎯 bao nhiêu lần cũng vậy. Phải cho nó chạy
+        trên cả hai sheet, mỗi sheet một <ham>setValues</ham>, kiểm đủ cột trước khi
+        động vào dòng nào, và flush sau khi ghi.</con_lai>
+      <cong_cu_da_co>Menu <b>🩺 Chẩn đoán KPI</b> (<ham>chanDoanKpi</ham> +
+        <ham>thongKeKpi_</ham> trong LuongTho.gs) — chỉ đọc, in số cột/số dòng hai
+        sheet, tách ba nhóm đã chấm / đã tính nhưng không đo được / chưa tính lần nào,
+        soi quy tắc xác thực còn sót, và chạy thử phép tính mà không ghi. Giữ mục này,
+        cập nhật cho khớp thiết kế mới chứ đừng xoá — nó là thứ đã cắt bài toán
+        "KPI lỗi rất nhiều" xuống còn một dòng mã.</cong_cu_da_co>
     </loi>
     <loi thu_tu="2" muc="thiet_ke">
       Chỉ số KPI hiện tại là "số phút đáp ứng trung bình sau khi trừ lúc bận" chấm theo
@@ -108,21 +127,22 @@
 
   <ke_hoach>
 
-    <buoc so="1" ten="Chẩn đoán lỗi 'chưa tính KPI'">
-      <viec>Đọc kỹ tinhLaiKpiTho (LuongTho.gs), gomKpiTho_ và hai chỗ in cảnh báo
-        (XuatBaoCao.gs), kpiThoChoPhieu_. Kết luận từng nghi can nêu trên: đúng, sai,
-        hay chỉ số liệu thật mới trả lời được.</viec>
-      <viec>Thêm mục menu "🩺 Chẩn đoán KPI đáp ứng" — CHỈ ĐỌC, không ghi một ô nào.
-        In ra: số cột thực tế của Su_Co và Luu_Tru; số dòng mỗi sheet; trong nhóm phiếu
-        đo được đáp ứng thì bao nhiêu ô KPI_Ap_Dung rỗng, tách theo sheet và theo tháng;
-        phân bố các lý do 'KHONG — ...'; số phiếu thiếu Thoi_Gian_Nhan; ngưỡng đang đọc
-        được của từng thợ. Đây là thứ chủ dự án chạy để trả lời phần bạn không thấy.</viec>
-      <viec>SỬA: tinhLaiKpiTho phải tính cho CẢ Su_Co lẫn Luu_Tru, mỗi sheet ghi lại
-        bằng một setValues, và phải kiểm đủ cột trước khi động vào dòng nào — thiếu cột
-        thì dừng và nói rõ, không ghi nửa chừng.</viec>
-      <viec>SỬA cảnh báo trên báo cáo cho đúng sự thật: phân biệt "chưa chạy tính KPI
-        lần nào" với "phiếu vốn không đo được đáp ứng" với "phiếu thiếu mốc giờ do nhập
-        thiếu". Ba thứ khác nhau, hiện đang bị gộp thành một dòng doạ người đọc.</viec>
+    <buoc so="1" ten="Dọn nốt phần KPI cũ trước khi xây phần mới">
+      <viec>Cho <ham>tinhLaiKpiTho()</ham> chạy trên CẢ <ten>Su_Co</ten> lẫn
+        <ten>Luu_Tru</ten>. Mỗi sheet: kiểm đủ cột trước, đọc, tính, ghi bằng một
+        <ham>setValues</ham>, rồi <ham>SpreadsheetApp.flush()</ham>. Thiếu cột thì dừng
+        và nói rõ, không được ghi nửa chừng. Báo cáo trả về phải nói rõ mỗi sheet ghi
+        bao nhiêu dòng.</viec>
+      <viec>Giữ nguyên cách bọc try/catch quanh TỪNG DÒNG đang có: một dòng dữ liệu lạ
+        không được kéo sập cả lượt tính, và mã phiếu hỏng phải được in ra.</viec>
+      <viec>Sửa cảnh báo trên báo cáo xuất cho đúng sự thật: phân biệt "chưa chạy tính
+        KPI lần nào" với "phiếu vốn không đo được đáp ứng" với "phiếu thiếu mốc giờ do
+        nhập thiếu". Ba thứ khác nhau, hiện đang bị gộp thành một dòng doạ người đọc.
+        Số liệu thật ngày 12/09: trong 593 phiếu đo được đáp ứng có 2 phiếu thiếu mốc
+        "giờ thợ nhận" — nhóm này phải hiện thành con số riêng, không lẫn vào nhóm chưa
+        tính.</viec>
+      <viec>Mọi cột KPI bạn thêm mới phải có tên trong <hang>COT_MA_TU_GHI</hang>, nếu
+        không hàng rào gỡ quy tắc xác thực sẽ bỏ sót đúng cột đó.</viec>
     </buoc>
 
     <buoc so="2" ten="Ngưỡng riêng từng thợ">
@@ -269,8 +289,8 @@
 
   <bao_cao_cuoi>
     In một lần, ngắn gọn, tiếng Việt:
-    <muc>Kết luận chẩn đoán lỗi "chưa tính KPI": nguyên nhân nào đã xác định được từ
-      mã, nguyên nhân nào phải chờ chủ dự án chạy mục 🩺 mới biết.</muc>
+    <muc>Xác nhận `tinhLaiKpiTho()` nay phủ cả `Luu_Tru`, và nói rõ mỗi sheet ghi bao
+      nhiêu dòng khi chạy.</muc>
     <muc>Danh sách file đã sửa và đã thêm.</muc>
     <muc>Kết quả từng lớp kiểm thử, kèm con số. Nói rõ lớp nào chạy được tại máy và
       phần nào phải chạy trong Sheet mới biết.</muc>
