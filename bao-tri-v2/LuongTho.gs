@@ -238,17 +238,62 @@ function nguongKpi_(cauHinh) {
 }
 
 /**
- * Tính lại 5 cột KPI cho TOÀN BỘ sheet Su_Co. Chạy từ menu 🔧 Bảo trì.
+ * Bảng tra NGƯỠNG ĐÁP ỨNG theo từng thợ, dựng từ sheet `Danh_Muc_Tho`.
  *
- * Vì sao cần: bốn cột này mới có từ 09/2026, còn `acceptTask` chỉ ghi được cho
+ * Tra được bằng CẢ mã thợ lẫn tên thợ: `Su_Co` có cả hai cột, còn báo cáo thì
+ * gom theo TÊN (đó là thứ chủ quản đọc). Tên chuẩn hoá bỏ khoảng trắng thừa
+ * nhưng GIỮ dấu và giữ hoa thường — "Nhân M" và "Nhân D" là hai người khác nhau.
+ *
+ * @return {Object} { theoMa: {...}, theoTen: {...}, chung: number }
+ */
+function bangNguongTho_(dsTho, cauHinh) {
+  const ch = cauHinh || docCauHinh_();
+  const ds = dsTho || docSheet_(SHEET.THO, HEADER_THO);
+  const theoMa = {}, theoTen = {};
+  ds.forEach(function (t) {
+    const n = nguongKpiCuaTho_(t, ch);
+    const ma = String(t.Ma_Tho || '').trim();
+    const ten = String(t.Ten_Tho || '').trim();
+    if (ma) theoMa[ma] = n;
+    if (ten) theoTen[ten] = n;
+  });
+  return { theoMa: theoMa, theoTen: theoTen, chung: nguongKpi_(ch) };
+}
+
+/** Ngưỡng áp cho một dòng Su_Co: ưu tiên mã thợ, rồi tên thợ, rồi ngưỡng chung. */
+function nguongChoDong_(v, bang) {
+  const ma = String(v[COT.Ma_Tho] || '').trim();
+  if (ma && bang.theoMa[ma] !== undefined) return bang.theoMa[ma];
+  const ten = String(v[COT.Ten_Tho] || '').trim();
+  if (ten && bang.theoTen[ten] !== undefined) return bang.theoTen[ten];
+  return bang.chung;
+}
+
+/**
+ * Tính lại 5 cột KPI cho CẢ `Su_Co` LẪN `Luu_Tru`. Chạy từ menu 🔧 Bảo trì.
+ *
+ * Vì sao cần: năm cột này mới có từ 09/2026, còn `acceptTask` chỉ ghi được cho
  * phiếu nhận từ lúc bản mới lên web app. Mọi mốc giờ cần thiết đều đã nằm sẵn
- * trong sheet nên tính lại được cho cả các tháng đã qua — nhờ vậy báo cáo tháng
- * 8 có KPI ngay, không phải chờ deploy.
+ * trong sheet nên tính lại được cho cả các tháng đã qua.
+ *
+ * VÌ SAO PHẢI PHỦ CẢ `Luu_Tru` — bản cũ chỉ đọc/ghi `Su_Co`. Từ 12/09/2026 phiếu
+ * HOÀN THÀNH của các tháng trước bị dời sang `Luu_Tru`, nên 520 phiếu tháng 8
+ * rơi ra khỏi tầm với của hàm này: bấm menu 🎯 bao nhiêu lần cũng không bao giờ
+ * tính tới chúng, mà hàm vẫn báo thành công. Đúng kiểu hỏng im lặng.
+ *
+ * Mỗi sheet một lượt: kiểm ĐỦ CỘT trước, đọc, tính, ghi bằng MỘT `setValues`,
+ * rồi `SpreadsheetApp.flush()`. Thiếu cột thì DỪNG sheet đó và nói rõ, không ghi
+ * nửa chừng. Flush là bắt buộc: đọc lại ngay sau khi ghi trong cùng một lượt
+ * chạy thì đọc phải trạng thái TRƯỚC lệnh ghi — `archiveOldTickets()` chạy liền
+ * sau đã dính đúng cái đó và báo "còn 520 phiếu chưa tính KPI" ngay dưới dòng
+ * vừa nói đã tính xong.
+ *
+ * Gom đoạn bận theo thợ trên TOÀN BỘ hai sheet, không riêng từng sheet: phiếu
+ * gây bận có thể đã bị dời sang `Luu_Tru` trong khi phiếu đang xét còn ở `Su_Co`.
+ * Tính riêng từng sheet là số KPI đổi theo thời điểm chạy dọn — không thể chấp nhận.
  *
  * Chạy lại nhiều lần vô hại: hàm tính thuần từ các mốc giờ, không cộng dồn.
- *
- * Chỉ ghi đúng khối 5 cột mới bằng MỘT setValues — không đụng cột nào khác, nên
- * không có đường nào làm hỏng mốc thời gian hay ba cột KPI cũ.
+ * Chỉ ghi đúng khối 5 cột mới — không đụng mốc thời gian hay ba cột KPI cũ.
  */
 function tinhLaiKpiTho() {
   const lock = LockService.getScriptLock();
@@ -257,65 +302,307 @@ function tinhLaiKpiTho() {
       return 'Hệ thống đang bận, thử lại sau vài giây.';
     }
 
-    const sh = sheet_(SHEET.SU_CO);
+    const bangNguong = bangNguongTho_();
 
-    // Sheet cũ mới có 28 cột, đọc/ghi 33 cột là văng "out of bounds" giữa chừng.
-    // Nói thẳng phải làm gì, thay vì để người dùng nhận một thông báo lỗi kỹ thuật.
-    if (sh.getMaxColumns() < HEADER_SU_CO.length) {
-      return 'Sheet Su_Co chưa có đủ ' + HEADER_SU_CO.length + ' cột. ' +
-        'Chạy menu 🔧 Bảo trì → "1. Cài đặt hệ thống" một lần rồi tính lại.';
+    // --- Đọc cả hai sheet trước khi ghi bất cứ đâu ---------------------------
+    const dsSheet = [];
+    const dsLoi = [];
+    [SHEET.SU_CO, SHEET.LUU_TRU].forEach(function (ten) {
+      const sh = ss_().getSheetByName(ten);
+      if (!sh) { dsLoi.push(ten + ': chưa có sheet'); return; }
+
+      // Sheet cũ mới có 28 cột, đọc/ghi 33 cột là văng "out of bounds" giữa
+      // chừng. Nói thẳng phải làm gì, thay vì để người dùng nhận lỗi kỹ thuật.
+      if (sh.getMaxColumns() < HEADER_SU_CO.length) {
+        dsLoi.push(ten + ': chưa đủ ' + HEADER_SU_CO.length + ' cột');
+        return;
+      }
+      const soDong = sh.getLastRow() - 1;
+      if (soDong < 1) { dsSheet.push({ ten: ten, sh: sh, values: [] }); return; }
+      dsSheet.push({
+        ten: ten, sh: sh,
+        values: sh.getRange(2, 1, soDong, HEADER_SU_CO.length).getValues(),
+      });
+    });
+
+    // Thiếu cột ở sheet nào thì KHÔNG ghi sheet nào cả. Ghi một nửa rồi mới báo
+    // lỗi là để lại dữ liệu nửa mới nửa cũ, đối chiếu không nổi.
+    if (dsLoi.length) {
+      return 'DỪNG, chưa ghi gì cả:\n• ' + dsLoi.join('\n• ') +
+        '\nChạy menu 🔧 Bảo trì → "1. Cài đặt hệ thống" một lần rồi tính lại.';
     }
 
-    const soDong = sh.getLastRow() - 1;
-    if (soDong < 1) return 'Sheet Su_Co chưa có phiếu nào.';
-
-    const values = sh.getRange(2, 1, soDong, HEADER_SU_CO.length).getValues();
-    const ds = values
-      .map(function (v, i) { return { dong: i + 2, v: v }; })
-      .filter(function (r) { return String(r.v[COT.Ma_Su_Co]).trim() !== ''; });
-
-    // Gom sẵn theo thợ: mỗi phiếu chỉ phải so với phiếu của chính thợ đó, thay
-    // vì quét cả sheet cho từng phiếu (n² trên toàn bộ dữ liệu nhiều năm).
+    // --- Gom đoạn bận theo thợ, trên TOÀN BỘ dữ liệu hai sheet ---------------
     const theoTho = {};
-    ds.forEach(function (r) {
-      const ma = String(r.v[COT.Ma_Tho]).trim();
-      if (!ma) return;
-      if (!theoTho[ma]) theoTho[ma] = [];
-      theoTho[ma].push(r);
+    dsSheet.forEach(function (s) {
+      s.values.forEach(function (v, i) {
+        if (String(v[COT.Ma_Su_Co]).trim() === '') return;
+        const ma = String(v[COT.Ma_Tho]).trim();
+        if (!ma) return;
+        if (!theoTho[ma]) theoTho[ma] = [];
+        theoTho[ma].push({ dong: i + 2, v: v });
+      });
     });
 
-    const nguong = nguongKpi_();
+    // --- Tính và ghi từng sheet ---------------------------------------------
     const cotDau = COT.Phut_Ban_Thuc_Te + 1;   // 1-based cho getRange
-    const khoi = [];
-    let soApDung = 0, soNhieuDoan = 0, soDat = 0;
+    const baoTheoSheet = [];
+    const dsPhieuHong = [];
+    let tongApDung = 0, tongNhieuDoan = 0, tongDat = 0, tongDong = 0;
 
-    values.forEach(function (v) {
-      if (String(v[COT.Ma_Su_Co]).trim() === '') { khoi.push(['', '', '', '', '']); return; }
-
-      const cungTho = theoTho[String(v[COT.Ma_Tho]).trim()] || [];
-      const k = kpiThoChoPhieu_(cungTho, v, nguong);
-      if (k.apDung === 'CO') {
-        soApDung++;
-        if (k.soDoan >= 2) soNhieuDoan++;
-        if (k.datNguong === 'DAT') soDat++;
+    dsSheet.forEach(function (s) {
+      if (!s.values.length) {
+        baoTheoSheet.push(s.ten + ': 0 dòng (sheet trống)');
+        return;
       }
-      khoi.push([k.phutBan, k.phutKpi, k.soDoan, k.apDung, k.datNguong]);
-    });
+      const khoi = [];
+      let soApDung = 0, soNhieuDoan = 0, soDat = 0;
 
-    sh.getRange(2, cotDau, khoi.length, 5).setValues(khoi);
+      s.values.forEach(function (v) {
+        if (String(v[COT.Ma_Su_Co]).trim() === '') { khoi.push(['', '', '', '', '']); return; }
+
+        // try/catch quanh TỪNG DÒNG: một dòng dữ liệu lạ không được kéo sập cả
+        // lượt tính, và mã phiếu hỏng phải được in ra để đi sửa đúng chỗ.
+        try {
+          const cungTho = theoTho[String(v[COT.Ma_Tho]).trim()] || [];
+          const k = kpiThoChoPhieu_(cungTho, v, nguongChoDong_(v, bangNguong));
+          if (k.apDung === 'CO') {
+            soApDung++;
+            if (k.soDoan >= 2) soNhieuDoan++;
+            if (k.datNguong === 'DAT') soDat++;
+          }
+          khoi.push([k.phutBan, k.phutKpi, k.soDoan, k.apDung, k.datNguong]);
+        } catch (err) {
+          dsPhieuHong.push(String(v[COT.Ma_Su_Co]).trim() + ' (' + err.message + ')');
+          khoi.push(['', '', '', 'KHONG — lỗi tính: ' + err.message, '']);
+        }
+      });
+
+      s.sh.getRange(2, cotDau, khoi.length, 5).setValues(khoi);
+      // Đẩy xuống Sheet NGAY. Không flush thì hàm nào đọc lại trong cùng lượt
+      // chạy sẽ thấy dữ liệu cũ — xem phần giải thích ở đầu hàm.
+      SpreadsheetApp.flush();
+
+      tongDong += khoi.length;
+      tongApDung += soApDung;
+      tongNhieuDoan += soNhieuDoan;
+      tongDat += soDat;
+      baoTheoSheet.push(s.ten + ': ghi ' + khoi.length + ' dòng, ' +
+        soApDung + ' phiếu vào KPI');
+    });
 
     ghiNhatKy_('', '', 'HE_THONG', 'TINH_LAI_KPI',
-      { soDong: khoi.length, soApDung: soApDung, nguong: nguong }, '');
+      { theoSheet: baoTheoSheet, soApDung: tongApDung, soHong: dsPhieuHong.length }, '');
 
-    return 'Đã tính lại KPI cho ' + khoi.length + ' dòng.\n' +
-      '• Vào KPI: ' + soApDung + ' phiếu\n' +
-      '• Có từ 2 đoạn bận rời (cách cũ tính rộng tay): ' + soNhieuDoan + ' phiếu\n' +
-      (nguong
-        ? '• Đạt ngưỡng ≤ ' + nguong + ' phút: ' + soDat + '/' + soApDung + ' phiếu'
-        : '• Chưa chốt ngưỡng — điền NGUONG_KPI_DAP_UNG_PHUT ở sheet Cau_Hinh để chấm đạt/không đạt.');
+    const coNguongRieng = Object.keys(bangNguong.theoTen)
+      .filter(function (k) { return bangNguong.theoTen[k] > 0; }).length;
+
+    return 'Đã tính lại KPI cho ' + tongDong + ' dòng.\n' +
+      '• ' + baoTheoSheet.join('\n• ') + '\n' +
+      '• Vào KPI: ' + tongApDung + ' phiếu\n' +
+      '• Có từ 2 đoạn bận rời (cách cũ tính rộng tay): ' + tongNhieuDoan + ' phiếu\n' +
+      (coNguongRieng
+        ? '• Đã chấm theo ngưỡng riêng của ' + coNguongRieng + ' thợ: đạt ' +
+          tongDat + '/' + tongApDung + ' phiếu'
+        : '• Chưa thợ nào có ngưỡng riêng — điền cột Nguong_KPI_Phut ở sheet ' +
+          'Danh_Muc_Tho, hoặc NGUONG_KPI_DAP_UNG_PHUT ở Cau_Hinh cho ngưỡng chung.') +
+      (dsPhieuHong.length
+        ? '\n⚠️ ' + dsPhieuHong.length + ' phiếu lỗi khi tính: ' +
+          dsPhieuHong.slice(0, 10).join(', ')
+        : '');
   } finally {
     lock.releaseLock();
   }
+}
+
+// ============================================================================
+// 2c. CHẨN ĐOÁN KPI — chỉ ĐỌC, không ghi gì
+//
+// Mục này ra đời sau nửa ngày đi tìm lý do báo cáo in "CHƯA TÍNH KPI" dù đã bấm
+// menu 🎯. Hai nguyên nhân đều thuộc loại không để lại dấu vết (quy tắc xác thực
+// đặt lệch cột huỷ âm thầm cả khối setValues; đọc lại ngay sau khi ghi mà chưa
+// flush thì thấy dữ liệu cũ). Giữ mục này và cập nhật cho khớp thiết kế mới —
+// chính nó đã cắt bài toán "KPI lỗi rất nhiều" xuống còn một dòng mã.
+// ============================================================================
+
+/**
+ * Thống kê trạng thái KPI của một tập dòng. HÀM THUẦN — chỉ nhận mảng.
+ *
+ * Tách ba nhóm mà báo cáo cũ gộp thành một dòng doạ người đọc:
+ *   - daCham    : KPI_Ap_Dung = 'CO' và có số Phut_KPI_Tho → đo được, dùng được
+ *   - khongDoDuoc: đã tính nhưng bị loại có lý do (loại phiếu, chưa ai nhận,
+ *                  thiếu mốc giờ) → KHÔNG phải lỗi, không cần làm gì
+ *   - chuaTinh  : phiếu ĐO ĐƯỢC đáp ứng mà ô KPI_Ap_Dung còn trống → thứ duy
+ *                 nhất cần bấm menu 🎯 để sửa
+ */
+function thongKeKpi_(ds) {
+  const kq = {
+    tong: 0, doDuocDapUng: 0, daCham: 0, chuaTinh: 0,
+    khongDoDuoc: { loaiPhieu: 0, chuaNhan: 0, thieuMoc: 0, khac: 0 },
+    thieuMocGio: [], lechDangThuc: [],
+  };
+
+  ds.forEach(function (v) {
+    if (String(v[COT.Ma_Su_Co] || '').trim() === '') return;
+    kq.tong++;
+    const doDuoc = laDoDapUng_(v);
+    if (doDuoc) kq.doDuocDapUng++;
+
+    const tt = String(v[COT.KPI_Ap_Dung] || '').trim();
+    if (!tt) {
+      // Phiếu CV-/BT-/DM- chưa tính thì cũng không bao giờ vào KPI — đừng gộp
+      // chúng vào con số cảnh báo.
+      if (doDuoc) kq.chuaTinh++;
+      return;
+    }
+    if (tt === 'CO') {
+      if (String(v[COT.Phut_KPI_Tho]) !== '') kq.daCham++;
+      // Đẳng thức phải đúng trên nhóm thợ RẢNH: không bận thì ba con số bằng nhau.
+      // Lệch là dấu hiệu dữ liệu hỏng, phải báo ra chứ không được im.
+      if (Number(v[COT.So_Chong_Viec] || 0) === 0 &&
+          Number(v[COT.Phut_Cho_Tho_Ban] || 0) === 0 &&
+          String(v[COT.Phut_Tiep_Nhan]) !== '' &&
+          String(v[COT.Phut_KPI_Tho]) !== '' &&
+          Number(v[COT.Phut_Tiep_Nhan]) !== Number(v[COT.Phut_KPI_Tho])) {
+        kq.lechDangThuc.push(String(v[COT.Ma_Su_Co]).trim());
+      }
+      return;
+    }
+    if (tt.indexOf('chưa ai nhận') >= 0) kq.khongDoDuoc.chuaNhan++;
+    else if (tt.indexOf('thiếu mốc giờ') >= 0) {
+      kq.khongDoDuoc.thieuMoc++;
+      kq.thieuMocGio.push(String(v[COT.Ma_Su_Co]).trim());
+    } else if (tt.indexOf('phiếu ') >= 0) kq.khongDoDuoc.loaiPhieu++;
+    else kq.khongDoDuoc.khac++;
+  });
+
+  return kq;
+}
+
+/**
+ * Menu 🩺 Chẩn đoán KPI — in số cột / số dòng của cả hai sheet, tách ba nhóm
+ * trạng thái, soi quy tắc xác thực còn sót, và CHẠY THỬ phép tính mà KHÔNG ghi.
+ *
+ * Chỉ đọc. Không có đường nào từ hàm này làm đổi dữ liệu — chạy được giữa ca
+ * sản xuất, bao nhiêu lần cũng được.
+ */
+function chanDoanKpi() {
+  const dong = [];
+  const bangNguong = bangNguongTho_();
+
+  dong.push('🩺 CHẨN ĐOÁN KPI ĐÁP ỨNG — chỉ đọc, không ghi gì.');
+  dong.push('');
+
+  // --- 1. Hai sheet: đủ cột chưa, bao nhiêu dòng --------------------------
+  const dsSheet = [];
+  [SHEET.SU_CO, SHEET.LUU_TRU].forEach(function (ten) {
+    const sh = ss_().getSheetByName(ten);
+    if (!sh) { dong.push('❌ ' + ten + ': CHƯA CÓ SHEET.'); return; }
+    const soCot = sh.getMaxColumns();
+    const soDong = Math.max(0, sh.getLastRow() - 1);
+    dong.push((soCot >= HEADER_SU_CO.length ? '✅ ' : '❌ ') + ten + ': ' +
+      soCot + ' cột (cần ' + HEADER_SU_CO.length + ') · ' + soDong + ' dòng');
+    if (soCot < HEADER_SU_CO.length || soDong < 1) return;
+    dsSheet.push({
+      ten: ten, sh: sh,
+      values: sh.getRange(2, 1, soDong, HEADER_SU_CO.length).getValues(),
+    });
+  });
+
+  // --- 2. Ba nhóm trạng thái, tách rõ ------------------------------------
+  dong.push('');
+  dong.push('── TRẠNG THÁI KPI ──');
+  let tongChuaTinh = 0;
+  const tatCa = [];
+  dsSheet.forEach(function (s) {
+    const tk = thongKeKpi_(s.values);
+    tongChuaTinh += tk.chuaTinh;
+    s.values.forEach(function (v) { tatCa.push(v); });
+    dong.push(s.ten + ': ' + tk.tong + ' phiếu · đo được đáp ứng ' +
+      tk.doDuocDapUng + ' · đã chấm ' + tk.daCham + ' · CHƯA TÍNH ' + tk.chuaTinh);
+    dong.push('   không đo được (đúng bản chất, không phải lỗi): ' +
+      'loại phiếu ' + tk.khongDoDuoc.loaiPhieu +
+      ' · chưa ai nhận ' + tk.khongDoDuoc.chuaNhan +
+      ' · thiếu mốc giờ ' + tk.khongDoDuoc.thieuMoc +
+      (tk.khongDoDuoc.khac ? ' · khác ' + tk.khongDoDuoc.khac : ''));
+    if (tk.thieuMocGio.length) {
+      dong.push('   ⚠️ thiếu mốc "giờ thợ nhận" — do NHẬP THIẾU, phải sửa tay: ' +
+        tk.thieuMocGio.slice(0, 15).join(', '));
+    }
+    if (tk.lechDangThuc.length) {
+      dong.push('   ❌ lệch đẳng thức (thợ rảnh mà Phut_Tiep_Nhan ≠ Phut_KPI_Tho): ' +
+        tk.lechDangThuc.slice(0, 15).join(', '));
+    }
+  });
+  dong.push(tongChuaTinh
+    ? '👉 Còn ' + tongChuaTinh + ' phiếu CHƯA TÍNH. Bấm 🎯 Tính lại KPI đáp ứng của thợ.'
+    : '👉 Không còn phiếu nào chưa tính.');
+
+  // --- 3. Quy tắc xác thực còn sót trên cột mã tự ghi --------------------
+  // Đây là thứ đã âm thầm huỷ cả khối setValues ngày 12/09/2026. Soi chứ không gỡ:
+  // hàm này chỉ đọc, gỡ là việc của setupSystem().
+  dong.push('');
+  dong.push('── QUY TẮC XÁC THỰC TRÊN CỘT MÃ TỰ GHI ──');
+  const conSot = [];
+  dsSheet.forEach(function (s) {
+    COT_MA_TU_GHI.forEach(function (tenCot) {
+      const i = HEADER_SU_CO.indexOf(tenCot);
+      if (i < 0 || i + 1 > s.sh.getMaxColumns()) return;
+      const dsRule = s.sh.getRange(2, i + 1, Math.min(s.values.length, 50), 1)
+        .getDataValidations();
+      for (let r = 0; r < dsRule.length; r++) {
+        if (dsRule[r][0]) { conSot.push(s.ten + '!' + tenCot); return; }
+      }
+    });
+  });
+  dong.push(conSot.length
+    ? '❌ CÒN SÓT: ' + conSot.join(', ') + '\n' +
+      '   Quy tắc này sẽ ÂM THẦM huỷ lệnh ghi, không báo lỗi gì. ' +
+      'Bấm "1. Cài đặt hệ thống" để gỡ.'
+    : '✅ Sạch — không cột mã tự ghi nào còn quy tắc xác thực.');
+
+  // --- 4. Ngưỡng đang áp --------------------------------------------------
+  dong.push('');
+  dong.push('── NGƯỠNG ĐANG ÁP ──');
+  const dsTen = Object.keys(bangNguong.theoTen).sort();
+  dong.push('Ngưỡng chung (Cau_Hinh.NGUONG_KPI_DAP_UNG_PHUT): ' +
+    (bangNguong.chung ? bangNguong.chung + ' phút' : 'CHƯA CHỐT'));
+  dong.push(dsTen.length
+    ? 'Theo thợ (Danh_Muc_Tho.Nguong_KPI_Phut): ' + dsTen.map(function (t) {
+      return t + ' ' + (bangNguong.theoTen[t] ? bangNguong.theoTen[t] + '′' : '—');
+    }).join(' · ')
+    : 'Chưa có thợ nào trong Danh_Muc_Tho.');
+
+  // --- 5. Chạy thử phép tính, KHÔNG ghi ----------------------------------
+  dong.push('');
+  dong.push('── CHẠY THỬ PHÉP TÍNH (không ghi) ──');
+  const theoTho = {};
+  tatCa.forEach(function (v, i) {
+    const ma = String(v[COT.Ma_Tho] || '').trim();
+    if (!ma || String(v[COT.Ma_Su_Co] || '').trim() === '') return;
+    if (!theoTho[ma]) theoTho[ma] = [];
+    theoTho[ma].push({ dong: i + 2, v: v });
+  });
+  let thuApDung = 0, thuLech = 0, thuHong = 0;
+  tatCa.forEach(function (v) {
+    if (String(v[COT.Ma_Su_Co] || '').trim() === '') return;
+    try {
+      const k = kpiThoChoPhieu_(theoTho[String(v[COT.Ma_Tho] || '').trim()] || [],
+        v, nguongChoDong_(v, bangNguong));
+      if (k.apDung !== 'CO') return;
+      thuApDung++;
+      // So số vừa tính thử với số đang nằm trên sheet. Lệch nghĩa là sheet đang
+      // giữ số cũ — hoặc lệnh ghi lần trước đã bị huỷ mà không ai biết.
+      if (String(v[COT.Phut_KPI_Tho]) !== String(k.phutKpi)) thuLech++;
+    } catch (err) { thuHong++; }
+  });
+  dong.push('Tính thử được ' + thuApDung + ' phiếu · lệch với số trên sheet ' +
+    thuLech + ' phiếu' + (thuHong ? ' · lỗi ' + thuHong + ' phiếu' : ''));
+  dong.push(thuLech
+    ? '👉 Có lệch. Bấm 🎯 Tính lại KPI rồi chạy lại 🩺 để xác nhận về 0.'
+    : '👉 Số trên sheet khớp với phép tính hiện tại.');
+
+  return dong.join('\n');
 }
 
 /** Rút gọn một dòng Su_Co để gửi về client. */

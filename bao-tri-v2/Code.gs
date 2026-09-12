@@ -146,6 +146,7 @@ const SHEET = {
   THUNG_RAC: 'Thung_Rac',
   KE_HOACH: 'Ke_Hoach_Chay_May',
   KHUNG_NGUNG: 'Khung_Ngung_Ke_Hoach',
+  DOI_VI_TRI: 'KPI_Doi_Vi_Tri',
 };
 
 const HEADER_MAY = ['Ma_May', 'Ten_May', 'Bo_Phan', 'Hoat_Dong', 'Link_QR'];
@@ -155,6 +156,14 @@ const HEADER_THO = [
   'Bo_Phan_Phu_Trach', 'Token', 'Hoat_Dong', 'Link_Ca_Nhan',
   // --- Bổ sung sau, luôn THÊM VÀO CUỐI để không xô lệch dữ liệu đã ghi -------
   'Telegram_Chat_ID',    // bot Telegram nhắn cho thợ; để trống là chưa ghép
+  // --- Đợt KPI đáp ứng v2 (12/09/2026) --------------------------------------
+  // Ngưỡng đáp ứng RIÊNG của từng thợ, tính bằng PHÚT. Đây là con số CHÍNH SÁCH
+  // do chủ quản chỉ định, không phải thứ máy tính ra: tháng 8/2026 ba thợ được
+  // 10 phút, bảy thợ còn lại 5 phút. Vì là chính sách nên nó phải nằm trên sheet
+  // — sửa ô là có hiệu lực ngay lần xuất báo cáo sau, không cần deploy — và
+  // TUYỆT ĐỐI không được hardcode tên thợ trong mã.
+  // Để trống ô này thì rơi về Cau_Hinh.NGUONG_KPI_DAP_UNG_PHUT (ngưỡng chung).
+  'Nguong_KPI_Phut',
 ];
 
 const HEADER_CA = ['Nhom_Ca', 'Mo_Ta', 'Ca_Ngay_Tu', 'Ca_Ngay_Den', 'Co_Ca_Dem'];
@@ -256,6 +265,19 @@ const CAU_HINH_MAC_DINH = [
     'THÔNG BÁO TELEGRAM — quá ngần này PHÚT vẫn chưa ai nhận thì bot nhắc lần 2, ' +
     'lời gắt hơn và kèm SDT_KHAN_CAP. Mỗi phiếu tối đa 2 lần nhắc, không bao giờ ' +
     'nhiều hơn. Phải lớn hơn NHAC_LAN_1_PHUT. Đặt 0 để tắt riêng lần nhắc thứ hai.'],
+  ['DOI_VI_TRI_BAT', 'BAT',
+    'BÁO CÁO LỖI ĐÁP ỨNG — có sửa lại những phiếu bị ghi NGƯỢC thời gian đáp ứng ' +
+    'và thời gian sửa hay không. Gõ BAT để sửa, gõ TAT để lấy đúng số thô. ' +
+    'Ca điển hình: thợ quên bấm nhận việc, sửa xong mới bấm nhận rồi bấm hoàn ' +
+    'thành luôn — hệ ghi thời gian SỬA thành thời gian máy CHỜ. Phép đổi CHỈ ' +
+    'diễn ra trong bộ nhớ lúc lập báo cáo, không bao giờ ghi ngược vào Su_Co.'],
+  ['DOI_VI_TRI_XU_LY_TOI_DA', '2',
+    'BÁO CÁO LỖI ĐÁP ỨNG — phiếu có Phut_Xu_Ly KHÔNG VƯỢT số phút này mới bị coi ' +
+    'là nghi ghi ngược. Sửa máy xong trong 2 phút là chuyện không có thật.'],
+  ['DOI_VI_TRI_DAP_UNG_TOI_THIEU', '5',
+    'BÁO CÁO LỖI ĐÁP ỨNG — và phút đáp ứng phải LỚN HƠN số này. Hai điều kiện ' +
+    'phải đúng cả hai mới đổi. Phiếu sửa 3–5 phút quy tắc cố ý không bắt, vì ' +
+    'không đủ chắc — những phiếu đó chủ quản khai tay ở sheet KPI_Doi_Vi_Tri.'],
   ['HUONG_DAN_KHOA_LINK_THO', '',
     'KHOÁ LINK KHI THỢ NGHỈ VIỆC: xoá trắng ô Token của người đó trong sheet ' +
     'Danh_Muc_Tho, bỏ tick Hoat_Dong, rồi chạy menu 🔧 Bảo trì → "4. Sinh lại ' +
@@ -296,6 +318,43 @@ const HEADER_SU_CO = [
 const HEADER_NHAT_KY = [
   'Event_ID', 'Ma_Su_Co', 'Ma_May', 'Thoi_Gian', 'Actor', 'Hanh_Dong',
   'Du_Lieu', 'Request_ID',
+];
+
+/**
+ * Sheet KPI_Doi_Vi_Tri — chỗ chủ quản khai TAY những phiếu bị ghi ngược thời
+ * gian đáp ứng và thời gian sửa, mà quy tắc tự động không bắt được.
+ *
+ * Vì sao cần khai tay: thợ quên bấm nhận việc, sửa xong mới bấm nhận rồi bấm
+ * hoàn thành luôn, nên hệ ghi thời gian SỬA thành thời gian máy CHỜ và ngược
+ * lại. Quy tắc tự động bắt được ca rõ ràng (sửa ≤ 2 phút mà đáp ứng > 5 phút);
+ * ca sửa 3–5 phút thì quy tắc không dám bắt, phải có người xác nhận. Tháng
+ * 8/2026 có 4 phiếu thuộc loại này.
+ *
+ * Khai ở đây KHÔNG sửa dữ liệu gốc: phép đổi chỉ diễn ra trong bộ nhớ lúc lập
+ * báo cáo. Xem `apDungDoiViTri_` trong LoiDapUng.gs.
+ */
+const HEADER_DOI_VI_TRI = ['Ma_Su_Co', 'Ly_Do', 'Nguoi_Xac_Nhan', 'Ngay'];
+
+/**
+ * Các cột của `Su_Co` / `Luu_Tru` mà CHỈ MÃ được ghi, người không bao giờ gõ tay.
+ *
+ * Tồn tại vì một cái bẫy đã trả giá ngày 12/09/2026: có người tạo tay một
+ * dropdown `Loai_Phieu` nhưng đặt nhầm sang cột AF — tức `KPI_Ap_Dung`. Quy tắc
+ * xác thực đó từ chối mọi giá trị mã ghi vào. Apps Script gom lệnh ghi rồi mới
+ * đẩy xuống Sheet, nên `setValues` trả về êm ru, hàm báo "đã ghi 748 dòng",
+ * Google từ chối lúc đẩy xuống và huỷ NGUYÊN KHỐI — không lỗi, không cảnh báo,
+ * không dấu vết. Mất nửa ngày mới truy ra.
+ *
+ * `goQuyTacXacThuc_()` gỡ sạch quy tắc trên đúng những cột này, và được gọi từ
+ * `setupSystem()` nên chỉ cần bấm "1. Cài đặt hệ thống" là hàng rào dựng lại.
+ *
+ * ⚠️ THÊM CỘT KPI MỚI THÌ PHẢI THÊM TÊN VÀO ĐÂY. Quên là hàng rào bỏ sót đúng
+ * cột vừa thêm, và lỗi quay lại đúng dạng im lặng cũ.
+ */
+const COT_MA_TU_GHI = [
+  'Phut_Tiep_Nhan', 'Phut_Xu_Ly', 'Cap_Nhat_Luc', 'Phien_Ban',
+  'Phut_Cho_Tho_Ban', 'Phut_Dap_Ung_Thuc', 'So_Chong_Viec', 'Loai_Phieu',
+  'Phut_Ban_Thuc_Te', 'Phut_KPI_Tho', 'So_Doan_Ban', 'KPI_Ap_Dung', 'Dat_Nguong',
 ];
 
 /**
@@ -906,6 +965,27 @@ function setupSystem() {
   taoSheet_(SHEET.TONG_HOP, null); // nội dung do refreshReports() dựng ở bước 4
   ketQua.push(SHEET.TONG_HOP);
 
+  // --- Khai tay phiếu bị ghi ngược đáp ứng ↔ sửa ----------------------------
+  const shDoi = taoSheet_(SHEET.DOI_VI_TRI, HEADER_DOI_VI_TRI);
+  shDoi.setColumnWidth(1, 150);
+  shDoi.setColumnWidth(2, 420);
+  shDoi.setColumnWidth(3, 160);
+  shDoi.getRange(2, 2, shDoi.getMaxRows() - 1, 1).setWrap(true);
+  shDoi.getRange(1, 1).setNote(
+    'Mỗi dòng là MỘT phiếu mà thời gian đáp ứng và thời gian sửa bị ghi ngược ' +
+    'nhau, nhưng quy tắc tự động không bắt được (thường là phiếu sửa 3–5 phút). ' +
+    'Gõ đúng Ma_Su_Co, ghi rõ lý do và người xác nhận. ' +
+    'Khai ở đây KHÔNG sửa dữ liệu gốc: báo cáo lỗi đáp ứng đổi hai con số trong ' +
+    'bộ nhớ lúc lập báo cáo, và in ra CẢ số gốc lẫn số sau đổi.');
+  ketQua.push(SHEET.DOI_VI_TRI);
+
+  // --- Hàng rào: gỡ quy tắc xác thực trên các cột mã tự ghi ------------------
+  // Phải chạy SAU khi Su_Co và Luu_Tru đã tồn tại. Xem COT_MA_TU_GHI để biết vì
+  // sao hàng rào này tồn tại — một quy tắc đặt nhầm cột đã âm thầm huỷ cả khối
+  // setValues, không để lại dấu vết nào.
+  const goRa = goQuyTacXacThuc_();
+  if (goRa.length) ketQua.push('gỡ quy tắc xác thực: ' + goRa.join(' · '));
+
   // Xoá sheet trống mặc định "Sheet1"/"Trang tính1" nếu còn.
   xoaSheetMacDinh_();
 
@@ -913,6 +993,51 @@ function setupSystem() {
     'Đã tạo/cập nhật ' + ketQua.length + ' sheet.', 'setupSystem', 8
   );
   return ketQua;
+}
+
+/**
+ * Gỡ mọi quy tắc xác thực (data validation) trên những cột mà CHỈ MÃ được ghi,
+ * ở cả `Su_Co` lẫn `Luu_Tru`.
+ *
+ * Không phải phép dọn cho đẹp mà là hàng rào chặn một kiểu hỏng IM LẶNG: một
+ * dropdown ai đó tạo tay và đặt lệch cột sẽ từ chối giá trị mã ghi vào, Apps
+ * Script thì gom lệnh ghi rồi mới đẩy xuống nên `setValues` vẫn trả về êm ru và
+ * cả khối bị Google huỷ không báo gì. Chi tiết ở COT_MA_TU_GHI.
+ *
+ * Chỉ gỡ trên đúng danh sách cột đó, KHÔNG quét cả sheet: `Trang_Thai_May`,
+ * `Nhom_Loi`, `Trang_Thai` cố ý có dropdown cho người nhập chọn.
+ *
+ * @return {Array<string>} mô tả những gì đã gỡ, để setupSystem báo lại cho người bấm
+ */
+function goQuyTacXacThuc_() {
+  const bao = [];
+  [SHEET.SU_CO, SHEET.LUU_TRU].forEach(function (tenSheet) {
+    const sh = ss_().getSheetByName(tenSheet);
+    if (!sh) return;
+    const soDong = sh.getMaxRows() - 1;
+    if (soDong < 1) return;
+
+    let soGo = 0;
+    COT_MA_TU_GHI.forEach(function (tenCot) {
+      const i = HEADER_SU_CO.indexOf(tenCot);
+      if (i < 0) return;                       // tên cột viết sai → bỏ qua, không văng
+      if (i + 1 > sh.getMaxColumns()) return;   // sheet cũ chưa đủ cột
+      const o = sh.getRange(2, i + 1, soDong, 1);
+      // Đọc trước rồi mới gỡ: clearDataValidations trên cột vốn đã sạch là vô
+      // hại, nhưng đếm được số cột thật sự có quy tắc thì mới biết có phải đi
+      // tìm người đã tạo nó hay không.
+      const dsRule = o.getDataValidations();
+      let coRule = false;
+      for (let r = 0; r < dsRule.length && !coRule; r++) {
+        if (dsRule[r][0]) coRule = true;
+      }
+      if (!coRule) return;
+      o.clearDataValidations();
+      soGo++;
+    });
+    if (soGo) bao.push(tenSheet + ' (' + soGo + ' cột)');
+  });
+  return bao;
 }
 
 function datDropdown_(sh, cot, giaTri, soCot) {
@@ -1295,6 +1420,8 @@ function onOpen() {
     .addItem('➕ Bù phiếu dừng máy (thợ quên quét)…', 'menuBuPhieuDungMay')
     .addItem('📊 Cập nhật báo cáo tổng hợp', 'menuBaoCao')
     .addItem('🎯 Tính lại KPI đáp ứng của thợ', 'menuTinhLaiKpi')
+    .addItem('📐 Báo cáo lỗi đáp ứng theo tháng…', 'menuBaoCaoDapUng')
+    .addItem('🩺 Chẩn đoán KPI', 'menuChanDoanKpi')
     .addItem('📤 Xuất báo cáo (chọn ngày, bộ phận, thợ)…', 'menuXuatBaoCao')
     .addItem('📈 Báo cáo tỉ lệ khả dụng máy…', 'menuBaoCaoKhaDung')
     .addItem('🗄️ Dọn phiếu cũ sang Lưu trữ', 'menuLuuTru')
@@ -1358,6 +1485,27 @@ function menuMoKeHoachKhaDung() {
 function menuLuuTru() { chayVaBao_('Dọn phiếu cũ', archiveOldTickets); }
 function menuCaiTrigger() { chayVaBao_('Cài trigger', caiDatTrigger); }
 function menuTinhLaiKpi() { chayVaBao_('Tính lại KPI đáp ứng', tinhLaiKpiTho); }
+function menuChanDoanKpi() { chayVaBao_('Chẩn đoán KPI', chanDoanKpi); }
+
+/**
+ * Hỏi tháng rồi xuất báo cáo lỗi đáp ứng. Bỏ trống là tháng hiện tại.
+ *
+ * Dùng prompt một dòng thay vì dựng HtmlService như menuXuatBaoCao: báo cáo này
+ * chỉ có MỘT tham số, mở cả một hộp thoại cho một ô là bắt người dùng bấm thêm.
+ */
+function menuBaoCaoDapUng() {
+  const ui = SpreadsheetApp.getUi();
+  const hoi = ui.prompt('Báo cáo lỗi đáp ứng',
+    'Tháng cần xuất, dạng MM/yyyy (ví dụ 08/2026).\n' +
+    'Để trống rồi bấm OK = tháng hiện tại.', ui.ButtonSet.OK_CANCEL);
+  if (hoi.getSelectedButton() !== ui.Button.OK) return;
+
+  const thang = String(hoi.getResponseText() || '').trim();
+  chayVaBao_('Báo cáo lỗi đáp ứng', function () {
+    const kq = xuatBaoCaoDapUng(thang);
+    return kq.thongDiep + '\n\n' + kq.url;
+  });
+}
 
 function menuBaoCao() {
   const ui = SpreadsheetApp.getUi();
