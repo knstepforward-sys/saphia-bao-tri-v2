@@ -303,10 +303,17 @@ bang('nenBatCauChi_ không tham số thì không văng lỗi', G.nenBatCauChi_()
 // liệu đã ghi của 13 thợ, và hai hàm `refreshPersonalLinks` / `chuanBiDanhMuc`
 // vốn đọc rồi ghi lại trọn khối theo chỉ số cột sẽ ghi nhầm ô.
 
-bang('Telegram_Chat_ID nằm đúng cuối HEADER_THO',
-  G.HEADER_THO[G.HEADER_THO.length - 1], 'Telegram_Chat_ID');
-bang('Danh_Muc_Tho đúng 10 cột', G.HEADER_THO.length, 10);
-// Sheet mặc định rộng 26 cột nên đọc/ghi 10 cột vẫn trong vùng — rào 5.3.
+// Cập nhật 12/09/2026: đợt KPI đáp ứng v2 thêm `Nguong_KPI_Phut` vào SAU
+// Telegram_Chat_ID, nên cột cuối nay là cột mới đó. Phép thử vẫn canh đúng điều
+// nó vốn canh — cột bổ sung nằm ở CUỐI, không chèn vào giữa — chỉ là canh trên
+// hai cột bổ sung thay vì một. Nới lỏng phép thử này là mở lại đúng cái bẫy nó
+// được dựng lên để chặn.
+bang('Telegram_Chat_ID vẫn nằm đúng chỗ cũ, không bị cột mới đẩy đi',
+  G.HEADER_THO[9], 'Telegram_Chat_ID');
+bang('Nguong_KPI_Phut là cột bổ sung mới nhất, nằm đúng CUỐI HEADER_THO',
+  G.HEADER_THO[G.HEADER_THO.length - 1], 'Nguong_KPI_Phut');
+bang('Danh_Muc_Tho đúng 11 cột', G.HEADER_THO.length, 11);
+// Sheet mặc định rộng 26 cột nên đọc/ghi 11 cột vẫn trong vùng — rào 5.3.
 bang('Danh_Muc_Tho chưa chạm giới hạn 26 cột mặc định',
   G.HEADER_THO.length <= 26, true);
 // Tên cột phải khớp giữa hai nơi, nếu không chatIdTheoMaTho_ đọc ra rỗng hết

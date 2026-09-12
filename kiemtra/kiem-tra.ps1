@@ -10,10 +10,10 @@
 # Chốt 0 không phải phép thử đúng sai mà là một cái chốt cửa: có token bot lọt vào
 # mã nguồn thì mọi thứ khác xanh cũng vô nghĩa, nên nó chạy trước.
 #
-# Ba lớp đầu chỉ bắt lỗi TĨNH; lớp 4 và lớp 5 chạy thẳng phép thử vì hai nhóm hàm
-# đó là hàm thuần — chỉ nhận mảng, chuỗi và Date. Lớp thứ sáu — logic nghiệp vụ
-# còn lại — nằm trong Sheet: menu 🔧 Bảo trì → 🧪 Chạy test logic (~230 phép thử,
-# chạy bằng dữ liệu giả).
+# Ba lớp đầu chỉ bắt lỗi TĨNH; lớp 4, 5 và 6 chạy thẳng phép thử vì ba nhóm hàm
+# đó là hàm thuần — chỉ nhận mảng, chuỗi và Date. Lớp thứ bảy — logic nghiệp vụ
+# còn lại — nằm trong Sheet: menu 🔧 Bảo trì → 🧪 Chạy test logic, chạy bằng dữ
+# liệu giả.
 # =============================================================================
 
 $ErrorActionPreference = 'Stop'
@@ -72,6 +72,19 @@ if ($LASTEXITCODE -ne 0) { $ok = $false }
 # UrlFetchApp hay SpreadsheetApp vào nhóm hàm soạn tin là đỏ ngay.
 Write-Output "`n=== 5. Noi dung tin Telegram ==="
 node (Join-Path $PSScriptRoot 'thongbao.js') $duAn
+if ($LASTEXITCODE -ne 0) { $ok = $false }
+
+# --- Lớp 6: phép đếm lần lỗi đáp ứng -----------------------------------------
+# Nhóm hàm trong LoiDapUng.gs cố ý KHÔNG gọi SpreadsheetApp/Utilities, nên chạy
+# thẳng được ở đây. Lớp này canh luôn ranh giới đó: kéo một lời gọi dịch vụ vào
+# file kia là đỏ ngay, kèm lời giải thích.
+#
+# Phần đối chiếu với báo cáo tay tháng 8/2026 tự bật khi hai file
+# kiemtra\mau\kpi-t8-nguon.json và kpi-t8-mongdoi.json có mặt. Thiếu chúng thì
+# lớp vẫn xanh — bộ mẫu tự dựng đã phủ đủ nhánh — nhưng script in cảnh báo to
+# rằng các con số của tháng 8 thật CHƯA ai kiểm.
+Write-Output "`n=== 6. Phep dem lan loi dap ung ==="
+node (Join-Path $PSScriptRoot 'loi-dap-ung.js') $duAn
 if ($LASTEXITCODE -ne 0) { $ok = $false }
 
 # --- Kết luận ----------------------------------------------------------------

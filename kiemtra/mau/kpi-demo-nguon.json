@@ -1,0 +1,141 @@
+{
+  "_doc": [
+    "BỘ MẪU TỰ DỰNG để canh phép đếm lần lỗi đáp ứng. KHÔNG phải dữ liệu thật.",
+    "Mỗi dòng cố ý phủ MỘT nhánh của phép đếm; kỳ vọng nằm ở kpi-demo-mongdoi.json",
+    "và được tính TAY, không phải chép lại từ đầu ra của mã.",
+    "Các số ở đây là số GỐC — phép đổi vị trí đáp ứng ↔ sửa CHƯA áp dụng,",
+    "khác với bộ mẫu tháng 8 thật (kpi-t8-nguon.json) đã đổi sẵn."
+  ],
+  "nguongTheoTho": { "Cường": 5, "Hảo": 10, "Dũng": 5, "Nhị": 10, "Phát": 10, "Tú": 5 },
+  "khaiTay": [
+    { "Ma_Su_Co": "SC-13", "Ly_Do": "chủ quản xác nhận thợ quên bấm nhận",
+      "Nguoi_Xac_Nhan": "Khang", "Ngay": "2026-09-01" }
+  ],
+  "phieu": [
+    { "_ca": "rảnh, dưới ngưỡng → đạt",
+      "Ma_Su_Co": "SC-01", "Ngay_Ca": "2026-08-03", "Ten_Tho": "Cường", "Ma_Tho": "TH01",
+      "Bo_Phan": "DET", "Ma_May": "D-01", "Ten_May": "Máy dệt 01", "Loai_Phieu": "SU_CO",
+      "Phut_Tiep_Nhan": 3, "Phut_Cho_Tho_Ban": 0, "Phut_Dap_Ung_Thuc": 3,
+      "So_Chong_Viec": 0, "Phut_KPI_Tho": 3, "Phut_Xu_Ly": 40 },
+
+    { "_ca": "rảnh, ĐÚNG BẰNG ngưỡng → KHÔNG tính lỗi",
+      "Ma_Su_Co": "SC-02", "Ngay_Ca": "2026-08-03", "Ten_Tho": "Cường", "Ma_Tho": "TH01",
+      "Bo_Phan": "DET", "Ma_May": "D-02", "Ten_May": "Máy dệt 02", "Loai_Phieu": "SU_CO",
+      "Phut_Tiep_Nhan": 5, "Phut_Cho_Tho_Ban": 0, "Phut_Dap_Ung_Thuc": 5,
+      "So_Chong_Viec": 0, "Phut_KPI_Tho": 5, "Phut_Xu_Ly": 30 },
+
+    { "_ca": "rảnh, vượt ngưỡng → MỘT LẦN LỖI",
+      "Ma_Su_Co": "SC-03", "Ngay_Ca": "2026-08-04", "Ten_Tho": "Cường", "Ma_Tho": "TH01",
+      "Bo_Phan": "DET", "Ma_May": "D-03", "Ten_May": "Máy dệt 03", "Loai_Phieu": "SU_CO",
+      "Phut_Tiep_Nhan": 9, "Phut_Cho_Tho_Ban": 0, "Phut_Dap_Ung_Thuc": 9,
+      "So_Chong_Viec": 0, "Phut_KPI_Tho": 9, "Phut_Xu_Ly": 25 },
+
+    { "_ca": "ngưỡng RIÊNG 10 phút cứu phiếu 9 phút — cùng số này thợ ngưỡng 5 đã lỗi",
+      "Ma_Su_Co": "SC-04", "Ngay_Ca": "2026-08-04", "Ten_Tho": "Hảo", "Ma_Tho": "TH02",
+      "Bo_Phan": "SOI", "Ma_May": "S-01", "Ten_May": "Máy sợi 01", "Loai_Phieu": "SU_CO",
+      "Phut_Tiep_Nhan": 9, "Phut_Cho_Tho_Ban": 0, "Phut_Dap_Ung_Thuc": 9,
+      "So_Chong_Viec": 0, "Phut_KPI_Tho": 9, "Phut_Xu_Ly": 20 },
+
+    { "_ca": "rảnh, vượt cả ngưỡng 10 → lỗi",
+      "Ma_Su_Co": "SC-05", "Ngay_Ca": "2026-08-05", "Ten_Tho": "Hảo", "Ma_Tho": "TH02",
+      "Bo_Phan": "SOI", "Ma_May": "S-02", "Ten_May": "Máy sợi 02", "Loai_Phieu": "SU_CO",
+      "Phut_Tiep_Nhan": 12, "Phut_Cho_Tho_Ban": 0, "Phut_Dap_Ung_Thuc": 12,
+      "So_Chong_Viec": 0, "Phut_KPI_Tho": 12, "Phut_Xu_Ly": 35 },
+
+    { "_ca": "BẬN vì máy phải chờ thợ bận → vượt ngưỡng nhưng KHÔNG tính lỗi",
+      "Ma_Su_Co": "SC-06", "Ngay_Ca": "2026-08-05", "Ten_Tho": "Dũng", "Ma_Tho": "TH03",
+      "Bo_Phan": "DET", "Ma_May": "D-04", "Ten_May": "Máy dệt 04", "Loai_Phieu": "SU_CO",
+      "Phut_Tiep_Nhan": 40, "Phut_Cho_Tho_Ban": 30, "Phut_Dap_Ung_Thuc": 10,
+      "So_Chong_Viec": 0, "Phut_KPI_Tho": 10, "Phut_Xu_Ly": 45 },
+
+    { "_ca": "BẬN vì chồng việc → vượt ngưỡng nhưng KHÔNG tính lỗi",
+      "Ma_Su_Co": "SC-07", "Ngay_Ca": "2026-08-06", "Ten_Tho": "Dũng", "Ma_Tho": "TH03",
+      "Bo_Phan": "DET", "Ma_May": "D-05", "Ten_May": "Máy dệt 05", "Loai_Phieu": "SU_CO",
+      "Phut_Tiep_Nhan": 20, "Phut_Cho_Tho_Ban": 0, "Phut_Dap_Ung_Thuc": 20,
+      "So_Chong_Viec": 1, "Phut_KPI_Tho": 20, "Phut_Xu_Ly": 50 },
+
+    { "_ca": "CHUA_TINH — CẢ HAI ô trống. Tuyệt đối không được coi là rảnh.",
+      "Ma_Su_Co": "SC-08", "Ngay_Ca": "2026-08-06", "Ten_Tho": "Dũng", "Ma_Tho": "TH03",
+      "Bo_Phan": "DET", "Ma_May": "D-06", "Ten_May": "Máy dệt 06", "Loai_Phieu": "SU_CO",
+      "Phut_Tiep_Nhan": 7, "Phut_Cho_Tho_Ban": "", "Phut_Dap_Ung_Thuc": "",
+      "So_Chong_Viec": "", "Phut_KPI_Tho": "", "Phut_Xu_Ly": 30 },
+
+    { "_ca": "CHUA_TINH — chỉ MỘT ô trống cũng không kết luận được thợ rảnh",
+      "Ma_Su_Co": "SC-09", "Ngay_Ca": "2026-08-07", "Ten_Tho": "Dũng", "Ma_Tho": "TH03",
+      "Bo_Phan": "DET", "Ma_May": "D-07", "Ten_May": "Máy dệt 07", "Loai_Phieu": "SU_CO",
+      "Phut_Tiep_Nhan": 8, "Phut_Cho_Tho_Ban": 0, "Phut_Dap_Ung_Thuc": 8,
+      "So_Chong_Viec": "", "Phut_KPI_Tho": 8, "Phut_Xu_Ly": 22 },
+
+    { "_ca": "THIẾU SỐ — rảnh nhưng không có số phút nào để đem so",
+      "Ma_Su_Co": "SC-10", "Ngay_Ca": "2026-08-07", "Ten_Tho": "Dũng", "Ma_Tho": "TH03",
+      "Bo_Phan": "DET", "Ma_May": "D-08", "Ten_May": "Máy dệt 08", "Loai_Phieu": "SU_CO",
+      "Phut_Tiep_Nhan": 11, "Phut_Cho_Tho_Ban": 0, "Phut_Dap_Ung_Thuc": "",
+      "So_Chong_Viec": 0, "Phut_KPI_Tho": "", "Phut_Xu_Ly": 33 },
+
+    { "_ca": "thợ CHƯA CHỐT NGƯỠNG — 30 phút vẫn không bị chấm lỗi, đếm riêng",
+      "Ma_Su_Co": "SC-11", "Ngay_Ca": "2026-08-08", "Ten_Tho": "Lam", "Ma_Tho": "TH04",
+      "Bo_Phan": "CMTX", "Ma_May": "C-01", "Ten_May": "Máy CMTX 01", "Loai_Phieu": "SU_CO",
+      "Phut_Tiep_Nhan": 30, "Phut_Cho_Tho_Ban": 0, "Phut_Dap_Ung_Thuc": 30,
+      "So_Chong_Viec": 0, "Phut_KPI_Tho": 30, "Phut_Xu_Ly": 40 },
+
+    { "_ca": "HT- tính CHUNG một con số với sự cố (chủ dự án chốt 11/09/2026)",
+      "Ma_Su_Co": "HT-01", "Ngay_Ca": "2026-08-08", "Ten_Tho": "Cường", "Ma_Tho": "TH01",
+      "Bo_Phan": "DET", "Ma_May": "D-09", "Ten_May": "Máy dệt 09", "Loai_Phieu": "HO_TRO",
+      "Phut_Tiep_Nhan": 15, "Phut_Cho_Tho_Ban": 0, "Phut_Dap_Ung_Thuc": 15,
+      "So_Chong_Viec": 0, "Phut_KPI_Tho": 15, "Phut_Xu_Ly": 20 },
+
+    { "_ca": "CV- không vào phép đếm nhưng vẫn hiện ở cột việc chung",
+      "Ma_Su_Co": "CV-01", "Ngay_Ca": "2026-08-09", "Ten_Tho": "Cường", "Ma_Tho": "TH01",
+      "Bo_Phan": "CHUNG", "Ma_May": "", "Ten_May": "", "Loai_Phieu": "CONG_VIEC",
+      "Phut_Tiep_Nhan": 0, "Phut_Cho_Tho_Ban": 0, "Phut_Dap_Ung_Thuc": 0,
+      "So_Chong_Viec": 0, "Phut_KPI_Tho": 0, "Phut_Xu_Ly": 90 },
+
+    { "_ca": "BT- cũng vậy, sang cột bảo trì",
+      "Ma_Su_Co": "BT-01", "Ngay_Ca": "2026-08-09", "Ten_Tho": "Cường", "Ma_Tho": "TH01",
+      "Bo_Phan": "DET", "Ma_May": "D-10", "Ten_May": "Máy dệt 10", "Loai_Phieu": "BAO_TRI",
+      "Phut_Tiep_Nhan": "", "Phut_Cho_Tho_Ban": "", "Phut_Dap_Ung_Thuc": "",
+      "So_Chong_Viec": "", "Phut_KPI_Tho": "", "Phut_Xu_Ly": 15 },
+
+    { "_ca": "DM- không có thợ, không đo gì — phải biến mất hoàn toàn khỏi mọi bảng",
+      "Ma_Su_Co": "DM-01", "Ngay_Ca": "2026-08-10", "Ten_Tho": "", "Ma_Tho": "",
+      "Bo_Phan": "DET", "Ma_May": "D-11", "Ten_May": "Máy dệt 11", "Loai_Phieu": "DUNG_MAY",
+      "Phut_Tiep_Nhan": "", "Phut_Cho_Tho_Ban": "", "Phut_Dap_Ung_Thuc": "",
+      "So_Chong_Viec": "", "Phut_KPI_Tho": "", "Phut_Xu_Ly": "" },
+
+    { "_ca": "ĐỔI VỊ TRÍ theo quy tắc: sửa 1′ ≤ 2′ mà đáp ứng 30′ > 5′ → lỗi biến mất",
+      "Ma_Su_Co": "SC-12", "Ngay_Ca": "2026-08-11", "Ten_Tho": "Nhị", "Ma_Tho": "TH05",
+      "Bo_Phan": "CO", "Ma_May": "K-01", "Ten_May": "Máy CO 01", "Loai_Phieu": "SU_CO",
+      "Phut_Tiep_Nhan": 30, "Phut_Cho_Tho_Ban": 0, "Phut_Dap_Ung_Thuc": 30,
+      "So_Chong_Viec": 0, "Phut_KPI_Tho": 30, "Phut_Xu_Ly": 1 },
+
+    { "_ca": "ĐỔI VỊ TRÍ do KHAI TAY: sửa 4′ > 2′ nên quy tắc cố ý không bắt",
+      "Ma_Su_Co": "SC-13", "Ngay_Ca": "2026-08-11", "Ten_Tho": "Nhị", "Ma_Tho": "TH05",
+      "Bo_Phan": "CO", "Ma_May": "K-02", "Ten_May": "Máy CO 02", "Loai_Phieu": "SU_CO",
+      "Phut_Tiep_Nhan": 25, "Phut_Cho_Tho_Ban": 0, "Phut_Dap_Ung_Thuc": 25,
+      "So_Chong_Viec": 0, "Phut_KPI_Tho": 25, "Phut_Xu_Ly": 4 },
+
+    { "_ca": "biên của quy tắc: sửa ĐÚNG 2′ và đáp ứng 6′ > 5′ → vẫn đổi",
+      "Ma_Su_Co": "SC-14", "Ngay_Ca": "2026-08-12", "Ten_Tho": "Phát", "Ma_Tho": "TH06",
+      "Bo_Phan": "TRANG", "Ma_May": "T-01", "Ten_May": "Máy Trang 01", "Loai_Phieu": "SU_CO",
+      "Phut_Tiep_Nhan": 6, "Phut_Cho_Tho_Ban": 0, "Phut_Dap_Ung_Thuc": 6,
+      "So_Chong_Viec": 0, "Phut_KPI_Tho": 6, "Phut_Xu_Ly": 2 },
+
+    { "_ca": "KHÔNG đổi: sửa 3′ > 2′ và không ai khai tay → lỗi ở lại",
+      "Ma_Su_Co": "SC-15", "Ngay_Ca": "2026-08-12", "Ten_Tho": "Phát", "Ma_Tho": "TH06",
+      "Bo_Phan": "TRANG", "Ma_May": "T-02", "Ten_May": "Máy Trang 02", "Loai_Phieu": "SU_CO",
+      "Phut_Tiep_Nhan": 30, "Phut_Cho_Tho_Ban": 0, "Phut_Dap_Ung_Thuc": 30,
+      "So_Chong_Viec": 0, "Phut_KPI_Tho": 30, "Phut_Xu_Ly": 3 },
+
+    { "_ca": "vượt ngưỡng đúng 1 phút vẫn là một lần lỗi",
+      "Ma_Su_Co": "SC-16", "Ngay_Ca": "2026-08-13", "Ten_Tho": "Tú", "Ma_Tho": "TH07",
+      "Bo_Phan": "MTX", "Ma_May": "M-01", "Ten_May": "Máy MTX 01", "Loai_Phieu": "SU_CO",
+      "Phut_Tiep_Nhan": 6, "Phut_Cho_Tho_Ban": 0, "Phut_Dap_Ung_Thuc": 6,
+      "So_Chong_Viec": 0, "Phut_KPI_Tho": 6, "Phut_Xu_Ly": 10 },
+
+    { "_ca": "LỆCH ĐẲNG THỨC: thợ rảnh mà Phut_Tiep_Nhan 20 ≠ đáp ứng 4 → phải báo ra",
+      "Ma_Su_Co": "SC-17", "Ngay_Ca": "2026-08-13", "Ten_Tho": "Tú", "Ma_Tho": "TH07",
+      "Bo_Phan": "MTX", "Ma_May": "M-02", "Ten_May": "Máy MTX 02", "Loai_Phieu": "SU_CO",
+      "Phut_Tiep_Nhan": 20, "Phut_Cho_Tho_Ban": 0, "Phut_Dap_Ung_Thuc": 4,
+      "So_Chong_Viec": 0, "Phut_KPI_Tho": 4, "Phut_Xu_Ly": 15 }
+  ]
+}

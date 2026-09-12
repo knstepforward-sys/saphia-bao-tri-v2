@@ -1434,6 +1434,157 @@ function chayTest() {
   t.bang('Đã trả lại hàm đọc danh mục thợ', lienLacTho_ === _gocLienLac_, true);
   t.bang('Đã trả lại hàm dựng danh bạ', getOnDutyContacts_ === _gocDanhBa_, true);
 
+  // --- 21. Đếm lần lỗi đáp ứng (LoiDapUng.gs) --------------------------------
+  // Bản trong Sheet của lớp 6 tại máy (`kiemtra/loi-dap-ung.js`). Bộ mẫu đầy đủ
+  // 21 phiếu nằm ở `kiemtra/mau/kpi-demo-nguon.json` và chỉ chạy được bằng node
+  // (Apps Script không đọc file repo), nên ở đây dựng dữ liệu giả tay, phủ đúng
+  // những nhánh dễ hỏng nhất. Không đọc/ghi sheet nào.
+  function _phieuLoi_(o) {
+    const v = new Array(HEADER_SU_CO.length).fill('');
+    Object.keys(o).forEach(function (k) { v[COT[k]] = o[k]; });
+    return v;
+  }
+  function _sc_(ma, ten, phut, chong, choBan, them) {
+    const o = {
+      Ma_Su_Co: ma, Ngay_Ca: '2026-08-03', Ten_Tho: ten, Bo_Phan: 'DET',
+      Ten_May: 'Máy ' + ma, Loai_Phieu: LOAI_PHIEU.SU_CO,
+      Phut_Tiep_Nhan: phut, Phut_Cho_Tho_Ban: choBan, Phut_Dap_Ung_Thuc: phut,
+      So_Chong_Viec: chong, Phut_KPI_Tho: phut, Phut_Xu_Ly: 30,
+    };
+    Object.keys(them || {}).forEach(function (k) { o[k] = them[k]; });
+    return _phieuLoi_(o);
+  }
+
+  // Ba nhánh của thoRanhLucPhieuToi_. Nhánh CHUA_TINH là chốt chặn quan trọng
+  // nhất: ô trống KHÔNG được ngầm hiểu là 0 rồi tính thành thợ rảnh.
+  t.bang('Hai ô bằng 0 → thợ RẢNH',
+    thoRanhLucPhieuToi_(_sc_('SC-1', 'A', 9, 0, 0)), 'RANH');
+  t.bang('Chồng việc → BẬN',
+    thoRanhLucPhieuToi_(_sc_('SC-1', 'A', 9, 1, 0)), 'BAN');
+  t.bang('Máy chờ vì thợ bận → BẬN',
+    thoRanhLucPhieuToi_(_sc_('SC-1', 'A', 9, 0, 12)), 'BAN');
+  t.bang('CẢ HAI ô trống → CHUA_TINH, KHÔNG phải RANH',
+    thoRanhLucPhieuToi_(_sc_('SC-1', 'A', 9, '', '')), 'CHUA_TINH');
+  t.bang('Chỉ MỘT ô trống cũng là CHUA_TINH',
+    thoRanhLucPhieuToi_(_sc_('SC-1', 'A', 9, '', 0)), 'CHUA_TINH');
+
+  t.bang('Ưu tiên Phut_Dap_Ung_Thuc',
+    soPhutDapUngDeCham_(_phieuLoi_({ Phut_Dap_Ung_Thuc: 7, Phut_KPI_Tho: 99 })), 7);
+  t.bang('Trống thì rơi về Phut_KPI_Tho',
+    soPhutDapUngDeCham_(_phieuLoi_({ Phut_Dap_Ung_Thuc: '', Phut_KPI_Tho: 9 })), 9);
+  t.bang('Cả hai trống → rỗng',
+    soPhutDapUngDeCham_(_phieuLoi_({ Phut_Dap_Ung_Thuc: '', Phut_KPI_Tho: '' })), '');
+  t.bang('Đáp ứng 0 phút là số thật, không phải ô trống',
+    soPhutDapUngDeCham_(_phieuLoi_({ Phut_Dap_Ung_Thuc: 0, Phut_KPI_Tho: '' })), 0);
+
+  t.bang('Ngưỡng riêng của thợ thắng ngưỡng chung',
+    nguongKpiCuaTho_({ Nguong_KPI_Phut: 10 }, { NGUONG_KPI_DAP_UNG_PHUT: '5' }), 10);
+  t.bang('Ngưỡng riêng trống thì rơi về ngưỡng chung',
+    nguongKpiCuaTho_({ Nguong_KPI_Phut: '' }, { NGUONG_KPI_DAP_UNG_PHUT: '5' }), 5);
+  t.bang('Cả hai trống → 0 = CHƯA CHỐT, không phải ngưỡng 0 phút',
+    nguongKpiCuaTho_({}, {}), 0);
+
+  // Ngưỡng RIÊNG: cùng 9 phút, thợ ngưỡng 5 thì lỗi, thợ ngưỡng 10 thì không.
+  // Đây là điểm khác nhau cốt lõi giữa thiết kế mới và ngưỡng chung cũ.
+  const _dsLoi_ = [
+    _sc_('SC-01', 'Cường', 3, 0, 0),     // rảnh, dưới ngưỡng 5 → đạt
+    _sc_('SC-02', 'Cường', 5, 0, 0),     // ĐÚNG BẰNG ngưỡng → không tính
+    _sc_('SC-03', 'Cường', 9, 0, 0),     // vượt → 1 lần lỗi
+    _sc_('SC-04', 'Hảo', 9, 0, 0),       // cùng 9 phút mà ngưỡng 10 → đạt
+    _sc_('SC-05', 'Hảo', 12, 0, 0),      // vượt cả ngưỡng 10 → 1 lần lỗi
+    _sc_('SC-06', 'Dũng', 20, 1, 0),     // BẬN → vượt nhưng không tính lỗi
+    _sc_('SC-07', 'Dũng', 9, '', ''),    // CHƯA TÍNH → loại, không thành rảnh
+    _sc_('SC-08', 'Lam', 30, 0, 0),      // thợ chưa chốt ngưỡng → loại riêng
+    _phieuLoi_({ Ma_Su_Co: 'HT-01', Ngay_Ca: '2026-08-03', Ten_Tho: 'Cường',
+      Bo_Phan: 'DET', Loai_Phieu: LOAI_PHIEU.HO_TRO, Phut_Tiep_Nhan: 15,
+      Phut_Cho_Tho_Ban: 0, Phut_Dap_Ung_Thuc: 15, So_Chong_Viec: 0,
+      Phut_KPI_Tho: 15, Phut_Xu_Ly: 20 }),                 // HT- tính chung
+    _phieuLoi_({ Ma_Su_Co: 'CV-01', Ngay_Ca: '2026-08-03', Ten_Tho: 'Cường',
+      Bo_Phan: 'CHUNG', Loai_Phieu: LOAI_PHIEU.CONG_VIEC }),
+    _phieuLoi_({ Ma_Su_Co: 'BT-01', Ngay_Ca: '2026-08-03', Ten_Tho: 'Cường',
+      Bo_Phan: 'DET', Loai_Phieu: LOAI_PHIEU.BAO_TRI }),
+    _phieuLoi_({ Ma_Su_Co: 'DM-01', Ngay_Ca: '2026-08-03', Ten_Tho: '',
+      Bo_Phan: 'DET', Loai_Phieu: LOAI_PHIEU.DUNG_MAY }),
+  ];
+  const _ngLoi_ = { 'Cường': 5, 'Hảo': 10, 'Dũng': 5 };
+  const _rLoi_ = demLoiDapUng_(_dsLoi_, _ngLoi_, { nguongChung: 0 });
+
+  t.bang('Số phiếu đo được đáp ứng (SC- và HT-)', _rLoi_.tong.soPhieuSuCo, 9);
+  t.bang('Phiếu tới lúc thợ rảnh', _rLoi_.tong.soRanh, 7);
+  t.bang('Phiếu tới lúc thợ bận', _rLoi_.tong.soBan, 1);
+  t.bang('Phiếu chưa tính KPI, bị loại', _rLoi_.tong.soChuaTinh, 1);
+  t.bang('SỐ LẦN LỖI', _rLoi_.tong.soLanLoi, 3);
+  t.bang('Vượt ngưỡng nhưng thợ bận', _rLoi_.tong.soVuotKhiBan, 1);
+  t.bang('Tổng vượt ngưỡng', _rLoi_.tong.soVuotTong, 4);
+  t.bang('Thợ chưa chốt ngưỡng, bị loại', _rLoi_.tong.soChuaChotNguong, 1);
+  t.bang('Đúng ba phiếu tính lỗi, đúng ba mã',
+    _rLoi_.dsPhieuLoi.filter(function (p) { return p.tinhLoi; })
+      .map(function (p) { return p.maSuCo; }).sort(), ['HT-01', 'SC-03', 'SC-05']);
+  t.bang('Rảnh + bận + chưa tính + thiếu số = tổng phiếu sự cố',
+    _rLoi_.tong.soRanh + _rLoi_.tong.soBan + _rLoi_.tong.soChuaTinh +
+    _rLoi_.tong.soThieuSo, _rLoi_.tong.soPhieuSuCo);
+  t.bang('Số lần lỗi + vượt khi bận = tổng vượt ngưỡng',
+    _rLoi_.tong.soLanLoi + _rLoi_.tong.soVuotKhiBan, _rLoi_.tong.soVuotTong);
+  t.bang('CV- sang cột việc chung, không vào phép đếm',
+    _rLoi_.theoTho.filter(function (x) { return x.ten === 'Cường'; })[0].soViecChung, 1);
+  t.bang('BT- sang cột bảo trì',
+    _rLoi_.theoTho.filter(function (x) { return x.ten === 'Cường'; })[0].soBaoTri, 1);
+  t.bang('DM- không sinh ra dòng thợ rỗng',
+    _rLoi_.theoTho.filter(function (x) { return x.ten === '(chưa có thợ)'; }).length, 0);
+  t.bang('Bảng theo thợ xếp nhiều lỗi nhất trước',
+    _rLoi_.theoTho.map(function (x) { return x.ten; })[0], 'Cường');
+
+  // Đổi vị trí đáp ứng ↔ sửa. Chốt chặn: KHÔNG sửa mảng đầu vào tại chỗ — dữ
+  // liệu gốc là bằng chứng, và báo cáo phải in được cả số gốc.
+  const _chDoi_ = { DOI_VI_TRI_BAT: 'BAT', DOI_VI_TRI_XU_LY_TOI_DA: '2',
+    DOI_VI_TRI_DAP_UNG_TOI_THIEU: '5' };
+  const _dsDoi_ = [
+    _sc_('SC-A', 'Nhị', 30, 0, 0, { Phut_Xu_Ly: 1 }),   // quy tắc bắt
+    _sc_('SC-B', 'Nhị', 25, 0, 0, { Phut_Xu_Ly: 4 }),   // chỉ khai tay mới vào
+    _sc_('SC-C', 'Nhị', 6, 0, 0, { Phut_Xu_Ly: 2 }),    // biên: sửa đúng 2′
+    _sc_('SC-D', 'Nhị', 30, 0, 0, { Phut_Xu_Ly: 3 }),   // không đổi
+  ];
+  const _anhChup_ = JSON.stringify(_dsDoi_);
+  const _kqDoi_ = apDungDoiViTri_(_dsDoi_, _chDoi_,
+    [{ Ma_Su_Co: 'SC-B', Ly_Do: 'chủ quản xác nhận', Nguoi_Xac_Nhan: 'Khang' }]);
+
+  t.bang('apDungDoiViTri_ KHÔNG sửa mảng đầu vào tại chỗ',
+    JSON.stringify(_dsDoi_), _anhChup_);
+  t.bang('Đổi đúng ba phiếu', _kqDoi_.dsDoi.map(function (d) { return d.maSuCo; }),
+    ['SC-A', 'SC-B', 'SC-C']);
+  t.bang('Quy tắc tự bắt SC-A và SC-C',
+    _kqDoi_.dsDoi.filter(function (d) { return d.nguon === 'QUY_TAC'; })
+      .map(function (d) { return d.maSuCo; }), ['SC-A', 'SC-C']);
+  t.bang('SC-B chỉ vào được nhờ khai tay',
+    _kqDoi_.dsDoi.filter(function (d) { return d.nguon === 'KHAI_TAY'; })
+      .map(function (d) { return d.maSuCo; }), ['SC-B']);
+  t.bang('Số gốc đi kèm để báo cáo in được cả hai',
+    [_kqDoi_.dsDoi[0].dapUngGoc, _kqDoi_.dsDoi[0].suaGoc,
+      _kqDoi_.dsDoi[0].dapUngMoi, _kqDoi_.dsDoi[0].suaMoi], [30, 1, 1, 30]);
+  t.bang('Đổi rồi thì hai lần lỗi biến mất (ngưỡng 10)',
+    [demLoiDapUng_(_dsDoi_, { 'Nhị': 10 }, {}).tong.soLanLoi,
+      demLoiDapUng_(_kqDoi_.ds, { 'Nhị': 10 }, {}).tong.soLanLoi], [3, 1]);
+  t.bang('Công tắc TAT tắt cả quy tắc lẫn khai tay',
+    apDungDoiViTri_(_dsDoi_, { DOI_VI_TRI_BAT: 'TAT' },
+      [{ Ma_Su_Co: 'SC-B' }]).dsDoi.length, 0);
+  t.bang('Đổi rồi vẫn không lệch đẳng thức trên nhóm thợ rảnh',
+    demLoiDapUng_(_kqDoi_.ds, { 'Nhị': 10 }, {}).lechDangThuc.length, 0);
+
+  // Lệch đẳng thức phải được BÁO RA. Thợ rảnh thì Phut_Tiep_Nhan phải bằng số
+  // phút đem chấm — lệch là dữ liệu hỏng, không được im.
+  t.bang('Thợ rảnh mà Phut_Tiep_Nhan ≠ đáp ứng thì báo lệch',
+    demLoiDapUng_([_sc_('SC-L', 'A', 4, 0, 0, { Phut_Tiep_Nhan: 20 })],
+      { A: 5 }, {}).lechDangThuc.map(function (x) { return x.maSuCo; }), ['SC-L']);
+
+  t.bang('Danh sách rỗng không văng lỗi', demLoiDapUng_([], {}, {}).tong.soLanLoi, 0);
+  t.bang('Không tham số nào cũng không văng lỗi', demLoiDapUng_().tong.soPhieuSuCo, 0);
+
+  t.bang('Cột KPI mới đều có tên trong COT_MA_TU_GHI',
+    ['Phut_Ban_Thuc_Te', 'Phut_KPI_Tho', 'So_Doan_Ban', 'KPI_Ap_Dung', 'Dat_Nguong']
+      .filter(function (c) { return COT_MA_TU_GHI.indexOf(c) < 0; }), []);
+  t.bang('Nguong_KPI_Phut nằm đúng CUỐI HEADER_THO',
+    HEADER_THO[HEADER_THO.length - 1], 'Nguong_KPI_Phut');
+
   // --- Kết quả ---------------------------------------------------------------
   const tong = kq.dat + kq.loi.length;
   const bao = kq.loi.length

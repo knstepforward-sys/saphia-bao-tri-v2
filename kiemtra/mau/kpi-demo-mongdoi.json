@@ -1,0 +1,55 @@
+{
+  "_doc": [
+    "KỲ VỌNG tính TAY từ kpi-demo-nguon.json. Không chép lại từ đầu ra của mã —",
+    "chép lại thì bộ test chỉ xác nhận mã vẫn làm y như hôm qua, kể cả khi hôm qua đã sai.",
+    "Cách kiểm lại bằng tay: mở kpi-demo-nguon.json, mỗi dòng có trường _ca nói rõ",
+    "dòng đó phủ nhánh nào."
+  ],
+  "coDoiViTri": {
+    "tong": {
+      "soPhieuSuCo": 18,
+      "soRanh": 13,
+      "soBan": 2,
+      "soChuaTinh": 2,
+      "soThieuSo": 1,
+      "soChuaChotNguong": 1,
+      "soLanLoi": 5,
+      "soVuotKhiBan": 2,
+      "soVuotTong": 7
+    },
+    "maPhieuLoi": ["SC-15", "HT-01", "SC-03", "SC-05", "SC-16"],
+    "maVuotKhiBan": ["SC-07", "SC-06"],
+    "theoTho": [
+      { "ten": "Cường", "nguong": 5,  "soPhieuSuCo": 4, "soRanh": 4, "soBan": 0, "soLanLoi": 2, "soVuotKhiBan": 0, "chamNhat": 15, "soViecChung": 1, "soBaoTri": 1 },
+      { "ten": "Hảo",   "nguong": 10, "soPhieuSuCo": 2, "soRanh": 2, "soBan": 0, "soLanLoi": 1, "soVuotKhiBan": 0, "chamNhat": 12, "soViecChung": 0, "soBaoTri": 0 },
+      { "ten": "Phát",  "nguong": 10, "soPhieuSuCo": 2, "soRanh": 2, "soBan": 0, "soLanLoi": 1, "soVuotKhiBan": 0, "chamNhat": 30, "soViecChung": 0, "soBaoTri": 0 },
+      { "ten": "Tú",    "nguong": 5,  "soPhieuSuCo": 2, "soRanh": 2, "soBan": 0, "soLanLoi": 1, "soVuotKhiBan": 0, "chamNhat": 6,  "soViecChung": 0, "soBaoTri": 0 },
+      { "ten": "Dũng",  "nguong": 5,  "soPhieuSuCo": 5, "soRanh": 0, "soBan": 2, "soLanLoi": 0, "soVuotKhiBan": 2, "chamNhat": 20, "soViecChung": 0, "soBaoTri": 0 },
+      { "ten": "Lam",   "nguong": 0,  "soPhieuSuCo": 1, "soRanh": 1, "soBan": 0, "soLanLoi": 0, "soVuotKhiBan": 0, "chamNhat": "", "soViecChung": 0, "soBaoTri": 0 },
+      { "ten": "Nhị",   "nguong": 10, "soPhieuSuCo": 2, "soRanh": 2, "soBan": 0, "soLanLoi": 0, "soVuotKhiBan": 0, "chamNhat": "", "soViecChung": 0, "soBaoTri": 0 }
+    ],
+    "bangNguongChung": [
+      { "nguong": 3,  "soLanLoi": 10, "soVuot": 12 },
+      { "nguong": 5,  "soLanLoi": 7,  "soVuot": 9 },
+      { "nguong": 10, "soLanLoi": 4,  "soVuot": 5 },
+      { "nguong": 15, "soLanLoi": 2,  "soVuot": 3 },
+      { "nguong": 20, "soLanLoi": 2,  "soVuot": 2 },
+      { "nguong": 30, "soLanLoi": 0,  "soVuot": 0 }
+    ],
+    "maLechDangThuc": ["SC-17"]
+  },
+  "khongDoiViTri": {
+    "soLanLoi": 7,
+    "maPhieuLoiThem": ["SC-12", "SC-13"]
+  },
+  "doiViTri": {
+    "soPhieuDoi": 3,
+    "theoQuyTac": ["SC-12", "SC-14"],
+    "theoKhaiTay": ["SC-13"],
+    "soGoc": {
+      "SC-12": { "dapUngGoc": 30, "suaGoc": 1, "dapUngMoi": 1, "suaMoi": 30 },
+      "SC-13": { "dapUngGoc": 25, "suaGoc": 4, "dapUngMoi": 4, "suaMoi": 25 },
+      "SC-14": { "dapUngGoc": 6,  "suaGoc": 2, "dapUngMoi": 2, "suaMoi": 6 }
+    }
+  }
+}
