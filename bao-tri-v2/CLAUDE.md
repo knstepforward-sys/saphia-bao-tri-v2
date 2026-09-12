@@ -47,7 +47,7 @@ người dùng để hiện cửa sổ đăng nhập.
 
 ---
 
-## 2. Cấu trúc file — 22 file
+## 2. Cấu trúc file — 24 file
 
 | File | Vai trò |
 |---|---|
@@ -59,12 +59,14 @@ người dùng để hiện cửa sổ đăng nhập.
 | `HieuDung.gs` | Tỉ lệ hiệu dụng A: đọc kế hoạch chạy máy, cắt/hợp khoảng dừng, khối cho `Tong_Hop` và sheet `Hieu_Dung` |
 | `BaoCaoKhaDung.gs` | Chức năng báo cáo khả dụng độc lập: xuất ngày/tháng, đủ máy hoạt động, chia theo bộ phận |
 | `XuatBaoCao.gs` | Xuất file theo form Excel `BC_HH` và `Nhật ký bảo trì` KPI Dệt, lọc theo khoảng ngày / bộ phận / thợ |
+| `LoiDapUng.gs` | **Chỉ hàm THUẦN**: đếm số lần đáp ứng trễ theo ngưỡng riêng từng thợ, phân loại rảnh/bận/chưa tính, đổi vị trí đáp ứng ↔ sửa. Không gọi `SpreadsheetApp` — lớp 6 kiểm thử soi và báo đỏ nếu có |
+| `BaoCaoDapUng.gs` | `xuatBaoCaoDapUng(thang)` — dựng file xuất 7 trang. Phần đọc sheet của `LoiDapUng.gs` |
 | `MaQR.gs` | Trang in mã QR cho máy và thợ, có khoá |
 | `DanhMuc.gs` | Đồng bộ danh mục máy theo bộ phận, thêm máy lẻ |
 | `DonDuLieu.gs` | Xoá phiếu / dọn dữ liệu chạy thử, có thùng rác. **Chỉ menu, không có route web** |
 | `DoTai.gs` | Đo chi phí thật của từng hàm RPC, chỉ đọc |
 | `ThongBao.gs` | Bot Telegram nhắc thợ: soạn tin, gửi, công tắc, cầu chì, hai mục menu, trigger nhắc |
-| `Test.gs` | 340 test chạy bằng dữ liệu giả, **không đụng sheet nào** |
+| `Test.gs` | 380 test chạy bằng dữ liệu giả, **không đụng sheet nào** |
 | `Index.html` | Trang công nhân |
 | `Tho.html` | Trang thợ |
 | `InQr.html` | Trang in QR |
@@ -82,15 +84,27 @@ thì `clasp push` sẽ đẩy nhầm chúng lên Apps Script.
 
 ---
 
-## 3. Schema — 11 sheet
+## 3. Schema — 12 sheet
 
 `Danh_Muc_May` · `Danh_Muc_Tho` · `Ca_Lam_Viec` · `Ke_Hoach_Chay_May` ·
 `Khung_Ngung_Ke_Hoach` · `Cau_Hinh` ·
-`Lich_Truc_Thang` · `Su_Co` · `Nhat_Ky_Su_Co` · `Tong_Hop` · `Luu_Tru` · `Thung_Rac`
+`Lich_Truc_Thang` · `Su_Co` · `Nhat_Ky_Su_Co` · `Tong_Hop` · `Luu_Tru` · `Thung_Rac` ·
+`KPI_Doi_Vi_Tri`
 
-`Danh_Muc_Tho` có **10 cột**: 9 cột gốc + `Telegram_Chat_ID` thêm vào cuối (09/2026).
-Cột đó phải để **định dạng text** — chat id dài 10–13 chữ số, để dạng số thì Sheets hiện
-thành dạng mũ và `chuanHoaChatId_` sẽ chặn, thợ đó bị bỏ qua im lặng.
+`Danh_Muc_Tho` có **11 cột**: 9 cột gốc + `Telegram_Chat_ID` (09/2026) + `Nguong_KPI_Phut`
+(12/2026), cả hai thêm vào **cuối**.
+
+`Telegram_Chat_ID` phải để **định dạng text** — chat id dài 10–13 chữ số, để dạng số thì
+Sheets hiện thành dạng mũ và `chuanHoaChatId_` sẽ chặn, thợ đó bị bỏ qua im lặng.
+
+`Nguong_KPI_Phut` là **số phút CHÍNH SÁCH** do chủ quản chỉ định cho từng thợ — không phải
+thứ máy tính ra. Sửa ô là có hiệu lực ngay lần xuất báo cáo sau, **không cần deploy**. Để
+trống thì rơi về `Cau_Hinh.NGUONG_KPI_DAP_UNG_PHUT`; trống nữa là chưa chốt, báo cáo vẫn ra
+đủ nhưng không chấm đạt/không đạt. **Tuyệt đối không hardcode tên thợ hay ngưỡng vào mã.**
+
+`KPI_Doi_Vi_Tri` (4 cột `Ma_Su_Co`, `Ly_Do`, `Nguoi_Xac_Nhan`, `Ngay`) là chỗ chủ quản khai
+**tay** những phiếu bị ghi ngược thời gian đáp ứng ↔ sửa mà quy tắc tự động không bắt được.
+Khai ở đây **không** sửa dữ liệu gốc — xem mục 7.
 
 Tất cả do `setupSystem()` tạo. Chạy lại **an toàn**: không xoá dữ liệu, chỉ ghi lại header,
 và bổ sung khoá cấu hình còn thiếu.
@@ -105,7 +119,7 @@ và bổ sung khoá cấu hình còn thiếu.
 | `Phut_Cho_Tho_Ban` | Máy chờ vì thợ bận việc khác — **KHÔNG** tính vào KPI thợ |
 | `Phut_Dap_Ung_Thuc` | Từ lúc thợ rảnh đến lúc bấm nhận (bản một mốc rảnh) |
 | `So_Chong_Viec` | Số phiếu khác thợ đang giữ dở lúc bấm nhận |
-| `Loai_Phieu` | `SU_CO` / `CONG_VIEC` / `BAO_TRI` / `DUNG_MAY`. Trống = `SU_CO` |
+| `Loai_Phieu` | `SU_CO` / `CONG_VIEC` / `BAO_TRI` / `DUNG_MAY` / `HO_TRO`. Trống = `SU_CO` |
 | `Phut_Ban_Thuc_Te` | Tổng phút thợ thật sự bận, cộng dồn từng đoạn (09/2026) |
 | `Phut_KPI_Tho` | `Phut_Tiep_Nhan − Phut_Ban_Thuc_Te` — **đây mới là** số chấm KPI |
 | `So_Doan_Ban` | Số đoạn bận rời; `≥2` là phiếu mà cách cũ miễn trừ rộng tay |
@@ -118,6 +132,32 @@ Năm cột cuối do `tinhLaiKpiTho()` (menu 🎯) tính lại được cho **to
 cũ** — mọi mốc giờ cần thiết đã nằm sẵn trên sheet. Chạy lại nhiều lần vô hại.
 Phải chạy `setupSystem()` một lần trước để nới sheet lên 33 cột; hàm có chốt chặn
 báo rõ nếu quên.
+
+Từ 12/09/2026 hàm chạy trên **CẢ `Su_Co` LẪN `Luu_Tru`**, mỗi sheet một `setValues`
+rồi `SpreadsheetApp.flush()`, và báo rõ mỗi sheet ghi bao nhiêu dòng. Bản cũ chỉ đọc
+`Su_Co`, nên phiếu đã dời sang lưu trữ **không bao giờ** được tính lại mà hàm vẫn báo
+thành công — đúng kiểu hỏng im lặng. Thiếu cột ở sheet nào thì **dừng trước khi ghi
+bất cứ đâu**, không để lại dữ liệu nửa mới nửa cũ.
+
+### Hàng rào `goQuyTacXacThuc_()` — cột mã tự ghi phải SẠCH quy tắc xác thực
+
+Hằng `COT_MA_TU_GHI` liệt kê những cột mà **chỉ mã được ghi**, người không bao giờ gõ tay.
+`setupSystem()` gọi `goQuyTacXacThuc_()` để gỡ sạch data validation trên đúng các cột đó, ở
+cả `Su_Co` và `Luu_Tru`.
+
+Tồn tại vì một cái bẫy đã trả giá ngày 12/09/2026: có người tạo tay một dropdown `Loai_Phieu`
+nhưng đặt **nhầm sang cột AF** — tức `KPI_Ap_Dung`, lệch 4 cột. Quy tắc đó từ chối mọi giá
+trị mã ghi vào. Apps Script gom lệnh ghi rồi mới đẩy xuống Sheet, nên `setValues` trả về êm
+ru, hàm báo "đã ghi 748 dòng", Google từ chối lúc đẩy xuống và **huỷ nguyên khối** — không
+lỗi, không cảnh báo, không dấu vết.
+
+> ⚠️ **Thêm cột KPI mới thì PHẢI thêm tên vào `COT_MA_TU_GHI`.** Quên là hàng rào bỏ sót
+> đúng cột vừa thêm. Có phép thử canh việc này trong `Test.gs` mục 21.
+
+Cùng gia đình: hàm nào ghi rồi để hàm khác **đọc lại trong cùng một lượt chạy** thì phải
+`SpreadsheetApp.flush()` ngay sau `setValues`. Không flush thì đọc phải trạng thái trước
+lệnh ghi, và phần dọn phiếu đã báo "còn 520 phiếu chưa tính KPI" ngay dưới dòng vừa nói đã
+tính xong.
 
 ### Ba trạng thái
 
@@ -424,6 +464,104 @@ Ngưỡng đạt khai ở `Cau_Hinh.NGUONG_KPI_DAP_UNG_PHUT`, để trống thì
 đạt/không đạt. Báo cáo xuất có khối **"CƠ SỞ ĐỂ CHỌN NGƯỠNG"** tính sẵn tỷ lệ đạt ở
 5 mức 5/10/15/20/30 phút kèm trung vị, P75, P90, P95 — để chọn ngưỡng bằng số liệu
 thay vì bốc một con số.
+
+### ĐẾM SỐ LẦN LỖI — chỉ số chủ quản thật sự dùng (12/09/2026)
+
+Hai chỉ số trên là **số phút trung bình**. Chủ quản không dùng cách đó, vì trung bình che mất
+thứ người ta cần biết: **thợ này trong tháng trễ mấy lần**. Một thợ trễ 15 lần mỗi lần 6 phút
+có trung bình đẹp hơn một thợ trễ 1 lần mất 90 phút, nhưng người phải đi nhắc là người thứ
+nhất.
+
+Chỉ số cũ **không** bị xoá hay sửa đè — nó đã đi vào các báo cáo đã gửi. Phép đếm mới nằm
+song song, ở `LoiDapUng.gs`.
+
+**MỘT LẦN LỖI** — cả ba điều kiện phải đúng:
+
+1. Phiếu **đo được đáp ứng**: đúng tập `laDoDapUng_()` trả true, hiện là `SC-` và `HT-`.
+   Giữ đúng **một cửa** đó, đừng mở cửa thứ hai — `HT-` tính chung một con số với sự cố,
+   chủ dự án chốt 11/09/2026.
+2. Phiếu tới lúc **thợ đang RẢNH**: `So_Chong_Viec` = 0 **VÀ** `Phut_Cho_Tho_Ban` = 0.
+3. Số phút đáp ứng **LỚN HƠN** ngưỡng riêng của chính thợ đó. **Đúng bằng ngưỡng thì KHÔNG
+   tính** — ngưỡng là mức được phép, không phải mức bị phạt.
+
+Số phút đem so là `Phut_Dap_Ung_Thuc`, trống thì `Phut_KPI_Tho`. **Không** rơi về
+`Phut_Tiep_Nhan`: cột đó chưa trừ lúc thợ bận, dùng nó là chấm thợ cả phần thời gian không
+phải của họ.
+
+**Ba nhóm bị loại, mỗi nhóm một con số RIÊNG trên báo cáo** — gộp lại là doạ người đọc bằng
+một con số vô nghĩa:
+
+| Nhóm | Nghĩa | Phải làm gì |
+|---|---|---|
+| `CHUA_TINH` | Hai ô `So_Chong_Viec` / `Phut_Cho_Tho_Ban` còn **trống** | Bấm menu 🎯 rồi xuất lại |
+| Thiếu số | Cả `Phut_Dap_Ung_Thuc` lẫn `Phut_KPI_Tho` trống, thường do thiếu mốc "giờ thợ nhận" | Lỗi **nhập liệu**, sửa tay trên sheet. Bấm 🎯 không cứu được |
+| Chưa chốt ngưỡng | Thợ chưa có `Nguong_KPI_Phut` và cũng không có ngưỡng chung | Điền ô trên sheet |
+
+> ⚠️ Ô trống **tuyệt đối không** được ngầm hiểu là 0 rồi tính thành thợ rảnh. Làm vậy thì mọi
+> phiếu chưa chạy menu 🎯 vào thẳng nhóm rảnh và bị chấm lỗi oan, trong khi báo cáo vẫn trông
+> như thật. `thoRanhLucPhieuToi_()` có **ba** nhánh chính vì lý do đó, và cả lớp 6 lẫn
+> `Test.gs` mục 21 đều có phép thử canh riêng nhánh thứ ba.
+
+**Thợ BẬN**: vượt ngưỡng vẫn **không** tính lỗi — máy chờ vì thiếu người là chuyện khác với
+thợ chậm — nhưng phải **liệt kê riêng** để chủ quản tự quyết, không được che đi.
+
+**Đẳng thức canh dữ liệu**: trên nhóm thợ RẢNH thì `Phut_Tiep_Nhan` = `Phut_Dap_Ung_Thuc` =
+`Phut_KPI_Tho`, vì không bận thì không có gì để trừ. Lệch nhau là dấu hiệu dữ liệu hỏng và
+phải **báo ra**, không được im. Có ở trang `Kiem_Tra_Ranh` của file xuất và ở menu 🩺.
+
+### Đổi vị trí đáp ứng ↔ sửa
+
+Thợ quên bấm nhận việc: đến máy, sửa xong, rồi mới mở điện thoại bấm "nhận" và bấm "hoàn
+thành" liền nhau. Hệ chỉ thấy hai mốc giờ nên ghi cả khoảng thợ đang sửa thành "máy nằm chờ",
+và ghi vài chục giây bấm hai nút thành "thời gian sửa". Hai con số bị đổi chỗ.
+
+```
+Quy tắc:  phút sửa ≤ DOI_VI_TRI_XU_LY_TOI_DA (2)
+    VÀ    phút đáp ứng > DOI_VI_TRI_DAP_UNG_TOI_THIEU (5)
+          → hoán đổi hai con số
+```
+
+Sửa xong một cái máy trong 2 phút là chuyện không có thật. Phiếu sửa **3–5 phút** thì quy tắc
+**cố ý không bắt** vì không đủ chắc — những phiếu đó chủ quản khai tay ở sheet
+`KPI_Doi_Vi_Tri`. Công tắc tổng: `Cau_Hinh.DOI_VI_TRI_BAT` (`BAT`/`TAT`), `TAT` tắt cả quy
+tắc lẫn khai tay.
+
+> ⚠️ **TUYỆT ĐỐI không ghi số đã đổi ngược vào `Su_Co` hay `Luu_Tru`.** Phép đổi chỉ diễn ra
+> **trong bộ nhớ** lúc lập báo cáo, và báo cáo in **cả số GỐC lẫn số SAU ĐỔI**. Dữ liệu gốc
+> là bằng chứng: đổi đè lên nó là mất khả năng chứng minh con số đến từ đâu, và mất luôn
+> đường lùi nếu sau này quy tắc được chỉnh. `apDungDoiViTri_()` trả về **bản sao**, có phép
+> thử canh riêng việc nó không sửa mảng đầu vào tại chỗ.
+
+Phép đổi này **nặng ký**, nên báo cáo bắt buộc in cả hai con số "khi có đổi" và "khi không
+đổi" để chủ quản thấy mức ảnh hưởng, thay vì phải tin mà không kiểm được.
+
+### File xuất — 7 trang
+
+Menu 🔧 Bảo trì → **📐 Báo cáo lỗi đáp ứng theo tháng…** → `xuatBaoCaoDapUng('MM/yyyy')`.
+Đọc bằng `docSuCoVaLuuTru_()`, tạo một Google Sheet mới trên Drive.
+
+| Trang | Nội dung |
+|---|---|
+| `Tom_Tat` | Khối "cách đếm" 5 gạch · bốn ô số lớn · bảng lỗi theo thợ · kiểm chồng việc · bảng ngưỡng chung · bảng phiếu đã đổi vị trí · mục lục |
+| `Theo_Tho` | 15 cột, một dòng một thợ, dòng TOÀN TỔ ở cuối |
+| `Phieu_Loi` | Mỗi dòng một lần vượt ngưỡng; nhóm rảnh trước, nhóm bận tô nền khác |
+| `Kiem_Tra_Ranh` | Ba bước: chia nhóm rảnh/bận · phiếu vượt ngưỡng khi bận · mức chồng việc từng thợ · phụ lục lệch đẳng thức |
+| `Theo_Ngay` | Số lần lỗi theo từng ngày có phiếu, rồi theo bộ phận |
+| `Dien_Giai` | Mỗi chỉ tiêu một dòng: định nghĩa và lấy từ cột nào |
+| `Du_Lieu_Nguon` | Toàn bộ phiếu trong kỳ kèm cột phái sinh, có bật bộ lọc |
+
+Mỗi trang bọc `try/catch` riêng: hỏng một trang thì sáu trang kia vẫn ra, và báo cáo ghi rõ
+trang nào thiếu vì lý do gì. Mọi con số tính ở server bằng JavaScript — **không ô nào là công
+thức Sheets**.
+
+### Menu 🩺 Chẩn đoán KPI — chỉ đọc
+
+`chanDoanKpi()` in số cột / số dòng hai sheet, tách ba nhóm trạng thái, soi quy tắc xác thực
+còn sót trên cột mã tự ghi, liệt kê ngưỡng đang áp, và **chạy thử phép tính mà không ghi** để
+so với số đang nằm trên sheet. Chạy được giữa ca sản xuất, bao nhiêu lần cũng được.
+
+Mục này đã cắt bài toán "KPI lỗi rất nhiều" xuống còn một dòng mã. **Giữ nó, cập nhật cho
+khớp khi đổi thiết kế, đừng xoá.**
 
 **Thợ tự xem được:** bấm vào phiếu trong "Đã xong gần đây" hiện chi tiết, có dòng
 *"Chờ do bạn đang bận — 30 phút, không tính vào chỉ số đáp ứng của bạn"*. Số liệu công bằng
@@ -767,6 +905,9 @@ nghỉ việc còn sống thêm vài phút.
 | 📋 Báo cáo trong ngày | Hằng ngày |
 | ➕ Bù phiếu dừng máy | Khi thợ quên quét "Dừng máy" lúc đem đồ ra ngoài gia công |
 | 📊 Cập nhật báo cáo tổng hợp | Trigger tự chạy 12h và 23h |
+| 🎯 Tính lại KPI đáp ứng của thợ | Sau mỗi lần dọn phiếu, và trước khi xuất báo cáo đáp ứng. Chạy trên **cả** `Su_Co` và `Luu_Tru` |
+| 📐 Báo cáo lỗi đáp ứng theo tháng… | Cuối tháng. Đếm số lần trễ theo ngưỡng riêng từng thợ, ra file 7 trang |
+| 🩺 Chẩn đoán KPI | Khi báo cáo in cảnh báo lạ, hoặc nghi con số KPI không khớp. **Chỉ đọc**, chạy được giữa ca |
 | 📤 Xuất báo cáo (chọn ngày, bộ phận, thợ) | Cuối tháng, hoặc khi sếp hỏi một khoảng ngày |
 | 📈 Báo cáo tỉ lệ khả dụng máy | Xuất báo cáo A độc lập theo ngày hoặc tháng, đủ máy hoạt động |
 | 🗄️ Dọn phiếu cũ sang Lưu trữ | Trigger tự chạy ngày 1 hằng tháng |
@@ -777,7 +918,20 @@ nghỉ việc còn sống thêm vài phút.
 | ⏱️ Đo tải hệ thống | Định kỳ vài tháng |
 
 Sửa thẳng trên Sheet, có hiệu lực ngay: SĐT thợ · giờ ca từng tổ · lý do dừng máy · số khẩn
-cấp · ngưỡng chặn spam · danh mục máy · lịch trực.
+cấp · ngưỡng chặn spam · danh mục máy · lịch trực · **ngưỡng đáp ứng riêng từng thợ**
+(`Danh_Muc_Tho.Nguong_KPI_Phut`) · **ba khoá đổi vị trí** (`DOI_VI_TRI_*` ở `Cau_Hinh`) ·
+**danh sách phiếu khai tay đổi vị trí** (sheet `KPI_Doi_Vi_Tri`).
+
+**Thứ tự bấm khi làm báo cáo lỗi đáp ứng cuối tháng:**
+
+1. **1. Cài đặt hệ thống** — một lần, để có cột `Nguong_KPI_Phut`, sheet `KPI_Doi_Vi_Tri`,
+   ba khoá `DOI_VI_TRI_*`, và để hàng rào gỡ quy tắc xác thực chạy.
+2. Điền `Nguong_KPI_Phut` cho từng thợ ở sheet `Danh_Muc_Tho`.
+3. **🎯 Tính lại KPI đáp ứng của thợ** — phủ cả `Su_Co` lẫn `Luu_Tru`.
+4. **🩺 Chẩn đoán KPI** — xác nhận "chưa tính" về 0 và "lệch với số trên sheet" về 0.
+5. **📐 Báo cáo lỗi đáp ứng theo tháng…** — gõ `MM/yyyy`.
+6. Đọc trang `Tom_Tat`, khai thêm phiếu vào `KPI_Doi_Vi_Tri` nếu thấy phiếu bị ghi ngược mà
+   quy tắc không bắt, rồi xuất lại. Bước này lặp được bao nhiêu lần cũng vô hại.
 
 ### Quy trình push và deploy
 
@@ -829,15 +983,15 @@ clasp deploy --deploymentId MA_TRIEN_KHAI_DA_GO_KHOI_KHO_CONG_KHAI... --descript
 
 ---
 
-## 14. Kiểm thử — 6 lớp
+## 14. Kiểm thử — 7 lớp
 
 ```bash
 powershell -File kiemtra\kiem-tra.ps1
 ```
 
-Chạy 5 lớp tại máy: cú pháp `.gs` → biến che tham số → HTML (scriptlet trong comment, cú
+Chạy 6 lớp tại máy: cú pháp `.gs` → biến che tham số → HTML (scriptlet trong comment, cú
 pháp JS, `getElementById` trỏ vào id không tồn tại) → **số học KPI đáp ứng thợ** →
-**nội dung tin Telegram**.
+**nội dung tin Telegram** → **phép đếm lần lỗi đáp ứng**.
 
 Trước cả lớp 1 có **chốt 0** (`kiemtra/token.js`): quét cả repository tìm token bot Telegram
 bị dán nhầm vào mã nguồn, thấy là chặn push. Không phải phép thử đúng sai mà là chốt cửa —
@@ -859,8 +1013,28 @@ hàm thuần**: soi mã nguồn từng hàm soạn tin bằng `Function.prototyp
 thật nằm chung file — kéo nhầm một lời gọi mạng vào nhóm hàm soạn tin là mất luôn khả năng
 kiểm thử tại máy.
 
-Lớp thứ sáu: menu **🧪 Chạy test logic** trong Sheet — 340 test bằng dữ liệu giả,
-**không đọc/ghi sheet nào**.
+Lớp 6 (`kiemtra/loi-dap-ung.js`) nạp `Code.gs` + `BaoCao.gs` + `XuatBaoCao.gs` +
+`LoiDapUng.gs` rồi chạy phép đếm lần lỗi — **111 phép thử**. Cũng canh ranh giới hàm thuần
+bằng `Function.prototype.toString` như lớp 5, và in ra **hàm nào** hết thuần chứ không grep cả
+file (grep cả file thì `BaoCaoDapUng.gs` bị báo đỏ oan).
+
+> **Bộ mẫu tháng 8/2026 thật CHƯA có trong repository.** Phần đối chiếu với báo cáo tay
+> (`403 / 260 / 143 / 44 / 1 / 45` và bảng 10 thợ) **tự bật** khi hai file
+> `kiemtra/mau/kpi-t8-nguon.json` và `kpi-t8-mongdoi.json` xuất hiện. Thiếu chúng thì lớp 6
+> vẫn xanh — bộ mẫu tự dựng `kpi-demo-*.json` đã phủ đủ nhánh — nhưng script in **cảnh báo
+> to** rằng các con số của tháng 8 thật chưa ai kiểm. Cố ý không bịa số vào file kỳ vọng: một
+> con số bịa ở đó là bộ test xanh vĩnh viễn cho một phép tính sai.
+>
+> `kpi-t8-nguon.json` chứa số **đã đổi vị trí sẵn**, nên lớp 6 đếm thẳng trên nó, **không** áp
+> `apDungDoiViTri_` thêm lần nữa. `kpi-demo-nguon.json` thì chứa số **gốc**, để test được cả
+> phép đổi.
+
+Bộ mẫu `kiemtra/mau/kpi-demo-mongdoi.json` được tính **tay**, không chép lại từ đầu ra của
+mã — chép lại thì bộ test chỉ xác nhận mã vẫn làm y như hôm qua, kể cả khi hôm qua đã sai.
+Mỗi dòng trong `kpi-demo-nguon.json` có trường `_ca` nói rõ nó phủ nhánh nào.
+
+Lớp thứ bảy: menu **🧪 Chạy test logic** trong Sheet — 380 test bằng dữ liệu giả,
+**không đọc/ghi sheet nào**. Mục 21 là bản trong Sheet của lớp 6 (40 phép thử).
 
 Điều này làm được nhờ `getOnDutyContacts_` nhận tham số `duLieu` **tiêm theo từng trường**:
 `{ dsTho, cauHinhCa, lichTheoThang, cauHinh }`. Thiếu trường nào thì hàm tự đọc sheet — nên
@@ -869,6 +1043,40 @@ Lớp thứ sáu: menu **🧪 Chạy test logic** trong Sheet — 340 test bằn
 ---
 
 ## 15. Trạng thái hiện tại và việc đang dở
+
+### KPI đáp ứng v2 — ĐẾM SỐ LẦN LỖI. Đã viết xong, CHƯA push Apps Script, CHƯA deploy (12/09/2026)
+
+Thiết kế và công thức ở mục 7. Trạng thái thật, ba thứ tách riêng:
+
+- **Đã push GitHub**: rồi.
+- **Đã `clasp push`**: **CHƯA**.
+- **Đã deploy**: **CHƯA**.
+
+File mới: `LoiDapUng.gs` (toàn hàm thuần), `BaoCaoDapUng.gs` (7 trang xuất),
+`kiemtra/loi-dap-ung.js` (lớp 6), `kiemtra/mau/kpi-demo-nguon.json` +
+`kpi-demo-mongdoi.json`.
+Sửa: `Code.gs` (cột `Nguong_KPI_Phut`, sheet `KPI_Doi_Vi_Tri`, `COT_MA_TU_GHI` +
+`goQuyTacXacThuc_`, ba khoá `DOI_VI_TRI_*`, hai mục menu mới), `LuongTho.gs`
+(`tinhLaiKpiTho` phủ `Luu_Tru` + flush, `chanDoanKpi`/`thongKeKpi_`, `bangNguongTho_`),
+`XuatBaoCao.gs` (cảnh báo tách ba nhóm), `Test.gs` (mục 21, 40 phép thử),
+`kiemtra/thongbao.js` (cột cuối `HEADER_THO` nay là `Nguong_KPI_Phut`),
+`kiemtra/kiem-tra.ps1` (nối lớp 6).
+
+**Chạy tại máy**: 6 lớp sạch — 2042 phép thử KPI · 230 phép thử tin Telegram ·
+111 phép thử đếm lỗi đáp ứng. Mục 21 của `Test.gs` (40 phép thử) đã chạy xanh bằng node
+trên chính nhóm hàm thuần đó; **bộ test trong Sheet thì CHƯA bấm chạy** — phải bấm
+🧪 Chạy test logic để có con số 380/380 thật.
+
+**Chưa kiểm chứng bằng số liệu thật**: hai file mẫu tháng 8/2026 (`kpi-t8-nguon.json`,
+`kpi-t8-mongdoi.json`) mà đặc tả nói đã nằm trong repo thì **không có**, nên các con số
+`403 / 260 / 143 / 44 / 1 / 45` và bảng 10 thợ **chưa ai kiểm**. Lớp 6 in cảnh báo to về
+việc này và tự bật phần đối chiếu khi hai file xuất hiện. Xem mục 14.
+
+**Cũng không có trong repo** dù đặc tả nói đã sửa xong: `goQuyTacXacThuc_`,
+`COT_MA_TU_GHI`, `chanDoanKpi`, `thongKeKpi_`, `donPhieuCuHangThang`. Đợt này viết mới cả
+năm thứ đó theo đúng mô tả trong đặc tả (`donPhieuCuHangThang` thì không viết — hàm dọn
+phiếu đang chạy tên là `archiveOldTickets`, và nó **không** gọi tính KPI nên không có chỗ
+nào cần flush thêm).
 
 ### Đang chờ làm
 
