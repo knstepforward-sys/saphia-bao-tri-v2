@@ -434,6 +434,19 @@ function archiveOldTickets() {
       return 'Hệ thống đang bận, bỏ qua lần dọn này.';
     }
 
+    // Sheet hẹp hơn 33 cột thì getRange văng "out of bounds" GIỮA CHỪNG — mà
+    // giữa chừng ở đây là đã ghi xong Luu_Tru chưa kịp dọn Su_Co, tức nhân đôi
+    // phiếu. Kiểm cả hai sheet trước khi động vào dòng nào, y như tinhLaiKpiTho.
+    // Luu_Tru dễ hẹp hơn Su_Co: nó tạo ra từ lâu và chưa lần nào được ghi vào.
+    const hep = [SHEET.SU_CO, SHEET.LUU_TRU].filter(function (ten) {
+      const sh = ss_().getSheetByName(ten);
+      return !sh || sh.getMaxColumns() < HEADER_SU_CO.length;
+    });
+    if (hep.length) {
+      return 'Sheet ' + hep.join(' và ') + ' chưa có đủ ' + HEADER_SU_CO.length +
+        ' cột. Chạy menu 🔧 Bảo trì → "1. Cài đặt hệ thống" một lần rồi dọn lại.';
+    }
+
     const soThang = soThangGiuLai_();
     const mocThang = mocThangLuuTru_(nowVN_(), soThang);
 
