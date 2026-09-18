@@ -163,6 +163,10 @@ const SHEET = {
   THUNG_RAC: 'Thung_Rac',
   KE_HOACH: 'Ke_Hoach_Chay_May',
   KHUNG_NGUNG: 'Khung_Ngung_Ke_Hoach',
+  // --- Tổ trưởng khai kế hoạch máy (xem TASK_KE_HOACH_TO_TRUONG.md) ---------
+  TO: 'Danh_Muc_To',
+  LICH_TO: 'Lich_Lam_Viec_To',
+  KE_HOACH_MAY: 'Ke_Hoach_May',
 };
 
 const HEADER_MAY = ['Ma_May', 'Ten_May', 'Bo_Phan', 'Hoat_Dong', 'Link_QR'];
@@ -224,6 +228,44 @@ const KE_HOACH_MAC_DINH = [
   ['LT',       'Băng tải',                      '07:00', '17:00', false, true, true, true, true, true, true, false, '', ''],
   ['CHUNG',    'Bộ phận Chung',                 '07:00', '17:00', false, true, true, true, true, true, true, false, '', ''],
 ];
+
+/**
+ * TỔ TRƯỞNG KHAI KẾ HOẠCH MÁY — theo TỪNG MÁY, từng ngày/ca. Khác hẳn
+ * Ke_Hoach_Chay_May ở trên (khai theo CẢ BỘ PHẬN, dùng cho tỉ lệ hiệu dụng A cũ
+ * đang tắt hẳn qua HIEN_HIEU_DUNG_BAO_CAO_NGAY). Hai bảng KHÔNG tự động đồng bộ
+ * với nhau. Thiết kế đầy đủ, lý do, và các quyết định đã chốt nằm ở
+ * TASK_KE_HOACH_TO_TRUONG.md — đọc file đó trước khi sửa phần này.
+ */
+const HEADER_TO = ['Bo_Phan', 'Ten_To', 'Ten_To_Truong', 'Token', 'Hoat_Dong', 'Link_Khai_Bao'];
+
+/**
+ * Giờ ca của TỔ, có hiệu lực từ Ap_Dung_Tu. Đổi lịch KHÔNG ghi đè dòng cũ —
+ * luôn thêm dòng mới. Lịch hiện hành của một ngày = dòng có Ap_Dung_Tu lớn
+ * nhất mà vẫn <= ngày cần tra.
+ */
+const HEADER_LICH_TO = [
+  'Bo_Phan', 'Ap_Dung_Tu', 'Ca_Ngay_Tu', 'Ca_Ngay_Den',
+  'Co_Nghi_Trua', 'Nghi_Trua_Tu', 'Nghi_Trua_Den',
+  'Co_Ca_Dem', 'Ca_Dem_Tu', 'Ca_Dem_Den', 'Ghi_Chu', 'Cap_Nhat_Luc',
+];
+
+/**
+ * Kế hoạch máy theo tuần — CHỈ LƯU NGOẠI LỆ (máy Đóng máy). Máy không có dòng
+ * nào trong tuần = mặc định Bố trí chạy — không lưu đủ mọi tổ hợp máy×ngày×ca.
+ *
+ * Trang_Thai = DA_KHAI là dòng CHỐT TUẦN (Ma_May để trống), ghi mỗi lần tổ
+ * trưởng bấm Lưu kể cả không có ngoại lệ nào — để phân biệt "0 ngoại lệ vì cả
+ * tuần bố trí chạy" với "chưa ai khai tuần này" (tuần chưa khai không được
+ * tính vào 2 chỉ số huy động/hiệu suất ở đợt sau, giống tiLe = null của A cũ).
+ *
+ * Khoá upsert: Tuan_Bat_Dau + Ca + Ma_May.
+ */
+const HEADER_KE_HOACH_MAY = [
+  'Tuan_Bat_Dau', 'Ngay', 'Ca', 'Ma_May', 'Bo_Phan', 'Trang_Thai', 'Ly_Do',
+  'Ghi_Chu', 'Nguoi_Cap_Nhat', 'Cap_Nhat_Luc', 'Request_ID',
+];
+
+const TRANG_THAI_KE_HOACH_MAY = { DONG: 'DONG', DA_KHAI: 'DA_KHAI' };
 
 const HEADER_CAU_HINH = ['Khoa', 'Gia_Tri', 'Ghi_Chu'];
 
@@ -867,6 +909,59 @@ function setupSystem() {
     'Loai_Khoang: NGHI_TRUA hoặc GIAO_CA. Có thể khai nhiều dòng GIAO_CA. ' +
     'Không tick thứ nào = áp mọi ngày bộ phận có kế hoạch chạy.');
   ketQua.push(SHEET.KHUNG_NGUNG);
+
+  // --- Danh mục tổ (tổ trưởng khai kế hoạch máy) -----------------------------
+  // Seed 1 dòng mỗi Bo_Phan đang THỰC SỰ có trong Danh_Muc_May, để trống
+  // Ten_To_Truong/Token chờ điền tay — giống cách Danh_Muc_Tho được tạo rồi
+  // điền tay. Chỉ seed khi sheet còn trống, không đạp lên dữ liệu đã khai.
+  const shTo = taoSheet_(SHEET.TO, HEADER_TO);
+  shTo.setColumnWidth(2, 160);
+  shTo.setColumnWidth(3, 160);
+  shTo.setColumnWidth(HEADER_TO.indexOf('Link_Khai_Bao') + 1, 320);
+  datCheckbox_(shTo, HEADER_TO.indexOf('Hoat_Dong') + 1);
+  if (shTo.getLastRow() < 2) {
+    const boPhanDaCo = {};
+    docSheet_(SHEET.MAY, HEADER_MAY).forEach(function (m) {
+      const bp = String(m.Bo_Phan).trim().toUpperCase();
+      if (bp) boPhanDaCo[bp] = true;
+    });
+    const dsBoPhan = Object.keys(boPhanDaCo).sort();
+    if (dsBoPhan.length) {
+      shTo.getRange(2, 1, dsBoPhan.length, HEADER_TO.length).setValues(
+        dsBoPhan.map(function (bp) { return [bp, '', '', '', false, '']; })
+      );
+    }
+  }
+  ketQua.push(SHEET.TO);
+
+  // --- Lịch làm việc của tổ (giờ ca, có hiệu lực theo Ap_Dung_Tu) ------------
+  // Không seed dữ liệu giả: giờ ca là dữ liệu sản xuất thật, tổ trưởng tự khai
+  // lần đầu qua trang web — KHÔNG suy từ Ca_Lam_Viec hay Ke_Hoach_Chay_May.
+  const shLichTo = taoSheet_(SHEET.LICH_TO, HEADER_LICH_TO);
+  shLichTo.setColumnWidth(HEADER_LICH_TO.indexOf('Ghi_Chu') + 1, 260);
+  datCheckbox_(shLichTo, HEADER_LICH_TO.indexOf('Co_Nghi_Trua') + 1);
+  datCheckbox_(shLichTo, HEADER_LICH_TO.indexOf('Co_Ca_Dem') + 1);
+  // Cột giờ để dạng text, nếu không Sheets tự đổi '07:00' thành số thập phân
+  // (0.2917) ngay lúc ghi — đúng bẫy đã dính ở Ca_Lam_Viec/Ke_Hoach_Chay_May.
+  [
+    'Ap_Dung_Tu', 'Ca_Ngay_Tu', 'Ca_Ngay_Den',
+    'Nghi_Trua_Tu', 'Nghi_Trua_Den', 'Ca_Dem_Tu', 'Ca_Dem_Den',
+  ].forEach(function (ten) {
+    shLichTo.getRange(2, HEADER_LICH_TO.indexOf(ten) + 1, shLichTo.getMaxRows() - 1, 1)
+      .setNumberFormat('@');
+  });
+  ketQua.push(SHEET.LICH_TO);
+
+  // --- Kế hoạch máy theo tuần (chỉ lưu ngoại lệ) ------------------------------
+  const shKHMay = taoSheet_(SHEET.KE_HOACH_MAY, HEADER_KE_HOACH_MAY);
+  shKHMay.setColumnWidth(HEADER_KE_HOACH_MAY.indexOf('Ly_Do') + 1, 200);
+  shKHMay.setColumnWidth(HEADER_KE_HOACH_MAY.indexOf('Ghi_Chu') + 1, 260);
+  datDropdown_(shKHMay, HEADER_KE_HOACH_MAY.indexOf('Trang_Thai') + 1,
+    [TRANG_THAI_KE_HOACH_MAY.DONG, TRANG_THAI_KE_HOACH_MAY.DA_KHAI]);
+  // Tuan_Bat_Dau + Ngay là 2 cột liền nhau, cả hai đều lưu chuỗi 'yyyy-MM-dd'.
+  shKHMay.getRange(2, HEADER_KE_HOACH_MAY.indexOf('Tuan_Bat_Dau') + 1,
+    shKHMay.getMaxRows() - 1, 2).setNumberFormat('@');
+  ketQua.push(SHEET.KE_HOACH_MAY);
 
   // --- Cấu hình chung -------------------------------------------------------
   const shCH = taoSheet_(SHEET.CAU_HINH, HEADER_CAU_HINH);

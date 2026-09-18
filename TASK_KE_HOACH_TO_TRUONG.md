@@ -171,7 +171,7 @@ trưởng xem chỉ số tuần của chính tổ + 1 mục menu xuất báo cá
 
 | # | Việc | Xem trước khi duyệt bước sau |
 |---|---|---|
-| 1 | Schema: 3 sheet mới + đoạn `setupSystem()` (chỉ `Code.gs`) | Chạy `setupSystem()`, xem 3 sheet mới đúng cột, không đụng sheet cũ |
+| 1 | ✅ **ĐÃ SỬA CODE** — Schema: 3 sheet mới + đoạn `setupSystem()` (chỉ `Code.gs`). `kiem-tra.ps1` sạch cả 5 lớp. **CHƯA `clasp push`** — chưa chạy thật `setupSystem()` trong Sheet, chờ xác nhận riêng. | Chạy `setupSystem()`, xem 3 sheet mới đúng cột, không đụng sheet cũ |
 | 2 | `xacThucTo_` + route `page=kehoach` trả trang test rỗng | Mở link token sai → từ chối; token đúng (điền tay) → trang trống |
 | 3 | RPC đọc: thông tin tổ + lịch làm việc hiện hành + danh sách máy | Test bằng `chayTest()`, chưa cần UI |
 | 4 | RPC ghi: lưu lịch làm việc (có `Ap_Dung_Tu`) | Test lưu lần đầu + đổi lịch không phá lịch cũ |
