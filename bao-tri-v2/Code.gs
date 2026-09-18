@@ -544,6 +544,29 @@ function taoSheet_(ten, header) {
   return sh;
 }
 
+/**
+ * Số dòng dữ liệu THẬT của một sheet, dựa theo cột neo `cotNeo` (1-based, mặc
+ * định cột 1) có giá trị khác rỗng — KHÔNG dùng sh.getLastRow() để quyết định
+ * "dòng trống kế tiếp để ghi thêm".
+ *
+ * Lý do: datCheckbox_() áp data validation kiểu checkbox lên tới
+ * sh.getMaxRows()-1 dòng, và Google Sheets coi các ô checkbox còn trống đó là
+ * FALSE — một "dòng có nội dung" theo getLastRow(), dù sheet trông như trống.
+ * Dính thật ở Lich_Lam_Viec_To/Danh_Muc_To (xem TASK_KE_HOACH_TO_TRUONG.md,
+ * NOTES.md bước 4): ghi thêm dòng theo getLastRow()+1 bị lạc xuống dòng ~1000.
+ */
+function soDongCoDuLieu_(sh, cotNeo) {
+  const cot = cotNeo || 1;
+  const max = sh.getMaxRows() - 1;
+  if (max <= 0) return 0;
+  const giaTri = sh.getRange(2, cot, max, 1).getValues();
+  let n = 0;
+  for (let i = 0; i < giaTri.length; i++) {
+    if (giaTri[i][0] !== '' && giaTri[i][0] !== null) n = i + 1;
+  }
+  return n;
+}
+
 // ============================================================================
 // 4. HÀM NỀN — thời gian
 // ============================================================================
@@ -911,28 +934,42 @@ function setupSystem() {
   ketQua.push(SHEET.KHUNG_NGUNG);
 
   // --- Danh mục tổ (tổ trưởng khai kế hoạch máy) -----------------------------
-  // Seed 1 dòng mỗi Bo_Phan đang THỰC SỰ có trong Danh_Muc_May, để trống
-  // Ten_To_Truong/Token chờ điền tay — giống cách Danh_Muc_Tho được tạo rồi
-  // điền tay. Chỉ seed khi sheet còn trống, không đạp lên dữ liệu đã khai.
+  // Bổ sung dòng cho những Bo_Phan CÒN THIẾU trong Danh_Muc_To (so với
+  // Danh_Muc_May) — giống cách CAU_HINH_MAC_DINH chỉ thêm khoá còn thiếu, KHÔNG
+  // dùng kiểu "chỉ seed khi sheet trống hẳn": sheet đã có người điền tay một
+  // vài dòng thì lần chạy sau vẫn phải thêm được các bộ phận còn thiếu, không
+  // được coi "đã có dữ liệu nên bỏ qua hẳn".
   const shTo = taoSheet_(SHEET.TO, HEADER_TO);
   shTo.setColumnWidth(2, 160);
   shTo.setColumnWidth(3, 160);
   shTo.setColumnWidth(HEADER_TO.indexOf('Link_Khai_Bao') + 1, 320);
-  datCheckbox_(shTo, HEADER_TO.indexOf('Hoat_Dong') + 1);
-  if (shTo.getLastRow() < 2) {
-    const boPhanDaCo = {};
-    docSheet_(SHEET.MAY, HEADER_MAY).forEach(function (m) {
-      const bp = String(m.Bo_Phan).trim().toUpperCase();
-      if (bp) boPhanDaCo[bp] = true;
+
+  const soDongTo = soDongCoDuLieu_(shTo, 1);
+  const boPhanDaCoTrongTo = {};
+  if (soDongTo > 0) {
+    shTo.getRange(2, 1, soDongTo, 1).getValues().forEach(function (r) {
+      const bp = String(r[0]).trim().toUpperCase();
+      if (bp) boPhanDaCoTrongTo[bp] = true;
     });
-    const dsBoPhan = Object.keys(boPhanDaCo).sort();
-    if (dsBoPhan.length) {
-      shTo.getRange(2, 1, dsBoPhan.length, HEADER_TO.length).setValues(
-        dsBoPhan.map(function (bp) { return [bp, '', '', '', false, '']; })
-      );
-    }
   }
-  ketQua.push(SHEET.TO);
+  const boPhanTrongMay = {};
+  docSheet_(SHEET.MAY, HEADER_MAY).forEach(function (m) {
+    const bp = String(m.Bo_Phan).trim().toUpperCase();
+    if (bp) boPhanTrongMay[bp] = true;
+  });
+  const boPhanThieu = Object.keys(boPhanTrongMay)
+    .filter(function (bp) { return !boPhanDaCoTrongTo[bp]; })
+    .sort();
+  if (boPhanThieu.length) {
+    shTo.getRange(soDongTo + 2, 1, boPhanThieu.length, HEADER_TO.length).setValues(
+      boPhanThieu.map(function (bp) { return [bp, '', '', '', false, '']; })
+    );
+  }
+  // Áp checkbox SAU khi ghi xong dữ liệu — không đổi kết quả (đã dùng
+  // soDongCoDuLieu_ thay vì getLastRow() ở trên), nhưng giữ thói quen ghi dữ
+  // liệu thật trước, áp validation sau, cho nhất quán với các sheet khác.
+  datCheckbox_(shTo, HEADER_TO.indexOf('Hoat_Dong') + 1);
+  ketQua.push(SHEET.TO + (boPhanThieu.length ? ' (+' + boPhanThieu.length + ' bộ phận mới)' : ''));
 
   // --- Lịch làm việc của tổ (giờ ca, có hiệu lực theo Ap_Dung_Tu) ------------
   // Không seed dữ liệu giả: giờ ca là dữ liệu sản xuất thật, tổ trưởng tự khai

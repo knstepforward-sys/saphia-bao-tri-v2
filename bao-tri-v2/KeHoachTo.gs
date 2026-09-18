@@ -270,8 +270,12 @@ function luuLichLamViec(boPhan, token, payload) {
       return { ok: false, error: 'Hệ thống đang bận, thử lại sau vài giây.' };
     }
 
+    // KHÔNG dùng sh.getLastRow(): datCheckbox_ (Co_Nghi_Trua/Co_Ca_Dem) áp
+    // validation checkbox lên cả vùng sh.getMaxRows()-1 dòng, khiến các ô
+    // checkbox còn trống bị Sheets coi là FALSE — getLastRow() báo sai, dòng
+    // ghi thêm sẽ lạc xuống dòng ~1000. Xem soDongCoDuLieu_ trong Code.gs.
     const sh = sheet_(SHEET.LICH_TO);
-    const soDong = sh.getLastRow() - 1;
+    const soDong = soDongCoDuLieu_(sh, HEADER_LICH_TO.indexOf('Bo_Phan') + 1);
     const vung = soDong > 0 ? sh.getRange(2, 1, soDong, HEADER_LICH_TO.length).getValues() : [];
 
     const dong = chuan.dong.slice();
@@ -281,7 +285,7 @@ function luuLichLamViec(boPhan, token, payload) {
     if (iTrung >= 0) {
       sh.getRange(iTrung + 2, 1, 1, HEADER_LICH_TO.length).setValues([dong]);
     } else {
-      sh.getRange(sh.getLastRow() + 1, 1, 1, HEADER_LICH_TO.length).setValues([dong]);
+      sh.getRange(soDong + 2, 1, 1, HEADER_LICH_TO.length).setValues([dong]);
     }
 
     return { ok: true, apDungTu: chuan.apDungTu };

@@ -137,6 +137,38 @@ máy SOI).
 4. Thêm ~22 test vào `chayTest()` (đã có 340 test) — đặt đúng chỗ, tránh bẫy "test giả lặp 2 nơi" đã từng dính ([bao-tri-v2/CLAUDE.md:822](bao-tri-v2/CLAUDE.md)).
 5. `Danh_Muc_To.Token` độc lập cột/hàm với `Danh_Muc_Tho.Token` — vẫn nên có test canh rõ không ảnh hưởng lẫn nhau.
 
+## 7b. Bẫy phát hiện được ở bước 4 — `getLastRow()` bị checkbox làm sai
+
+**`datCheckbox_(sh, cot)` áp data validation checkbox lên tới `sh.getMaxRows()-1` dòng
+(≈999 dòng). Google Sheets coi các ô checkbox còn TRỐNG trong vùng đó là `FALSE` —
+`sh.getLastRow()` báo có dữ liệu tới tận dòng ~1000 ngay cả khi sheet "trông như trống"
+(chỉ có checkbox, chưa ai nhập gì cột khác).**
+
+Hậu quả thật đã dính: `luuLichLamViec` dùng `sh.getRange(sh.getLastRow() + 1, ...)` để
+tìm dòng trống kế tiếp → ghi lạc xuống dòng 1001/1002 thay vì dòng 2/3. Tương tự,
+`setupSystem()` seed `Danh_Muc_To` kiểu "chỉ seed khi `getLastRow() < 2`" không bao giờ
+chạy vì `datCheckbox_` (cột `Hoat_Dong`) đã đẩy `getLastRow()` lên trước khi điều kiện đó
+được kiểm tra.
+
+**Cách vá:** thêm `soDongCoDuLieu_(sh, cotNeo)` trong `Code.gs` — đếm dòng dữ liệu thật
+dựa theo MỘT cột neo cụ thể (vd `Bo_Phan`/`Ma_May`) thay vì tin `getLastRow()` của cả
+sheet. Dùng hàm này ở mọi chỗ cần "tìm dòng trống kế tiếp để ghi thêm" trên sheet có cột
+checkbox. `Danh_Muc_To` cũng đổi sang kiểu bổ sung bộ phận còn thiếu (giống
+`CAU_HINH_MAC_DINH`) thay vì "chỉ seed khi trống hẳn", để không cần sheet thật sự rỗng
+mới seed được.
+
+**⚠️ Nghi ngờ CÙNG LỖI này đã tồn tại từ trước trong `DanhMuc.gs` — `themMayMoi()`** dùng
+đúng kiểu `sh.getRange(sh.getLastRow() + 1, ...)` để thêm máy mới vào `Danh_Muc_May`, mà
+sheet đó cũng có cột checkbox `Hoat_Dong` áp bằng `datCheckbox_`. Nếu đúng, hai máy
+`CMTD02`/`CMTD03` (đã có sẵn trong mảng `MAY_THEM_MOI`, có vẻ đã chạy trước đây) có thể
+đang nằm ở dòng ~1000 của `Danh_Muc_May` thay vì ngay sau các máy khác — không làm hỏng
+chức năng (mọi chỗ đọc đều qua `docSheet_`, tự lọc dòng trống ở cột A, không phụ thuộc vị
+trí), chỉ gây khó tìm bằng mắt khi cuộn sheet. **Đây là phát hiện ngoài phạm vi tính năng
+này, KHÔNG sửa `DanhMuc.gs` ở đây** — cần chủ dự án xác nhận trước khi đụng vào file đang
+chạy thật cho 162 máy.
+
+---
+
 ## 8. Đợt 2 — hai chỉ số (thiết kế xong, CHƯA code)
 
 Tính live từ 3 sheet Đợt 1 + `Su_Co`, **không cần sheet mới**. Đơn vị đếm: **lượt
@@ -174,7 +206,7 @@ trưởng xem chỉ số tuần của chính tổ + 1 mục menu xuất báo cá
 | 1 | ✅ **XONG** — sửa code, `clasp push`, chạy `setupSystem()` thật trong Sheet. Chủ dự án xác nhận 3 sheet đúng cột, không đụng sheet cũ. | ✅ Đã xác nhận |
 | 2 | ✅ **XONG** — `KeHoachTo.gs` mới, `ToTruong.html` khung rỗng, route trong `CongNhan.gs`, đã `clasp push`. Test qua URL "Triển khai thử nghiệm": token đúng → "Kế hoạch tuần — DET"; token sai → "Không có quyền truy cập". Chủ dự án đã xác nhận cả hai ca. | ✅ Đã xác nhận |
 | 3 | ✅ **XONG** — RPC `getToTruongBootstrap` + 12 test mới. `clasp push` xong, chạy menu 🧪 trong Sheet ra **370/370** (không đỏ — nền trước đó đã là 358, không phải 340 như `CLAUDE.md` ghi cũ; sửa lại số ở bước 8). | ✅ Đã xác nhận |
-| 4 | ✅ Sửa code xong. RPC `luuLichLamViec(boPhan, token, payload)` — tách 2 hàm thuần test được: `chuanHoaPayloadLichTo_` (validate + build dòng) và `timDongLichTrungApDung_` (tìm dòng trùng `Bo_Phan+Ap_Dung_Tu` để sửa đè, -1 = thêm dòng mới). Khoá tự nhiên `(Bo_Phan, Ap_Dung_Tu)` chống double-tap — không cần cột `Request_ID` riêng cho sheet này. +9 test. `kiem-tra.ps1` sạch cả 5 lớp. **Chưa `clasp push`**, chờ xác nhận riêng. | Chạy menu 🧪 trong Sheet (kỳ vọng 379 = 370 + 9, không đỏ), rồi lưu lịch lần đầu + đổi lịch qua RPC thật, xem dòng cũ còn nguyên |
+| 4 | ✅ Sửa code + 🐛 vá lỗi `getLastRow()` bị checkbox làm sai (xem NOTES.md, mục "Bẫy phát hiện được"). RPC `luuLichLamViec` giờ dùng `soDongCoDuLieu_` thay vì `getLastRow()`. `Danh_Muc_To` đổi sang kiểu bổ sung bộ phận còn thiếu (không phá dòng DET bạn đã tự gõ tay). +9 test. `kiem-tra.ps1` sạch cả 5 lớp. **Chưa `clasp push`**, chờ xác nhận riêng. | Chạy lại `setupSystem()` (thêm 9 bộ phận còn thiếu vào Danh_Muc_To), xoá 2 dòng test ở 1001/1002 trong Lich_Lam_Viec_To, chạy lại test RPC ghi — phải ra đúng dòng 2/3 |
 | 5 | RPC đọc/ghi kế hoạch tuần (ngoại lệ + upsert + double-tap) | Test batch 60 máy, reload đúng, lưu 2 lần không trùng |
 | 6 | `ToTruong.html` — khung sườn + hiển thị danh sách máy | Xem giao diện thật trên điện thoại |
 | 7 | `ToTruong.html` — thao tác hàng loạt (chọn nhiều, áp cả tuần, sao chép, lý do đóng máy) | Thử luồng thật: đóng 1 máy, cả tuần, 1 ngày, 1 ca |
