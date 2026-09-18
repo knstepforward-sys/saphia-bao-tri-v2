@@ -1,3 +1,10 @@
+## [2026-09-18] Tổ trưởng khai kế hoạch máy — Bước 7b/8: thao tác hàng loạt
+- **Thay đổi:** Thêm vào `ToTruong.html`: checkbox chọn nhiều máy + "Chọn tất cả"/"Bỏ chọn tất cả" (theo đúng danh sách đang lọc, không phải toàn bộ tổ), thanh hành động khi có máy được chọn ("Bố trí chạy" / "Đóng máy…"). Nút "Bố trí tất cả máy chạy"/"Đóng tất cả máy" cho toàn tuần — khác 2 nút Chủ nhật đã có ở bước 7a. "Sao chép kế hoạch": chọn 1 ngày nguồn + nhiều ngày đích, copy nguyên trạng thái từng máy sang, ghi đè đúng ngày đích. Ô tìm máy theo mã/tên (không phân biệt dấu, dùng `normalize('NFD')`) + lọc "chỉ xem máy đang đóng" — chỉ ảnh hưởng HIỂN THỊ, không đụng `NGOAI_LE`.
+- Tổng quát hoá modal đóng máy: `MAY_DANG_MO` (1 máy) → `DS_MAY_DANG_MO` (mảng), dùng chung logic cộng-dồn-theo-khoá `ngày|ca` cho cả trường hợp 1 máy lẫn nhiều máy — không viết trùng code.
+- **`kiem-tra.ps1` sạch cả 5 lớp** (`ToTruong.html` 662 dòng).
+- **Trạng thái:** Đã sửa trong thư mục làm việc, **chưa commit** lúc viết dòng này (commit ngay sau). **CHƯA push GitHub, CHƯA `clasp push`, CHƯA deploy.**
+- **Việc cần làm tiếp theo:** Xác nhận `clasp push`, thử: chọn nhiều máy → đóng hàng loạt; "Đóng tất cả máy"; sao chép kế hoạch 1 ngày sang nhiều ngày; tìm kiếm + lọc; Lưu + F5. Sau đó sang bước 8 (22 test + cập nhật `bao-tri-v2/CLAUDE.md`/`NOTES.md`).
+
 ## [2026-09-18] Tổ trưởng khai kế hoạch máy — Bước 7a/8: ĐÃ XÁC NHẬN toàn bộ, bước 7a hoàn tất
 - **Thay đổi:** Không sửa mã. Chủ dự án xác nhận cả 4 phần đã sửa trong bước 7a: chọn nhiều ngày trong modal đúng, cộng dồn qua nhiều lượt "Sửa" đúng (không mất lượt trước), 2 nút thao tác nhanh Chủ nhật hoạt động hoàn hảo, Lưu kế hoạch tuần + F5 giữ đúng dữ liệu.
 - **Trạng thái:** Bước 7a hoàn tất toàn bộ, xác nhận chạy thật đúng thiết kế qua nhiều vòng chỉnh sửa theo phản hồi thực tế.

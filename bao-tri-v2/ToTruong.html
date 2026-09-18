@@ -1,8 +1,8 @@
 <!-- ==========================================================================
      TRANG TỔ TRƯỞNG — khai kế hoạch máy theo tuần (?page=kehoach&to=&token=).
-     Bước 7a/8: đóng/mở TỪNG máy (áp cả tuần / một ngày / một ngày-một ca) +
-     lưu kế hoạch tuần. Thao tác HÀNG LOẠT (chọn nhiều máy, sao chép tuần, tìm
-     máy, lọc) để bước 7b. Xem TASK_KE_HOACH_TO_TRUONG.md mục 9.
+     Bước 7b/8: thao tác HÀNG LOẠT — chọn nhiều máy, bố trí/đóng tất cả máy cả
+     tuần, sao chép kế hoạch giữa các ngày, tìm máy, lọc "chỉ xem máy đang
+     đóng". Xem TASK_KE_HOACH_TO_TRUONG.md mục 9.
      ========================================================================== -->
 <?!= include('Style') ?>
 
@@ -128,7 +128,33 @@ select.chon {
     <button class="nut phu" id="nutMoCN" type="button" style="flex:1;padding:11px;font-size:13.5px">☀️ Bố trí chạy Chủ nhật</button>
   </div>
 
-  <div class="the-tieu-de">Danh sách máy</div>
+  <div class="modal-nhan">Thao tác cả tuần (áp cho tất cả máy)</div>
+  <div style="display:flex;gap:8px;margin-bottom:14px">
+    <button class="nut phu" id="nutBoTriTatCa" type="button" style="flex:1;padding:11px;font-size:13.5px">🟢 Bố trí tất cả máy chạy</button>
+    <button class="nut phu" id="nutDongTatCa" type="button" style="flex:1;padding:11px;font-size:13.5px">🔴 Đóng tất cả máy</button>
+  </div>
+
+  <div class="modal-nhan">Sao chép kế hoạch</div>
+  <select class="chon" id="saoChepTu" style="margin-bottom:8px"></select>
+  <div class="nho" style="margin-bottom:6px">Sang các ngày (bấm được nhiều ngày):</div>
+  <div class="chips chips-ngay" id="saoChepSang" style="margin-bottom:10px"></div>
+  <button class="nut phu" id="nutSaoChep" type="button" style="margin-bottom:16px;padding:11px;font-size:13.5px">📋 Sao chép kế hoạch</button>
+
+  <input type="text" id="timMay" placeholder="Tìm máy theo mã hoặc tên…"
+    style="width:100%;border:1.5px solid var(--vien);border-radius:10px;padding:10px 12px;font:inherit;margin-bottom:8px">
+  <label class="tick-hang" style="margin-bottom:10px"><input type="checkbox" id="chiXemDong"> Chỉ xem máy đang đóng</label>
+
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+    <div class="the-tieu-de" style="margin:0">Danh sách máy</div>
+    <button class="nut phu" id="nutChonTatCa" type="button" style="width:auto;padding:7px 12px;font-size:12.5px">Chọn tất cả</button>
+  </div>
+
+  <div class="bao xanh an" id="cThanhChon" style="display:flex;gap:8px;align-items:center">
+    <div class="nho" id="cSoDaChon" style="flex:1"></div>
+    <button class="nut phu" id="nutBoTriDaChon" type="button" style="width:auto;padding:8px 12px;font-size:13px">Bố trí chạy</button>
+    <button class="nut do" id="nutDongDaChon" type="button" style="width:auto;padding:8px 12px;font-size:13px">Đóng máy…</button>
+  </div>
+
   <div id="cDsMay"></div>
 
   <div style="height:8px"></div>
@@ -397,6 +423,8 @@ function veManChinh() {
   hien('manChinh');
   hien('thanhDuoiChinh');
   an('thanhDuoiKhai');
+  MAY_DA_CHON = {}; // đổi tuần thì bỏ chọn cũ, tránh áp nhầm sang tuần khác
+  veChonSaoChep_();
   $('cDsMay').innerHTML = '<div class="giua nho">Đang tải kế hoạch tuần…</div>';
   taiKeHoachTuan_(TUAN_BAT_DAU, true);
 }
@@ -438,15 +466,40 @@ function veDsMay_(kq) {
   veLaiDanhSachMay_();
 }
 
+var MAY_DA_CHON = {};      // { MA_MAY: true, ... } — chọn nhiều máy để thao tác hàng loạt
+var DS_MAY_HIEN_THI = [];  // danh sách máy đang hiện SAU khi lọc/tìm — dùng cho "Chọn tất cả"
+var TU_KHOA_TIM = '';
+var CHI_XEM_DONG = false;
+
+function chuanHoaTimKiem_(s) {
+  return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+}
+
 function veLaiDanhSachMay_() {
-  var dsMay = (DATA.may || []).slice().sort(function (a, b) {
+  var dsMayGoc = (DATA.may || []).slice().sort(function (a, b) {
     return a.maMay.localeCompare(b.maMay);
   });
 
-  var soDong = 0;
+  // Thống kê luôn tính trên TOÀN BỘ máy của tổ, không theo bộ lọc hiển thị.
+  var soDongGoc = dsMayGoc.filter(function (m) { return (NGOAI_LE[m.maMay] || []).length > 0; }).length;
+  $('cThongKe').innerHTML =
+    '<div class="o"><div class="so">' + dsMayGoc.length + '</div><div class="nhan-nho">máy</div></div>' +
+    '<div class="o"><div class="so" style="color:var(--luc)">' + (dsMayGoc.length - soDongGoc) + '</div><div class="nhan-nho">bố trí chạy</div></div>' +
+    '<div class="o"><div class="so" style="color:var(--do)">' + soDongGoc + '</div><div class="nhan-nho">có đóng máy</div></div>';
+
+  $('cBaoChuaKhai').innerHTML = DA_KHAI_TUAN ? '' :
+    '<div class="bao vang">Tuần này chưa được xác nhận — mọi máy tạm hiện Bố trí chạy theo mặc định.</div>';
+
+  var tk = chuanHoaTimKiem_(TU_KHOA_TIM);
+  var dsMay = dsMayGoc.filter(function (m) {
+    if (tk && chuanHoaTimKiem_(m.maMay).indexOf(tk) === -1 && chuanHoaTimKiem_(m.tenMay).indexOf(tk) === -1) return false;
+    if (CHI_XEM_DONG && !(NGOAI_LE[m.maMay] || []).length) return false;
+    return true;
+  });
+  DS_MAY_HIEN_THI = dsMay;
+
   var h = dsMay.map(function (m) {
     var ngoaiLeMay = NGOAI_LE[m.maMay] || [];
-    if (ngoaiLeMay.length) soDong++;
 
     var than = ngoaiLeMay.length
       ? '<div class="may-tt-dong">🔴 Đóng máy (' + ngoaiLeMay.length + ' lượt)</div>' +
@@ -463,34 +516,76 @@ function veLaiDanhSachMay_() {
         '<div class="may-nut-hang"><button class="nut phu" style="flex:1" onclick="moModalDong(\'' + m.maMay + '\')">Đóng máy</button></div>';
 
     return '<div class="may-dong"><div class="may-dau">' +
-      '<div class="may-ma">' + thoat(m.maMay) + ' — ' + thoat(m.tenMay) + '</div>' +
+      '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;flex:1">' +
+        '<input type="checkbox" class="chon-may" data-ma="' + m.maMay + '"' + (MAY_DA_CHON[m.maMay] ? ' checked' : '') + '>' +
+        '<span class="may-ma">' + thoat(m.maMay) + ' — ' + thoat(m.tenMay) + '</span>' +
+      '</label>' +
       '</div>' + than + '</div>';
   }).join('');
 
-  $('cDsMay').innerHTML = h || '<div class="bao vang">Tổ chưa có máy nào đang hoạt động.</div>';
+  $('cDsMay').innerHTML = h || '<div class="bao vang">Không có máy nào khớp tìm kiếm/bộ lọc.</div>';
 
-  $('cThongKe').innerHTML =
-    '<div class="o"><div class="so">' + dsMay.length + '</div><div class="nhan-nho">máy</div></div>' +
-    '<div class="o"><div class="so" style="color:var(--luc)">' + (dsMay.length - soDong) + '</div><div class="nhan-nho">bố trí chạy</div></div>' +
-    '<div class="o"><div class="so" style="color:var(--do)">' + soDong + '</div><div class="nhan-nho">có đóng máy</div></div>';
-
-  $('cBaoChuaKhai').innerHTML = DA_KHAI_TUAN ? '' :
-    '<div class="bao vang">Tuần này chưa được xác nhận — mọi máy tạm hiện Bố trí chạy theo mặc định.</div>';
+  veThanhChon_();
 }
 
+/** Cập nhật thanh "Đã chọn N máy" + chữ trên nút "Chọn tất cả". */
+function veThanhChon_() {
+  var dsChon = Object.keys(MAY_DA_CHON).filter(function (ma) { return MAY_DA_CHON[ma]; });
+  if (dsChon.length) {
+    $('cSoDaChon').textContent = 'Đã chọn ' + dsChon.length + ' máy';
+    hien('cThanhChon');
+  } else {
+    an('cThanhChon');
+  }
+  var dangChonHetHienThi = DS_MAY_HIEN_THI.length > 0 &&
+    DS_MAY_HIEN_THI.every(function (m) { return MAY_DA_CHON[m.maMay]; });
+  $('nutChonTatCa').textContent = dangChonHetHienThi ? 'Bỏ chọn tất cả' : 'Chọn tất cả';
+}
+
+$('cDsMay').addEventListener('change', function (ev) {
+  var cb = ev.target.closest('.chon-may');
+  if (!cb) return;
+  if (cb.checked) MAY_DA_CHON[cb.dataset.ma] = true; else delete MAY_DA_CHON[cb.dataset.ma];
+  veThanhChon_();
+});
+
+$('nutChonTatCa').addEventListener('click', function () {
+  var dangChonHetHienThi = DS_MAY_HIEN_THI.length > 0 &&
+    DS_MAY_HIEN_THI.every(function (m) { return MAY_DA_CHON[m.maMay]; });
+  DS_MAY_HIEN_THI.forEach(function (m) {
+    if (dangChonHetHienThi) delete MAY_DA_CHON[m.maMay]; else MAY_DA_CHON[m.maMay] = true;
+  });
+  veLaiDanhSachMay_();
+});
+
+$('timMay').addEventListener('input', function () {
+  TU_KHOA_TIM = this.value;
+  veLaiDanhSachMay_();
+});
+$('chiXemDong').addEventListener('change', function () {
+  CHI_XEM_DONG = this.checked;
+  veLaiDanhSachMay_();
+});
+
 // ===========================================================================
-// Modal đóng máy — áp cho MỘT máy: cả tuần, hoặc chọn NHIỀU ngày cụ thể +
-// một kiểu ca áp dụng chung cho các ngày đã chọn.
+// Modal đóng máy — áp cho MỘT hoặc NHIỀU máy cùng lúc: cả tuần, hoặc chọn
+// NHIỀU ngày cụ thể + một kiểu ca áp dụng chung cho các ngày đã chọn.
 // ===========================================================================
-var MAY_DANG_MO = '';
+var DS_MAY_DANG_MO = [];   // luôn là mảng, kể cả khi mở cho 1 máy
 var MODAL_AP_DUNG = 'TUAN';
 var MODAL_NGAY_CHON = {};  // { 'yyyy-MM-dd': true, ... } — chọn được nhiều ngày
 var MODAL_CA_CHON = 'CA';  // 'N' | 'D' | 'CA' (cả 2 ca)
 
-function moModalDong(maMay) {
-  MAY_DANG_MO = maMay;
-  var may = (DATA.may || []).filter(function (m) { return m.maMay === maMay; })[0];
-  $('modalTieuDe').textContent = 'Đóng máy ' + maMay + (may ? ' — ' + may.tenMay : '');
+/** maMayHoacDs: 1 mã máy (string) hoặc mảng nhiều mã máy. */
+function moModalDong(maMayHoacDs) {
+  DS_MAY_DANG_MO = Array.isArray(maMayHoacDs) ? maMayHoacDs.slice() : [maMayHoacDs];
+
+  if (DS_MAY_DANG_MO.length === 1) {
+    var may = (DATA.may || []).filter(function (m) { return m.maMay === DS_MAY_DANG_MO[0]; })[0];
+    $('modalTieuDe').textContent = 'Đóng máy ' + DS_MAY_DANG_MO[0] + (may ? ' — ' + may.tenMay : '');
+  } else {
+    $('modalTieuDe').textContent = 'Đóng ' + DS_MAY_DANG_MO.length + ' máy đã chọn';
+  }
 
   MODAL_AP_DUNG = 'TUAN';
   chonChip_('modalApDung', MODAL_AP_DUNG);
@@ -581,19 +676,25 @@ $('modalXacNhan').addEventListener('click', function () {
     if (coCaDem && (caCuaNgay === 'D' || caCuaNgay === 'CA')) dsSlot.push({ ngay: ymd, ca: 'D' });
   });
 
-  // "Cả tuần" THAY HẲN toàn bộ ngoại lệ của máy (khai lại từ đầu cho cả tuần).
-  // "Chọn ngày cụ thể" chỉ GHI ĐÈ đúng những (ngày, ca) vừa chọn, GIỮ NGUYÊN
-  // các ngày/ca khác đã khai từ lượt "Sửa" trước đó — nhờ vậy khai được kiểu
-  // "T2-T6 chỉ ca ngày, lý do A" rồi "Sửa" thêm "Chủ nhật cả 2 ca, lý do B"
-  // qua 2 lượt riêng mà không mất lượt đầu.
-  var hienCo = MODAL_AP_DUNG === 'TUAN' ? [] : (NGOAI_LE[MAY_DANG_MO] || []);
-  var theoKhoa = {};
-  hienCo.forEach(function (nl) { theoKhoa[nl.ngay + '|' + nl.ca] = nl; });
-  dsSlot.forEach(function (s) {
-    theoKhoa[s.ngay + '|' + s.ca] = { maMay: MAY_DANG_MO, ngay: s.ngay, ca: s.ca, lyDo: lyDo, ghiChu: ghiChu };
+  // "Cả tuần" THAY HẲN toàn bộ ngoại lệ của (các) máy (khai lại từ đầu cho cả
+  // tuần). "Chọn ngày cụ thể" chỉ GHI ĐÈ đúng những (ngày, ca) vừa chọn, GIỮ
+  // NGUYÊN các ngày/ca khác đã khai từ lượt "Sửa" trước đó — nhờ vậy khai được
+  // kiểu "T2-T6 chỉ ca ngày, lý do A" rồi "Sửa" thêm "Chủ nhật cả 2 ca, lý do
+  // B" qua 2 lượt riêng mà không mất lượt đầu. Áp GIỐNG HỆT logic này cho từng
+  // máy trong DS_MAY_DANG_MO khi mở modal cho nhiều máy cùng lúc (bước 7b).
+  DS_MAY_DANG_MO.forEach(function (maMay) {
+    var hienCo = MODAL_AP_DUNG === 'TUAN' ? [] : (NGOAI_LE[maMay] || []);
+    var theoKhoa = {};
+    hienCo.forEach(function (nl) { theoKhoa[nl.ngay + '|' + nl.ca] = nl; });
+    dsSlot.forEach(function (s) {
+      theoKhoa[s.ngay + '|' + s.ca] = { maMay: maMay, ngay: s.ngay, ca: s.ca, lyDo: lyDo, ghiChu: ghiChu };
+    });
+    NGOAI_LE[maMay] = Object.keys(theoKhoa).map(function (k) { return theoKhoa[k]; });
   });
-  NGOAI_LE[MAY_DANG_MO] = Object.keys(theoKhoa).map(function (k) { return theoKhoa[k]; });
   DA_THAY_DOI = true;
+
+  // Đóng hàng loạt xong thì bỏ chọn, tránh nhầm sang thao tác kế tiếp.
+  if (DS_MAY_DANG_MO.length > 1) MAY_DA_CHON = {};
 
   an('modalDong');
   veLaiDanhSachMay_();
@@ -672,6 +773,87 @@ $('nutMoCN').addEventListener('click', function () {
   (DATA.may || []).forEach(function (m) {
     var conLai = (NGOAI_LE[m.maMay] || []).filter(function (nl) { return nl.ngay !== ngayCN; });
     if (conLai.length) NGOAI_LE[m.maMay] = conLai; else delete NGOAI_LE[m.maMay];
+  });
+
+  DA_THAY_DOI = true;
+  veLaiDanhSachMay_();
+});
+
+// ===========================================================================
+// Thao tác hàng loạt — bước 7b: cả tuần cho TOÀN BỘ máy, và cho nhóm ĐÃ CHỌN
+// ===========================================================================
+$('nutBoTriTatCa').addEventListener('click', function () {
+  if (!confirm('Bố trí chạy cả tuần cho TẤT CẢ máy của tổ? Xoá hết mọi ngoại lệ đã khai trong tuần này.')) return;
+  NGOAI_LE = {};
+  DA_THAY_DOI = true;
+  veLaiDanhSachMay_();
+});
+
+$('nutDongTatCa').addEventListener('click', function () {
+  moModalDong((DATA.may || []).map(function (m) { return m.maMay; }));
+});
+
+$('nutBoTriDaChon').addEventListener('click', function () {
+  var dsChon = Object.keys(MAY_DA_CHON).filter(function (ma) { return MAY_DA_CHON[ma]; });
+  if (!dsChon.length) return;
+  if (!confirm('Bố trí chạy cả tuần cho ' + dsChon.length + ' máy đã chọn? Xoá hết ngoại lệ đã khai trong tuần này của các máy đó.')) return;
+  dsChon.forEach(function (ma) { delete NGOAI_LE[ma]; });
+  MAY_DA_CHON = {};
+  DA_THAY_DOI = true;
+  veLaiDanhSachMay_();
+});
+
+$('nutDongDaChon').addEventListener('click', function () {
+  var dsChon = Object.keys(MAY_DA_CHON).filter(function (ma) { return MAY_DA_CHON[ma]; });
+  if (!dsChon.length) return alert('Chưa chọn máy nào.');
+  moModalDong(dsChon);
+});
+
+// ===========================================================================
+// Sao chép kế hoạch — copy nguyên trạng thái TỪNG MÁY của 1 ngày sang các
+// ngày đích khác (ghi đè đúng ngày đích, không đụng ngày khác).
+// ===========================================================================
+var SAO_CHEP_SANG_CHON = {}; // { 'yyyy-MM-dd': true, ... }
+
+function veChonSaoChep_() {
+  var hTu = '', hSang = '';
+  for (var i = 0; i < 7; i++) {
+    var ymd = ymdCongNgay_(TUAN_BAT_DAU, i);
+    hTu += '<option value="' + ymd + '">' + tenThu_(ymd) + ' (' + fmtDDMM_(ymd) + ')</option>';
+    hSang += '<div class="chip" data-gt="' + ymd + '">' + tenThu_(ymd) +
+      '<span class="ngay-so">' + fmtDDMM_(ymd) + '</span></div>';
+  }
+  $('saoChepTu').innerHTML = hTu;
+  $('saoChepSang').innerHTML = hSang;
+  SAO_CHEP_SANG_CHON = {};
+}
+
+$('saoChepSang').addEventListener('click', function (ev) {
+  var nut = ev.target.closest('.chip');
+  if (!nut) return;
+  var ymd = nut.dataset.gt;
+  SAO_CHEP_SANG_CHON[ymd] = !SAO_CHEP_SANG_CHON[ymd];
+  nut.setAttribute('aria-pressed', String(!!SAO_CHEP_SANG_CHON[ymd]));
+});
+
+$('nutSaoChep').addEventListener('click', function () {
+  var ngayNguon = $('saoChepTu').value;
+  var dsNgayDich = Object.keys(SAO_CHEP_SANG_CHON).filter(function (k) { return SAO_CHEP_SANG_CHON[k]; });
+  if (!dsNgayDich.length) return alert('Vui lòng chọn ít nhất 1 ngày đích.');
+  if (!confirm('Sao chép kế hoạch ngày ' + tenThu_(ngayNguon) + ' (' + fmtDDMM_(ngayNguon) +
+    ') sang ' + dsNgayDich.length + ' ngày đã chọn? Kế hoạch cũ của (các) ngày đích sẽ bị thay thế.')) return;
+
+  (DATA.may || []).forEach(function (m) {
+    var slotsNguon = (NGOAI_LE[m.maMay] || []).filter(function (nl) { return nl.ngay === ngayNguon; });
+    var conLai = (NGOAI_LE[m.maMay] || []).filter(function (nl) { return dsNgayDich.indexOf(nl.ngay) === -1; });
+    var moiChepSang = [];
+    dsNgayDich.forEach(function (ngayDich) {
+      slotsNguon.forEach(function (nl) {
+        moiChepSang.push({ maMay: m.maMay, ngay: ngayDich, ca: nl.ca, lyDo: nl.lyDo, ghiChu: nl.ghiChu });
+      });
+    });
+    var ketQua = conLai.concat(moiChepSang);
+    if (ketQua.length) NGOAI_LE[m.maMay] = ketQua; else delete NGOAI_LE[m.maMay];
   });
 
   DA_THAY_DOI = true;
