@@ -1,3 +1,9 @@
+## [2026-09-18] Tổ trưởng khai kế hoạch máy — Bước 3/8: ĐÃ XÁC NHẬN — 370/370, không đỏ
+- **Thay đổi:** Không sửa mã. Chủ dự án đã `clasp push`, chạy menu 🧪 "Chạy test logic" trong Sheet, ra **370/370**, không có test nào hỏng.
+- **Con số không khớp dự đoán 352 — đã tìm ra lý do, không phải lỗi:** `bao-tri-v2/CLAUDE.md` mục 14b ghi "340/340" từ 11/09, nhưng lần "kéo về repo" 18/09 đã kéo thêm các test lưu trữ phiếu theo tháng lịch (`mocThangLuuTru_`, `chonPhieuLuuTru_`...) từ Apps Script Editor về mà tài liệu chưa cập nhật số — nền thật trước khi thêm 12 test của bước này đã là 358, không phải 340. Sẽ sửa lại con số trong `CLAUDE.md` ở bước 8 (khi cập nhật tài liệu cho toàn bộ tính năng).
+- **Trạng thái:** Bước 3 hoàn tất, xác nhận chạy thật đúng.
+- **Việc cần làm tiếp theo:** Bước 4 — RPC ghi: lưu lịch làm việc của tổ (`Lich_Lam_Viec_To`, có `Ap_Dung_Tu`, không ghi đè lịch cũ khi đổi).
+
 ## [2026-09-18] Tổ trưởng khai kế hoạch máy — Bước 3/8: RPC đọc bootstrap (KeHoachTo.gs)
 - **Thay đổi:** Thêm vào `KeHoachTo.gs`: `dsMayCuaBoPhan_` (lọc máy theo bộ phận + `Hoat_Dong=TRUE`), `chuanHoaNgay_` + `lichHienHanhCuaTo_` (chọn dòng `Lich_Lam_Viec_To` có `Ap_Dung_Tu` lớn nhất mà vẫn ≤ ngày cần tra, trả `null` nếu tổ chưa khai lịch), và RPC `getToTruongBootstrap(boPhan, token)`. **Gộp một RPC duy nhất** thay vì 3 RPC riêng như phác thảo ban đầu trong `TASK_KE_HOACH_TO_TRUONG.md` — đúng lối `getWorkerBootstrap()` đã dùng cho trang công nhân, giảm round-trip `google.script.run`. `xacThucTo_` cũng được sửa thêm tham số `dsTo` tiêm được, đúng lối `getOnDutyContacts_`.
 - Thêm 12 test mới vào `Test.gs` (mục "TỔ TRƯỞNG KHAI KẾ HOẠCH MÁY — bước 3/8"), test cả ba hàm bằng dữ liệu giả, không đụng sheet nào.
