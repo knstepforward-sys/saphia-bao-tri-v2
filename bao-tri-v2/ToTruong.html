@@ -1,28 +1,347 @@
 <!-- ==========================================================================
      TRANG TỔ TRƯỞNG — khai kế hoạch máy theo tuần (?page=kehoach&to=&token=).
-     Bước 2/8: khung xác thực rỗng. Form thật làm ở bước 6-7 — xem
-     TASK_KE_HOACH_TO_TRUONG.md mục 9.
+     Bước 6/8: khung sườn + hiển thị (chưa sửa từng máy, chưa thao tác hàng
+     loạt — bước 7). Xem TASK_KE_HOACH_TO_TRUONG.md mục 9.
      ========================================================================== -->
 <?!= include('Style') ?>
+
+<style>
+.tuan-nut {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px;
+}
+.thong-ke {
+  display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px;
+}
+.thong-ke .o {
+  flex: 1; min-width: 90px; background: #fff; border: 1px solid var(--vien);
+  border-radius: 10px; padding: 10px 12px; text-align: center;
+}
+.thong-ke .o .so { font-size: 20px; font-weight: 800; }
+.thong-ke .o .nhan-nho { font-size: 12px; color: var(--chu-nhat); margin-top: 2px; }
+.may-dong { border: 1px solid var(--vien); border-radius: 10px; padding: 12px; margin-bottom: 8px; background: #fff; }
+.may-dau { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.may-ma { font-weight: 700; font-size: 15px; }
+.may-tt-chay { color: var(--luc); font-weight: 600; font-size: 13.5px; }
+.may-tt-dong { color: var(--do); font-weight: 600; font-size: 13.5px; }
+.ngoai-le-dong { margin-top: 6px; font-size: 13px; color: var(--chu-nhat); }
+.ngoai-le-dong .dong { padding: 2px 0; }
+.gio-hang { display: flex; gap: 10px; margin-top: 10px; }
+.gio-hang > div { flex: 1; }
+.gio-hang label { display: block; font-size: 13px; color: var(--chu-nhat); margin-bottom: 4px; }
+.gio-hang input[type="time"] {
+  width: 100%; border: 1.5px solid var(--vien); border-radius: 10px;
+  padding: 10px; font: inherit;
+}
+.tick-hang {
+  display: flex; align-items: center; gap: 10px; padding: 4px 0;
+  font-weight: 600; cursor: pointer;
+}
+.tick-hang input { width: 20px; height: 20px; }
+</style>
 
 <body>
 
 <div id="goc" data-bo-phan="<?= boPhan ?>" data-token="<?= token ?>" data-ten-to="<?= tenTo ?>" hidden></div>
 
-<div style="padding:32px 20px;text-align:center;color:var(--chu)">
-  <div style="font-size:44px;margin-bottom:12px">🧵</div>
-  <h2 style="margin:0 0 8px;font-size:20px" id="tieuDe">Kế hoạch tuần</h2>
-  <p style="margin:0;color:var(--chu-nhat);font-size:15px;line-height:1.5">
-    Xác thực thành công. Trang khai kế hoạch đang được xây dựng.
-  </p>
+<div class="phu-kin" id="manCho">
+  <div class="quay"></div>
+  <div>Đang tải…</div>
+</div>
+
+<div class="phu-kin an" id="manLoi">
+  <div style="font-size:42px">🔒</div>
+  <div id="loiND" class="giua" style="padding:0 24px"></div>
+</div>
+
+<!-- ======================= KHAI GIỜ LÀM VIỆC LẦN ĐẦU ====================== -->
+<div class="boc an" id="manKhaiLich">
+  <div class="the-tieu-de" style="margin-top:8px">Khai giờ làm việc lần đầu</div>
+  <div class="bao xanh">
+    Tổ <b id="khTenTo"></b> chưa khai giờ làm việc. Khai một lần, sau này đổi giờ ca
+    không ảnh hưởng dữ liệu đã tính trước đó.
+  </div>
+
+  <div class="the">
+    <div class="the-tieu-de">Ca ngày (bắt buộc)</div>
+    <div class="gio-hang">
+      <div><label>Bắt đầu</label><input type="time" id="khCaNgayTu" value="07:00"></div>
+      <div><label>Kết thúc</label><input type="time" id="khCaNgayDen" value="17:00"></div>
+    </div>
+  </div>
+
+  <div class="the">
+    <label class="tick-hang"><input type="checkbox" id="khCoNghiTrua" checked> Có nghỉ trưa</label>
+    <div id="khKhoiNghiTrua" class="gio-hang">
+      <div><label>Bắt đầu</label><input type="time" id="khNghiTruaTu" value="12:00"></div>
+      <div><label>Kết thúc</label><input type="time" id="khNghiTruaDen" value="13:00"></div>
+    </div>
+  </div>
+
+  <div class="the">
+    <label class="tick-hang"><input type="checkbox" id="khCoCaDem"> Có ca đêm</label>
+    <div id="khKhoiCaDem" class="gio-hang an">
+      <div><label>Bắt đầu</label><input type="time" id="khCaDemTu" value="17:00"></div>
+      <div><label>Kết thúc</label><input type="time" id="khCaDemDen" value="07:00"></div>
+    </div>
+  </div>
+
+  <div style="height:8px"></div>
+</div>
+
+<!-- ======================= MÀN HÌNH CHÍNH ================================= -->
+<div class="boc an" id="manChinh">
+  <div class="may-ten" id="cTenTo">Tổ</div>
+  <div style="height:10px"></div>
+
+  <div class="tuan-nut">
+    <button class="nut phu" id="nutTuanTruoc" type="button" style="padding:11px;font-size:14px">‹ Tuần trước</button>
+    <button class="nut phu" id="nutTuanNay" type="button" style="padding:11px;font-size:14px">Tuần này</button>
+    <button class="nut phu" id="nutTuanSau" type="button" style="padding:11px;font-size:14px">Tuần sau ›</button>
+  </div>
+  <div class="giua nho" id="cNhanTuan" style="margin-bottom:12px"></div>
+
+  <div class="thong-ke" id="cThongKe"></div>
+  <div id="cBaoChuaKhai"></div>
+
+  <div class="the-tieu-de">Danh sách máy</div>
+  <div id="cDsMay"></div>
+
+  <div style="height:8px"></div>
+</div>
+
+<div class="thanh-duoi an" id="thanhDuoiKhai">
+  <div class="boc-nut">
+    <button class="nut" id="nutLuuLich" type="button">Lưu giờ làm việc</button>
+  </div>
 </div>
 
 <script>
-(function () {
-  var goc = document.getElementById('goc');
-  var tenTo = goc.dataset.tenTo || goc.dataset.boPhan;
-  document.getElementById('tieuDe').textContent = 'Kế hoạch tuần — ' + tenTo;
-})();
+// ===========================================================================
+var G = document.getElementById('goc');
+var BO_PHAN = (G.dataset.boPhan || '').trim();
+var TOKEN = (G.dataset.token || '').trim();
+var TEN_TO = (G.dataset.tenTo || '').trim() || BO_PHAN;
+var DATA = null;         // kết quả getToTruongBootstrap, giữ lại để đổi tuần không tải lại máy
+var TUAN_BAT_DAU = '';   // 'yyyy-MM-dd' của thứ Hai đang xem
+var rq = {};
+
+function $(id) { return document.getElementById(id); }
+function hien(id) { $(id).classList.remove('an'); }
+function an(id) { $(id).classList.add('an'); }
+function layRq(khoa) {
+  if (!rq[khoa]) rq[khoa] = 'RQ-' + Date.now() + '-' + Math.random().toString(36).slice(2, 10);
+  return rq[khoa];
+}
+function xoaRq(khoa) { delete rq[khoa]; }
+function thoat(s) {
+  return String(s === null || s === undefined ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+// ===========================================================================
+// Tuần — thứ Hai làm mốc, đúng quy ước "Kế hoạch tuần Thứ 2 → Chủ nhật"
+// ===========================================================================
+function thuHaiCuaTuan_(d) {
+  var ngay = new Date(d.getTime());
+  var thu = ngay.getDay(); // 0=CN,1=T2,...,6=T7
+  var lui = thu === 0 ? 6 : thu - 1;
+  ngay.setDate(ngay.getDate() - lui);
+  ngay.setHours(0, 0, 0, 0);
+  return ngay;
+}
+function fmtYMD_(d) {
+  var y = d.getFullYear(), m = ('0' + (d.getMonth() + 1)).slice(-2), dd = ('0' + d.getDate()).slice(-2);
+  return y + '-' + m + '-' + dd;
+}
+function ymdCongNgay_(ymd, soNgay) {
+  var d = new Date(ymd + 'T00:00:00');
+  d.setDate(d.getDate() + soNgay);
+  return fmtYMD_(d);
+}
+function fmtDDMM_(ymd) {
+  var p = ymd.split('-');
+  return p[2] + '/' + p[1];
+}
+var TEN_THU = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+function tenThu_(ymd) {
+  return TEN_THU[new Date(ymd + 'T00:00:00').getDay()];
+}
+var TEN_CA = { N: 'ca ngày', D: 'ca đêm' };
+
+// ===========================================================================
+// Nạp dữ liệu
+// ===========================================================================
+window.addEventListener('load', nap);
+
+function nap() {
+  if (!BO_PHAN || !TOKEN) return baoLoi('Link thiếu thông tin. Hãy dùng đúng link đã được cấp.');
+  google.script.run
+    .withSuccessHandler(nhanBootstrap)
+    .withFailureHandler(function (e) { baoLoi('Không kết nối được máy chủ: ' + e.message); })
+    .getToTruongBootstrap(BO_PHAN, TOKEN);
+}
+
+function nhanBootstrap(kq) {
+  if (!kq || !kq.ok) return baoLoi((kq && kq.error) || 'Không tải được dữ liệu.');
+  DATA = kq;
+  TEN_TO = kq.to.tenTo || kq.to.boPhan;
+
+  an('manCho');
+
+  if (!kq.lich) {
+    veManKhaiLich();
+    return;
+  }
+  TUAN_BAT_DAU = fmtYMD_(thuHaiCuaTuan_(new Date()));
+  veManChinh();
+}
+
+function baoLoi(td) {
+  $('loiND').textContent = td;
+  an('manCho');
+  hien('manLoi');
+}
+
+// ===========================================================================
+// Màn hình khai giờ làm việc lần đầu
+// ===========================================================================
+function veManKhaiLich() {
+  $('khTenTo').textContent = TEN_TO;
+  hien('manKhaiLich');
+  hien('thanhDuoiKhai');
+}
+
+$('khCoNghiTrua').addEventListener('change', function () {
+  this.checked ? hien('khKhoiNghiTrua') : an('khKhoiNghiTrua');
+});
+$('khCoCaDem').addEventListener('change', function () {
+  this.checked ? hien('khKhoiCaDem') : an('khKhoiCaDem');
+});
+
+$('nutLuuLich').addEventListener('click', function () {
+  var coNghiTrua = $('khCoNghiTrua').checked;
+  var coCaDem = $('khCoCaDem').checked;
+
+  if (!$('khCaNgayTu').value || !$('khCaNgayDen').value) {
+    return alert('Vui lòng nhập đủ giờ ca ngày.');
+  }
+  if (coNghiTrua && (!$('khNghiTruaTu').value || !$('khNghiTruaDen').value)) {
+    return alert('Đã chọn có nghỉ trưa thì phải nhập đủ giờ bắt đầu/kết thúc.');
+  }
+  if (coCaDem && (!$('khCaDemTu').value || !$('khCaDemDen').value)) {
+    return alert('Đã chọn có ca đêm thì phải nhập đủ giờ bắt đầu/kết thúc.');
+  }
+
+  var payload = {
+    apDungTu: fmtYMD_(new Date()),
+    caNgayTu: $('khCaNgayTu').value,
+    caNgayDen: $('khCaNgayDen').value,
+    coNghiTrua: coNghiTrua,
+    nghiTruaTu: coNghiTrua ? $('khNghiTruaTu').value : '',
+    nghiTruaDen: coNghiTrua ? $('khNghiTruaDen').value : '',
+    coCaDem: coCaDem,
+    caDemTu: coCaDem ? $('khCaDemTu').value : '',
+    caDemDen: coCaDem ? $('khCaDemDen').value : '',
+  };
+
+  var nut = this;
+  nut.disabled = true;
+  nut.textContent = 'Đang lưu…';
+
+  google.script.run
+    .withSuccessHandler(function (kq) {
+      if (!kq || !kq.ok) {
+        nut.disabled = false;
+        nut.textContent = 'Lưu giờ làm việc';
+        return alert('Lỗi: ' + ((kq && kq.error) || 'không lưu được.'));
+      }
+      an('manKhaiLich');
+      an('thanhDuoiKhai');
+      hien('manCho');
+      nap(); // tải lại bootstrap để lấy lịch vừa lưu, chuyển sang màn hình chính
+    })
+    .withFailureHandler(function (e) {
+      nut.disabled = false;
+      nut.textContent = 'Lưu giờ làm việc';
+      alert('Lỗi: ' + e.message);
+    })
+    .luuLichLamViec(BO_PHAN, TOKEN, payload);
+});
+
+// ===========================================================================
+// Màn hình chính — chọn tuần + danh sách máy
+// ===========================================================================
+$('nutTuanTruoc').addEventListener('click', function () { doiTuan_(-7); });
+$('nutTuanNay').addEventListener('click', function () {
+  TUAN_BAT_DAU = fmtYMD_(thuHaiCuaTuan_(new Date()));
+  veManChinh();
+});
+$('nutTuanSau').addEventListener('click', function () { doiTuan_(7); });
+function doiTuan_(soNgay) {
+  TUAN_BAT_DAU = ymdCongNgay_(TUAN_BAT_DAU, soNgay);
+  veManChinh();
+}
+
+function veManChinh() {
+  $('cTenTo').textContent = 'TỔ ' + TEN_TO.toUpperCase();
+  $('cNhanTuan').textContent = 'Tuần ' + fmtDDMM_(TUAN_BAT_DAU) + ' – ' + fmtDDMM_(ymdCongNgay_(TUAN_BAT_DAU, 6));
+
+  hien('manChinh');
+  $('cDsMay').innerHTML = '<div class="giua nho">Đang tải kế hoạch tuần…</div>';
+
+  google.script.run
+    .withSuccessHandler(veDsMay_)
+    .withFailureHandler(function (e) {
+      $('cDsMay').innerHTML = '<div class="bao do">Không tải được kế hoạch tuần: ' + thoat(e.message) + '</div>';
+    })
+    .layKeHoachTuan(BO_PHAN, TOKEN, TUAN_BAT_DAU);
+}
+
+function veDsMay_(kq) {
+  if (!kq || !kq.ok) {
+    $('cDsMay').innerHTML = '<div class="bao do">' + thoat((kq && kq.error) || 'Không tải được kế hoạch tuần.') + '</div>';
+    return;
+  }
+
+  // Gom ngoại lệ theo máy — máy không có ngoại lệ nào = mặc định Bố trí chạy.
+  var theoMay = {};
+  kq.ngoaiLe.forEach(function (nl) {
+    (theoMay[nl.maMay] = theoMay[nl.maMay] || []).push(nl);
+  });
+
+  var dsMay = (DATA.may || []).slice().sort(function (a, b) {
+    return a.maMay.localeCompare(b.maMay);
+  });
+
+  var soDong = 0;
+  var h = dsMay.map(function (m) {
+    var ngoaiLeMay = theoMay[m.maMay] || [];
+    if (ngoaiLeMay.length) soDong++;
+
+    var than = ngoaiLeMay.length
+      ? '<div class="may-tt-dong">🔴 Đóng máy (' + ngoaiLeMay.length + ' lượt)</div>' +
+        '<div class="ngoai-le-dong">' + ngoaiLeMay.map(function (nl) {
+          return '<div class="dong">' + tenThu_(nl.ngay) + ' (' + fmtDDMM_(nl.ngay) + '), ' +
+            (TEN_CA[nl.ca] || nl.ca) + ' — ' + thoat(nl.lyDo) +
+            (nl.ghiChu ? ': ' + thoat(nl.ghiChu) : '') + '</div>';
+        }).join('') + '</div>'
+      : '<div class="may-tt-chay">🟢 Bố trí chạy cả tuần</div>';
+
+    return '<div class="may-dong"><div class="may-dau">' +
+      '<div class="may-ma">' + thoat(m.maMay) + ' — ' + thoat(m.tenMay) + '</div>' +
+      '</div>' + than + '</div>';
+  }).join('');
+
+  $('cDsMay').innerHTML = h || '<div class="bao vang">Tổ chưa có máy nào đang hoạt động.</div>';
+
+  $('cThongKe').innerHTML =
+    '<div class="o"><div class="so">' + dsMay.length + '</div><div class="nhan-nho">máy</div></div>' +
+    '<div class="o"><div class="so" style="color:var(--luc)">' + (dsMay.length - soDong) + '</div><div class="nhan-nho">bố trí chạy</div></div>' +
+    '<div class="o"><div class="so" style="color:var(--do)">' + soDong + '</div><div class="nhan-nho">có đóng máy</div></div>';
+
+  $('cBaoChuaKhai').innerHTML = kq.daKhai ? '' :
+    '<div class="bao vang">Tuần này chưa được xác nhận — mọi máy tạm hiện Bố trí chạy theo mặc định.</div>';
+}
 </script>
 
 </body>
