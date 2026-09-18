@@ -198,7 +198,13 @@ function themMayMoi() {
   });
 
   if (them.length) {
-    sh.getRange(sh.getLastRow() + 1, 1, them.length, HEADER_MAY.length).setValues(them);
+    // KHÔNG dùng sh.getLastRow(): datCheckbox_ (cột Hoat_Dong) áp validation
+    // checkbox lên tới sh.getMaxRows()-1 dòng, khiến các ô checkbox còn trống
+    // bị Sheets coi là FALSE — getLastRow() báo sai (nhảy tới dòng ~1000 dù
+    // chỉ có ~162 máy thật), máy mới bị ghi lạc xuống dưới đó. Dùng
+    // soDongCoDuLieu_ (Code.gs) đếm dòng thật theo cột Ma_May. Xem
+    // TASK_KE_HOACH_TO_TRUONG.md mục 7b, bẫy phát hiện lúc xây tính năng tổ trưởng.
+    sh.getRange(soDongCoDuLieu_(sh, 1) + 2, 1, them.length, HEADER_MAY.length).setValues(them);
   }
 
   return 'Đã thêm ' + them.length + ' máy.' +
