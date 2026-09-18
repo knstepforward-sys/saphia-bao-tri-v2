@@ -1,3 +1,11 @@
+## [2026-09-18] Tổ trưởng khai kế hoạch máy — Bước 6/8: ĐÃ XÁC NHẬN cả 3 ca, bước 6 hoàn tất
+- **Thay đổi:** Không sửa mã. Chủ dự án xác nhận qua link Test deployment thật:
+  1. Tổ `DET` (đã có lịch + kế hoạch test cũ) → vào thẳng màn hình chính, không còn lỗi thoáng qua sau bản vá `setTimeout`.
+  2. Tổ `CMTX` (chưa khai lịch) → đúng hiện màn hình "Khai giờ làm việc lần đầu".
+  3. Bấm "Lưu giờ làm việc" ở màn hình đó → chuyển đúng sang màn hình chính, 38 máy CMTX đều "Bố trí chạy cả tuần" (mặc định đúng thiết kế "chỉ lưu ngoại lệ").
+- **Trạng thái:** Bước 6 hoàn tất, xác nhận chạy thật đúng trên cả 2 nhánh (đã khai / chưa khai) + luồng lưu lần đầu.
+- **Việc cần làm tiếp theo:** Bước 7 — thao tác hàng loạt trong `ToTruong.html`: chọn nhiều máy, đóng máy (modal chọn lý do + ghi chú), bố trí/đóng tất cả, sao chép kế hoạch, tìm máy, lọc "chỉ xem máy đang đóng".
+
 ## [2026-09-18] Tổ trưởng khai kế hoạch máy — Bước 6/8: vá lỗi thoáng qua khi tải trang lần đầu
 - **Phát hiện lúc test tay:** Mở link `page=kehoach&to=DET&token=test123` lần đầu, `getToTruongBootstrap` chạy đúng (hiện "TỔ DET") nhưng `layKeHoachTuan` báo `Không tìm thấy hàm tập lệnh: layKeHoachTuan` — dù hàm có thật trong code đã push (xác nhận lại bằng grep). Bấm nút "Tuần này" (gọi lại đúng `layKeHoachTuan`) ngay sau đó thì chạy đúng.
 - **Chẩn đoán:** Không phải thiếu hàm — là lỗi thoáng qua của `google.script.run` khi gọi RPC thứ hai (`layKeHoachTuan`) NGAY trong callback thành công của RPC thứ nhất (`getToTruongBootstrap`), cầu nối iframe của Apps Script đôi khi chưa kịp sẵn sàng ngay sau khi trang vừa tải.
