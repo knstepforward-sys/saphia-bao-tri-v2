@@ -174,7 +174,7 @@ trưởng xem chỉ số tuần của chính tổ + 1 mục menu xuất báo cá
 | 1 | ✅ **XONG** — sửa code, `clasp push`, chạy `setupSystem()` thật trong Sheet. Chủ dự án xác nhận 3 sheet đúng cột, không đụng sheet cũ. | ✅ Đã xác nhận |
 | 2 | ✅ **XONG** — `KeHoachTo.gs` mới, `ToTruong.html` khung rỗng, route trong `CongNhan.gs`, đã `clasp push`. Test qua URL "Triển khai thử nghiệm": token đúng → "Kế hoạch tuần — DET"; token sai → "Không có quyền truy cập". Chủ dự án đã xác nhận cả hai ca. | ✅ Đã xác nhận |
 | 3 | ✅ **XONG** — RPC `getToTruongBootstrap` + 12 test mới. `clasp push` xong, chạy menu 🧪 trong Sheet ra **370/370** (không đỏ — nền trước đó đã là 358, không phải 340 như `CLAUDE.md` ghi cũ; sửa lại số ở bước 8). | ✅ Đã xác nhận |
-| 4 | RPC ghi: lưu lịch làm việc (có `Ap_Dung_Tu`) | Test lưu lần đầu + đổi lịch không phá lịch cũ |
+| 4 | ✅ Sửa code xong. RPC `luuLichLamViec(boPhan, token, payload)` — tách 2 hàm thuần test được: `chuanHoaPayloadLichTo_` (validate + build dòng) và `timDongLichTrungApDung_` (tìm dòng trùng `Bo_Phan+Ap_Dung_Tu` để sửa đè, -1 = thêm dòng mới). Khoá tự nhiên `(Bo_Phan, Ap_Dung_Tu)` chống double-tap — không cần cột `Request_ID` riêng cho sheet này. +9 test. `kiem-tra.ps1` sạch cả 5 lớp. **Chưa `clasp push`**, chờ xác nhận riêng. | Chạy menu 🧪 trong Sheet (kỳ vọng 379 = 370 + 9, không đỏ), rồi lưu lịch lần đầu + đổi lịch qua RPC thật, xem dòng cũ còn nguyên |
 | 5 | RPC đọc/ghi kế hoạch tuần (ngoại lệ + upsert + double-tap) | Test batch 60 máy, reload đúng, lưu 2 lần không trùng |
 | 6 | `ToTruong.html` — khung sườn + hiển thị danh sách máy | Xem giao diện thật trên điện thoại |
 | 7 | `ToTruong.html` — thao tác hàng loạt (chọn nhiều, áp cả tuần, sao chép, lý do đóng máy) | Thử luồng thật: đóng 1 máy, cả tuần, 1 ngày, 1 ca |

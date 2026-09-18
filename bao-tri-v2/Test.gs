@@ -1576,6 +1576,47 @@ function chayTest() {
   t.bang('lichHienHanhCuaTo_ bộ phận chưa khai lịch → null',
     lichHienHanhCuaTo_('SOI', '2026-09-15', _dsLichTo_), null);
 
+  // --- chuanHoaPayloadLichTo_ ------------------------------------------------
+  const _payloadDu_ = {
+    apDungTu: '2026-09-01', caNgayTu: '07:00', caNgayDen: '18:00',
+    coNghiTrua: true, nghiTruaTu: '12:00', nghiTruaDen: '13:00',
+    coCaDem: true, caDemTu: '18:00', caDemDen: '07:00', ghiChu: 'Ghi chú test',
+  };
+  const _kqDu_ = chuanHoaPayloadLichTo_('DET', _payloadDu_);
+  t.bang('chuanHoaPayloadLichTo_ đủ dữ liệu → ok, đúng thứ tự cột',
+    [_kqDu_.ok, _kqDu_.dong[HEADER_LICH_TO.indexOf('Nghi_Trua_Tu')]], [true, '12:00']);
+  t.bang('chuanHoaPayloadLichTo_ thiếu giờ ca ngày → lỗi',
+    chuanHoaPayloadLichTo_('DET', { apDungTu: '2026-09-01' }).ok, false);
+  t.bang('chuanHoaPayloadLichTo_ coNghiTrua=true nhưng thiếu giờ nghỉ trưa → lỗi',
+    chuanHoaPayloadLichTo_('DET', {
+      apDungTu: '2026-09-01', caNgayTu: '07:00', caNgayDen: '18:00', coNghiTrua: true,
+    }).ok, false);
+  t.bang('chuanHoaPayloadLichTo_ coCaDem=true nhưng thiếu giờ ca đêm → lỗi',
+    chuanHoaPayloadLichTo_('DET', {
+      apDungTu: '2026-09-01', caNgayTu: '07:00', caNgayDen: '18:00', coCaDem: true,
+    }).ok, false);
+  const _khongNghiKhongDem_ = chuanHoaPayloadLichTo_('DET', {
+    apDungTu: '2026-09-01', caNgayTu: '07:00', caNgayDen: '17:00',
+  });
+  t.bang('chuanHoaPayloadLichTo_ không nghỉ trưa, không ca đêm → ok, các giờ liên quan để trống',
+    [_khongNghiKhongDem_.ok, _khongNghiKhongDem_.dong[HEADER_LICH_TO.indexOf('Nghi_Trua_Tu')],
+     _khongNghiKhongDem_.dong[HEADER_LICH_TO.indexOf('Ca_Dem_Tu')]],
+    [true, '', '']);
+  t.bang('chuanHoaPayloadLichTo_ ngày áp dụng sai định dạng → lỗi',
+    chuanHoaPayloadLichTo_('DET', { apDungTu: '01/09/2026', caNgayTu: '07:00', caNgayDen: '18:00' }).ok, false);
+
+  // --- timDongLichTrungApDung_ ------------------------------------------------
+  const _vungLichTo_ = [
+    ['DET', '2026-09-01', '07:00', '18:00', true, '12:00', '13:00', true, '18:00', '07:00', '', ''],
+    ['SOI', '2026-09-01', '07:00', '17:00', false, '', '', false, '', '', '', ''],
+  ];
+  t.bang('timDongLichTrungApDung_ cùng Bo_Phan + Ap_Dung_Tu → đúng chỉ số dòng',
+    timDongLichTrungApDung_(_vungLichTo_, 'DET', '2026-09-01'), 0);
+  t.bang('timDongLichTrungApDung_ khác Ap_Dung_Tu → -1 (thêm dòng mới, không đụng dòng cũ)',
+    timDongLichTrungApDung_(_vungLichTo_, 'DET', '2026-10-01'), -1);
+  t.bang('timDongLichTrungApDung_ cùng Ap_Dung_Tu nhưng khác Bo_Phan → -1, không lẫn giữa các tổ',
+    timDongLichTrungApDung_(_vungLichTo_, 'CO', '2026-09-01'), -1);
+
   // --- Kết quả ---------------------------------------------------------------
   const tong = kq.dat + kq.loi.length;
   const bao = kq.loi.length

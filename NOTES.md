@@ -1,3 +1,11 @@
+## [2026-09-18] Tổ trưởng khai kế hoạch máy — Bước 4/8: RPC ghi lịch làm việc
+- **Thay đổi:** Thêm vào `KeHoachTo.gs`: `chuanHoaPayloadLichTo_` (validate payload + build dòng theo `HEADER_LICH_TO`, hàm thuần), `timDongLichTrungApDung_` (tìm dòng cùng `Bo_Phan+Ap_Dung_Tu` để sửa đè, `-1` = thêm dòng mới — đây là chỗ bảo đảm "đổi lịch không ghi đè lịch cũ", hàm thuần), và RPC `luuLichLamViec(boPhan, token, payload)`. Khoá upsert tự nhiên là `(Bo_Phan, Ap_Dung_Tu)`: bấm Lưu 2 lần cùng ngày áp dụng chỉ ghi đè đúng dòng đó (idempotent), không cần thêm cột `Request_ID` cho `Lich_Lam_Viec_To` như đã làm với `Ke_Hoach_May`.
+- `bp` (bộ phận ghi vào sheet) luôn lấy từ **bản ghi đã xác thực** `to.Bo_Phan`, không tin tham số `boPhan` client gửi lên — chặn sửa tham số URL để ghi vào bộ phận khác.
+- Thêm 9 test mới vào `Test.gs` cho 2 hàm thuần trên.
+- **`kiem-tra.ps1` sạch cả 5 lớp.**
+- **Trạng thái:** Đã sửa trong thư mục làm việc, **chưa commit** lúc viết dòng này (commit ngay sau). **CHƯA push GitHub, CHƯA `clasp push`, CHƯA deploy.**
+- **Việc cần làm tiếp theo:** Xác nhận `clasp push`, chạy menu 🧪 trong Sheet (kỳ vọng **379** = 370 + 9, không đỏ). Test tay RPC ghi thật (chưa có UI, gọi trực tiếp qua Apps Script Editor hoặc chờ bước 6-7 có form) trước khi sang bước 5.
+
 ## [2026-09-18] Tổ trưởng khai kế hoạch máy — Bước 3/8: ĐÃ XÁC NHẬN — 370/370, không đỏ
 - **Thay đổi:** Không sửa mã. Chủ dự án đã `clasp push`, chạy menu 🧪 "Chạy test logic" trong Sheet, ra **370/370**, không có test nào hỏng.
 - **Con số không khớp dự đoán 352 — đã tìm ra lý do, không phải lỗi:** `bao-tri-v2/CLAUDE.md` mục 14b ghi "340/340" từ 11/09, nhưng lần "kéo về repo" 18/09 đã kéo thêm các test lưu trữ phiếu theo tháng lịch (`mocThangLuuTru_`, `chonPhieuLuuTru_`...) từ Apps Script Editor về mà tài liệu chưa cập nhật số — nền thật trước khi thêm 12 test của bước này đã là 358, không phải 340. Sẽ sửa lại con số trong `CLAUDE.md` ở bước 8 (khi cập nhật tài liệu cho toàn bộ tính năng).
