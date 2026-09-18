@@ -173,7 +173,7 @@ trưởng xem chỉ số tuần của chính tổ + 1 mục menu xuất báo cá
 |---|---|---|
 | 1 | ✅ **XONG** — sửa code, `clasp push`, chạy `setupSystem()` thật trong Sheet. Chủ dự án xác nhận 3 sheet đúng cột, không đụng sheet cũ. | ✅ Đã xác nhận |
 | 2 | ✅ **XONG** — `KeHoachTo.gs` mới, `ToTruong.html` khung rỗng, route trong `CongNhan.gs`, đã `clasp push`. Test qua URL "Triển khai thử nghiệm": token đúng → "Kế hoạch tuần — DET"; token sai → "Không có quyền truy cập". Chủ dự án đã xác nhận cả hai ca. | ✅ Đã xác nhận |
-| 3 | RPC đọc: thông tin tổ + lịch làm việc hiện hành + danh sách máy | Test bằng `chayTest()`, chưa cần UI |
+| 3 | ✅ Sửa code xong. **Gộp 1 RPC** `getToTruongBootstrap(boPhan, token)` thay vì 3 RPC riêng (giảm round-trip, đúng lối `getWorkerBootstrap()` đã có) — trả `{ to, lich, may }`. Thêm `dsMayCuaBoPhan_`, `lichHienHanhCuaTo_`, `chuanHoaNgay_` (đều nhận tham số tiêm dữ liệu để test không đụng sheet). +12 test vào `Test.gs`. `kiem-tra.ps1` sạch cả 5 lớp. **Chưa `clasp push`**, chờ xác nhận riêng. | Chạy menu 🧪 Chạy test logic trong Sheet — phải ra 352/352 (340 cũ + 12 mới) |
 | 4 | RPC ghi: lưu lịch làm việc (có `Ap_Dung_Tu`) | Test lưu lần đầu + đổi lịch không phá lịch cũ |
 | 5 | RPC đọc/ghi kế hoạch tuần (ngoại lệ + upsert + double-tap) | Test batch 60 máy, reload đúng, lưu 2 lần không trùng |
 | 6 | `ToTruong.html` — khung sườn + hiển thị danh sách máy | Xem giao diện thật trên điện thoại |

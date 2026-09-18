@@ -1525,6 +1525,57 @@ function chayTest() {
   ], '2026-09');
   t.bang('01/09 ở lại, 31/08 đi', [_bien_.giuLai.length, _bien_.luuTru.length], [1, 1]);
 
+  // ============================================================================
+  // TỔ TRƯỞNG KHAI KẾ HOẠCH MÁY (KeHoachTo.gs) — bước 3/8
+  // ============================================================================
+
+  // --- xacThucTo_ --------------------------------------------------------
+  const _dsTo_ = [
+    { Bo_Phan: 'DET', Ten_To: 'Tổ Dệt', Ten_To_Truong: 'Phong', Token: 'tk-det', Hoat_Dong: true },
+    { Bo_Phan: 'SOI', Ten_To: 'Tổ Sợi', Ten_To_Truong: 'Lan', Token: 'tk-soi', Hoat_Dong: false },
+  ];
+  t.bang('xacThucTo_ token đúng, bộ phận đúng → trả về tổ',
+    !!xacThucTo_('DET', 'tk-det', _dsTo_), true);
+  t.bang('xacThucTo_ token sai → null',
+    xacThucTo_('DET', 'sai', _dsTo_), null);
+  t.bang('xacThucTo_ đúng token nhưng khác bộ phận → null',
+    xacThucTo_('SOI', 'tk-det', _dsTo_), null);
+  t.bang('xacThucTo_ Hoat_Dong=false → null dù token đúng',
+    xacThucTo_('SOI', 'tk-soi', _dsTo_), null);
+  t.bang('xacThucTo_ không phân biệt hoa thường bộ phận',
+    !!xacThucTo_('det', 'tk-det', _dsTo_), true);
+
+  // --- dsMayCuaBoPhan_ -----------------------------------------------------
+  const _dsMayGia_ = [
+    { Ma_May: '4T-01', Ten_May: 'Máy 01', Bo_Phan: 'DET', Hoat_Dong: true },
+    { Ma_May: '4T-02', Ten_May: 'Máy 02', Bo_Phan: 'DET', Hoat_Dong: false },
+    { Ma_May: 'S-01', Ten_May: 'Máy Sợi 01', Bo_Phan: 'SOI', Hoat_Dong: true },
+  ];
+  t.bang('dsMayCuaBoPhan_ chỉ lấy đúng bộ phận + Hoat_Dong=TRUE',
+    dsMayCuaBoPhan_('DET', _dsMayGia_), [{ maMay: '4T-01', tenMay: 'Máy 01' }]);
+  t.bang('dsMayCuaBoPhan_ bộ phận không có máy nào → mảng rỗng',
+    dsMayCuaBoPhan_('CO', _dsMayGia_), []);
+
+  // --- lichHienHanhCuaTo_ ----------------------------------------------------
+  const _dsLichTo_ = [
+    { Bo_Phan: 'DET', Ap_Dung_Tu: '2026-09-01', Ca_Ngay_Tu: '07:00', Ca_Ngay_Den: '18:00',
+      Co_Nghi_Trua: true, Nghi_Trua_Tu: '12:00', Nghi_Trua_Den: '13:00',
+      Co_Ca_Dem: true, Ca_Dem_Tu: '18:00', Ca_Dem_Den: '07:00' },
+    { Bo_Phan: 'DET', Ap_Dung_Tu: '2026-10-01', Ca_Ngay_Tu: '07:00', Ca_Ngay_Den: '18:00',
+      Co_Nghi_Trua: true, Nghi_Trua_Tu: '11:30', Nghi_Trua_Den: '12:30',
+      Co_Ca_Dem: true, Ca_Dem_Tu: '18:00', Ca_Dem_Den: '07:00' },
+  ];
+  t.bang('lichHienHanhCuaTo_ giữa tháng 9 → lấy lịch 01/09, không phải 01/10',
+    lichHienHanhCuaTo_('DET', '2026-09-15', _dsLichTo_).Nghi_Trua_Tu, '12:00');
+  t.bang('lichHienHanhCuaTo_ sau 01/10 → đổi sang lịch mới, lịch cũ vẫn còn nguyên trong dữ liệu',
+    lichHienHanhCuaTo_('DET', '2026-10-05', _dsLichTo_).Nghi_Trua_Tu, '11:30');
+  t.bang('lichHienHanhCuaTo_ đúng ngày Ap_Dung_Tu vẫn tính là hiện hành',
+    lichHienHanhCuaTo_('DET', '2026-10-01', _dsLichTo_).Nghi_Trua_Tu, '11:30');
+  t.bang('lichHienHanhCuaTo_ trước 01/09 → chưa có lịch nào → null',
+    lichHienHanhCuaTo_('DET', '2026-08-31', _dsLichTo_), null);
+  t.bang('lichHienHanhCuaTo_ bộ phận chưa khai lịch → null',
+    lichHienHanhCuaTo_('SOI', '2026-09-15', _dsLichTo_), null);
+
   // --- Kết quả ---------------------------------------------------------------
   const tong = kq.dat + kq.loi.length;
   const bao = kq.loi.length

@@ -1,3 +1,10 @@
+## [2026-09-18] Tổ trưởng khai kế hoạch máy — Bước 3/8: RPC đọc bootstrap (KeHoachTo.gs)
+- **Thay đổi:** Thêm vào `KeHoachTo.gs`: `dsMayCuaBoPhan_` (lọc máy theo bộ phận + `Hoat_Dong=TRUE`), `chuanHoaNgay_` + `lichHienHanhCuaTo_` (chọn dòng `Lich_Lam_Viec_To` có `Ap_Dung_Tu` lớn nhất mà vẫn ≤ ngày cần tra, trả `null` nếu tổ chưa khai lịch), và RPC `getToTruongBootstrap(boPhan, token)`. **Gộp một RPC duy nhất** thay vì 3 RPC riêng như phác thảo ban đầu trong `TASK_KE_HOACH_TO_TRUONG.md` — đúng lối `getWorkerBootstrap()` đã dùng cho trang công nhân, giảm round-trip `google.script.run`. `xacThucTo_` cũng được sửa thêm tham số `dsTo` tiêm được, đúng lối `getOnDutyContacts_`.
+- Thêm 12 test mới vào `Test.gs` (mục "TỔ TRƯỞNG KHAI KẾ HOẠCH MÁY — bước 3/8"), test cả ba hàm bằng dữ liệu giả, không đụng sheet nào.
+- **`kiem-tra.ps1` sạch cả 5 lớp.** Lớp 6 (340 test cũ) chỉ chạy được trong Sheet, chưa xác nhận — cần push rồi chạy menu 🧪.
+- **Trạng thái:** Đã sửa trong thư mục làm việc, **chưa commit** lúc viết dòng này (commit ngay sau). **CHƯA push GitHub, CHƯA `clasp push`, CHƯA deploy.**
+- **Việc cần làm tiếp theo:** Xác nhận `clasp push`, rồi chạy menu 🧪 "Chạy test logic" trong Sheet — kỳ vọng **352/352** (340 cũ + 12 mới). Sau đó sang bước 4 (RPC ghi: lưu lịch làm việc).
+
 ## [2026-09-18] Tổ trưởng khai kế hoạch máy — Bước 2/8: ĐÃ XÁC NHẬN chạy thật qua Test deployments
 - **Thay đổi:** Không sửa mã. Chủ dự án đã điền tay `Token=test123` cho dòng `DET` trong `Danh_Muc_To`, mở URL "Triển khai thử nghiệm" (`.../exec?page=kehoach&to=DET&token=...` — deployment test riêng, KHÔNG phải bản `/exec` đang phục vụ 162 máy thật) và xác nhận cả hai ca: token đúng → "Kế hoạch tuần — DET" (đúng cả nội dung lẫn tiêu đề tab), token sai → "Không có quyền truy cập".
 - **Trạng thái:** `xacThucTo_` + route `page=kehoach` đã chạy thật đúng như thiết kế. Vẫn **CHƯA deploy** bản `/exec` chính thức — bước này không cần, vì test deployment đã đủ xác nhận logic. Sẽ deploy chung một lượt khi cả tính năng hoàn chỉnh (sau bước 7-8), tránh deploy nhiều lần giữa chừng.
