@@ -150,6 +150,11 @@ select.chon {
       <div class="chip" data-gt="TUAN" aria-pressed="true">Cả tuần</div>
       <div class="chip" data-gt="NGAY">Chọn ngày cụ thể</div>
     </div>
+    <div style="font-size:12.5px;color:var(--chu-nhat);margin-top:6px">
+      "Cả tuần" khai lại từ đầu cho máy này. "Chọn ngày cụ thể" chỉ thêm/sửa
+      đúng những ngày vừa chọn — có thể bấm "Sửa" nhiều lần để khai thêm ngày
+      khác mà không mất phần đã khai trước.
+    </div>
 
     <div id="modalChonNgay" class="an">
       <div class="modal-nhan">Chọn ngày (bấm được nhiều ngày)</div>
@@ -545,11 +550,18 @@ $('modalXacNhan').addEventListener('click', function () {
     if (coCaDem && (caCuaNgay === 'D' || caCuaNgay === 'CA')) dsSlot.push({ ngay: ymd, ca: 'D' });
   });
 
-  // Mỗi lần Xác nhận THAY HẲN toàn bộ ngoại lệ của máy này trong tuần — bấm
-  // "Sửa" rồi xác nhận lại không cộng dồn với lựa chọn trước đó.
-  NGOAI_LE[MAY_DANG_MO] = dsSlot.map(function (s) {
-    return { maMay: MAY_DANG_MO, ngay: s.ngay, ca: s.ca, lyDo: lyDo, ghiChu: ghiChu };
+  // "Cả tuần" THAY HẲN toàn bộ ngoại lệ của máy (khai lại từ đầu cho cả tuần).
+  // "Chọn ngày cụ thể" chỉ GHI ĐÈ đúng những (ngày, ca) vừa chọn, GIỮ NGUYÊN
+  // các ngày/ca khác đã khai từ lượt "Sửa" trước đó — nhờ vậy khai được kiểu
+  // "T2-T6 chỉ ca ngày, lý do A" rồi "Sửa" thêm "Chủ nhật cả 2 ca, lý do B"
+  // qua 2 lượt riêng mà không mất lượt đầu.
+  var hienCo = MODAL_AP_DUNG === 'TUAN' ? [] : (NGOAI_LE[MAY_DANG_MO] || []);
+  var theoKhoa = {};
+  hienCo.forEach(function (nl) { theoKhoa[nl.ngay + '|' + nl.ca] = nl; });
+  dsSlot.forEach(function (s) {
+    theoKhoa[s.ngay + '|' + s.ca] = { maMay: MAY_DANG_MO, ngay: s.ngay, ca: s.ca, lyDo: lyDo, ghiChu: ghiChu };
   });
+  NGOAI_LE[MAY_DANG_MO] = Object.keys(theoKhoa).map(function (k) { return theoKhoa[k]; });
   DA_THAY_DOI = true;
 
   an('modalDong');

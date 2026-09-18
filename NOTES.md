@@ -1,3 +1,10 @@
+## [2026-09-18] Tổ trưởng khai kế hoạch máy — Bước 7a/8: "Sửa" giờ CỘNG DỒN thay vì ghi đè
+- **Câu hỏi thực tế từ chủ dự án:** đóng máy T2-T6 chỉ ca ngày, nhưng Chủ nhật tổ không sản xuất thì khai kiểu gì? Trả lời: khai làm 2 lượt (T2-T6 ca ngày, rồi "Sửa" thêm Chủ nhật cả 2 ca) — nhưng code cũ mỗi lần Xác nhận **thay hẳn** toàn bộ ngoại lệ của máy, nên lượt 2 sẽ xoá mất lượt 1.
+- **Sửa:** Chế độ **"Cả tuần"** vẫn thay hẳn (khai lại từ đầu). Chế độ **"Chọn ngày cụ thể"** giờ chỉ **ghi đè đúng (ngày, ca) vừa chọn**, giữ nguyên mọi (ngày, ca) khác đã khai từ lượt "Sửa" trước — gộp theo khoá `ngày|ca`. Thêm chú thích ngắn trong modal giải thích hành vi này.
+- **`kiem-tra.ps1` sạch cả 5 lớp** (`ToTruong.html` 434 dòng).
+- **Trạng thái:** Đã sửa trong thư mục làm việc, **chưa commit** lúc viết dòng này (commit ngay sau). **CHƯA push GitHub, CHƯA `clasp push`, CHƯA deploy.**
+- **Việc cần làm tiếp theo:** Xác nhận `clasp push`, thử đúng kịch bản: đóng T2-T6 ca ngày (lượt 1) → Sửa thêm Chủ nhật cả 2 ca (lượt 2) → xác nhận cả 7 lượt còn nguyên → Lưu → F5 kiểm tra.
+
 ## [2026-09-18] Tổ trưởng khai kế hoạch máy — Bước 7a/8: sửa modal cho chọn NHIỀU ngày
 - **Phát hiện lúc test tay:** Chủ dự án thử modal đóng máy, phát hiện "Một ngày" và "Một ngày, một ca" chỉ cho chọn **đúng 1 ngày** (chip hoạt động kiểu radio) — thực tế cần đóng máy vào vài ngày cụ thể cùng lúc (ví dụ thứ Tư và thứ Sáu), không phải cả tuần.
 - **Sửa:** Gộp "Một ngày"/"Một ngày, một ca" thành một chế độ **"Chọn ngày cụ thể"** — chip ngày giờ bấm được NHIỀU ngày (toggle độc lập, không còn radio), kèm 1 bộ chọn ca áp dụng chung cho các ngày đã chọn (**Cả 2 ca** / Ca ngày / Ca đêm — ẩn Ca đêm nếu tổ không có). "Áp dụng" giờ chỉ còn 2 lựa chọn: Cả tuần / Chọn ngày cụ thể.
