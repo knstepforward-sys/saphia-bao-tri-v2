@@ -1,0 +1,28 @@
+<!-- ==========================================================================
+     TRANG TỔ TRƯỞNG — khai kế hoạch máy theo tuần (?page=kehoach&to=&token=).
+     Bước 2/8: khung xác thực rỗng. Form thật làm ở bước 6-7 — xem
+     TASK_KE_HOACH_TO_TRUONG.md mục 9.
+     ========================================================================== -->
+<?!= include('Style') ?>
+
+<body>
+
+<div id="goc" data-bo-phan="<?= boPhan ?>" data-token="<?= token ?>" data-ten-to="<?= tenTo ?>" hidden></div>
+
+<div style="padding:32px 20px;text-align:center;color:var(--chu)">
+  <div style="font-size:44px;margin-bottom:12px">🧵</div>
+  <h2 style="margin:0 0 8px;font-size:20px" id="tieuDe">Kế hoạch tuần</h2>
+  <p style="margin:0;color:var(--chu-nhat);font-size:15px;line-height:1.5">
+    Xác thực thành công. Trang khai kế hoạch đang được xây dựng.
+  </p>
+</div>
+
+<script>
+(function () {
+  var goc = document.getElementById('goc');
+  var tenTo = goc.dataset.tenTo || goc.dataset.boPhan;
+  document.getElementById('tieuDe').textContent = 'Kế hoạch tuần — ' + tenTo;
+})();
+</script>
+
+</body>

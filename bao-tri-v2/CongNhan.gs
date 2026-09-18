@@ -12,9 +12,11 @@
 
 /**
  * Entry point web app.
- *   ?may=MA_MAY            → trang công nhân báo sự cố
- *   ?tho=MA_THO&token=...  → trang thợ (bước 3)
- *   không tham số          → trang hướng dẫn
+ *   ?may=MA_MAY                    → trang công nhân báo sự cố
+ *   ?tho=MA_THO&token=...          → trang thợ
+ *   ?page=qr|ngay&key=...          → in QR / báo cáo trong ngày
+ *   ?page=kehoach&to=...&token=... → trang tổ trưởng khai kế hoạch máy (KeHoachTo.gs)
+ *   không tham số                  → trang hướng dẫn
  */
 function doGet(e) {
   const p = (e && e.parameter) || {};
@@ -26,6 +28,7 @@ function doGet(e) {
   const trang = String(p.page || '').trim().toLowerCase();
   if (trang === 'qr') return renderTrangQr_(p);
   if (trang === 'ngay') return renderTrangNgay_(p);
+  if (trang === 'kehoach') return renderTrangKeHoach_(p);
 
   if (p.tho) {
     return renderTrang_('Tho', 'Công việc của tôi — Bảo trì nhà máy', {
