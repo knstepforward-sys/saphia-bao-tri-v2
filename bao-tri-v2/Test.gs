@@ -1434,6 +1434,97 @@ function chayTest() {
   t.bang('Đã trả lại hàm đọc danh mục thợ', lienLacTho_ === _gocLienLac_, true);
   t.bang('Đã trả lại hàm dựng danh bạ', getOnDutyContacts_ === _gocDanhBa_, true);
 
+  // --- 15. Lưu trữ phiếu theo tháng lịch -------------------------------------
+  // Mốc cắt và phép tách nhóm của archiveOldTickets. Cả hai đều là hàm thuần nên
+  // kiểm được bằng dữ liệu giả, không đụng sheet nào.
+
+  t.bang('Giữ 1 tháng, đứng ở 11/09 → cắt trước 2026-09',
+    mocThangLuuTru_(_luc_('2026-09-11T02:00'), 1), '2026-09');
+  t.bang('Giữ 2 tháng → cắt trước 2026-08',
+    mocThangLuuTru_(_luc_('2026-09-11T02:00'), 2), '2026-08');
+  // Qua năm: 01/2026 lùi 1 tháng phải ra 12/2025, không phải tháng 0 hay 13.
+  t.bang('Giữ 2 tháng, đứng ở tháng 1 → lùi qua năm trước',
+    mocThangLuuTru_(_luc_('2026-01-01T02:00'), 2), '2025-12');
+  t.bang('Giữ 13 tháng, đứng ở tháng 1 → lùi trọn một năm',
+    mocThangLuuTru_(_luc_('2026-01-01T02:00'), 13), '2025-01');
+  // Ngày 31: Date.setMonth lùi từ 31/03 sẽ tràn sang 03/03, cách tính bằng tổng
+  // số tháng thì không.
+  t.bang('Ngày 31 không làm trôi tháng',
+    mocThangLuuTru_(_luc_('2026-03-31T02:00'), 2), '2026-02');
+  t.bang('Số tháng 0 vẫn coi như 1 — không bao giờ dọn tháng đang chạy',
+    mocThangLuuTru_(_luc_('2026-09-11T02:00'), 0), '2026-09');
+
+  // Dựng một dòng Su_Co giả: chỉ điền các cột phép tách thật sự đọc.
+  function _dongLuuTru_(ngayCa, trangThai, kpiApDung, baoLuc) {
+    const v = new Array(HEADER_SU_CO.length).fill('');
+    v[COT.Ma_Su_Co] = 'SC-' + (ngayCa || 'x') + '-001';
+    v[COT.Ngay_Ca] = ngayCa || '';
+    v[COT.Trang_Thai] = trangThai;
+    v[COT.KPI_Ap_Dung] = kpiApDung;
+    if (baoLuc) v[COT.Thoi_Gian_Bao] = _luc_(baoLuc);
+    return v;
+  }
+  function _dsMa_(ds) {
+    return ds.map(function (v) { return v[COT.Ma_Su_Co]; });
+  }
+
+  const _dsLt_ = [
+    _dongLuuTru_('2026-08-03', TRANG_THAI.HOAN_THANH, 'CO'),
+    _dongLuuTru_('2026-08-04', TRANG_THAI.DANG_XU_LY, 'CO'),
+    _dongLuuTru_('2026-09-02', TRANG_THAI.HOAN_THANH, 'CO'),
+    _dongLuuTru_('2026-08-05', TRANG_THAI.HOAN_THANH, ''),
+    _dongLuuTru_('2026-08-06', TRANG_THAI.HOAN_THANH, 'KHONG — phiếu DUNG_MAY'),
+    _dongLuuTru_('', TRANG_THAI.HOAN_THANH, 'CO', '2026-07-09T10:00'),
+    _dongLuuTru_('', TRANG_THAI.HOAN_THANH, 'CO'),
+  ];
+  const _lt_ = chonPhieuLuuTru_(_dsLt_, '2026-09');
+
+  t.bang('Phiếu tháng trước đã xong thì dọn đi',
+    _dsMa_(_lt_.luuTru).indexOf('SC-2026-08-03-001') >= 0, true);
+  t.bang('Phiếu chưa đóng thì ở lại dù cũ',
+    _dsMa_(_lt_.giuLai).indexOf('SC-2026-08-04-001') >= 0, true);
+  t.bang('Phiếu tháng này ở lại',
+    _dsMa_(_lt_.giuLai).indexOf('SC-2026-09-02-001') >= 0, true);
+  t.bang('Phiếu chưa tính KPI lần nào thì giữ lại chờ tính',
+    _dsMa_(_lt_.giuLai).indexOf('SC-2026-08-05-001') >= 0, true);
+  t.bang('Và đếm đúng số phiếu giữ vì KPI', _lt_.giuViKpi, 1);
+  // Phiếu không vào KPI vẫn có chữ trong KPI_Ap_Dung — không được nhầm thành
+  // "chưa tính" rồi giữ lại vĩnh viễn.
+  t.bang('Phiếu không đo KPI vẫn dọn được',
+    _dsMa_(_lt_.luuTru).indexOf('SC-2026-08-06-001') >= 0, true);
+  t.bang('Thiếu Ngay_Ca thì lấy tháng từ Thoi_Gian_Bao',
+    _lt_.luuTru.length, 3);
+  t.bang('Dòng không đọc được tháng thì giữ lại, không dọn mù',
+    _dsMa_(_lt_.giuLai).indexOf('SC-x-001') >= 0, true);
+  t.bang('Không phiếu nào biến mất giữa hai nhóm',
+    _lt_.giuLai.length + _lt_.luuTru.length, _dsLt_.length);
+
+  // Phiếu không đo được đáp ứng thì ô KPI trống là chuyện bình thường, không được
+  // lấy đó làm cớ giữ lại — CV-/BT-/DM- chiếm gần một phần tư số phiếu mỗi tháng.
+  function _dongLoai_(ma, loai) {
+    const v = _dongLuuTru_('2026-08-10', TRANG_THAI.HOAN_THANH, '');
+    v[COT.Ma_Su_Co] = ma;
+    v[COT.Loai_Phieu] = loai;
+    return v;
+  }
+  const _khongDo_ = chonPhieuLuuTru_([
+    _dongLoai_('CV-1008-001', 'CONG_VIEC'),
+    _dongLoai_('BT-1008-002', 'BAO_TRI'),
+    _dongLoai_('DM-1008-003', 'DUNG_MAY'),
+    _dongLoai_('SC-1008-004', 'SU_CO'),
+  ], '2026-09');
+  t.bang('Phiếu không đo KPI, ô trống vẫn dọn được',
+    _dsMa_(_khongDo_.luuTru), ['CV-1008-001', 'BT-1008-002', 'DM-1008-003']);
+  t.bang('Chỉ phiếu sự cố chưa tính KPI mới bị giữ lại',
+    [_dsMa_(_khongDo_.giuLai), _khongDo_.giuViKpi], [['SC-1008-004'], 1]);
+
+  // Biên tháng: phiếu đúng ngày cuối của tháng mốc phải ở lại.
+  const _bien_ = chonPhieuLuuTru_([
+    _dongLuuTru_('2026-09-01', TRANG_THAI.HOAN_THANH, 'CO'),
+    _dongLuuTru_('2026-08-31', TRANG_THAI.HOAN_THANH, 'CO'),
+  ], '2026-09');
+  t.bang('01/09 ở lại, 31/08 đi', [_bien_.giuLai.length, _bien_.luuTru.length], [1, 1]);
+
   // --- Kết quả ---------------------------------------------------------------
   const tong = kq.dat + kq.loi.length;
   const bao = kq.loi.length

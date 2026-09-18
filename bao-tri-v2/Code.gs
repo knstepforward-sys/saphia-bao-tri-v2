@@ -29,8 +29,13 @@
 const CONFIG = {
   MUI_GIO: 'Asia/Ho_Chi_Minh',
 
-  // Phiếu HOAN_THANH cũ hơn số tháng này sẽ được archiveOldTickets_() dời sang Luu_Tru.
-  SO_THANG_GIU_LAI: 12,
+  // Số THÁNG LỊCH giữ lại trong sheet Su_Co, tính cả tháng đang chạy. 1 = chỉ
+  // tháng này: ngày 1 hằng tháng, archiveOldTickets() dời mọi phiếu HOAN_THANH
+  // của các tháng TRƯỚC sang Luu_Tru, nên sáng ngày 1 sheet gần như trống.
+  // Cắt theo tháng lịch (thangCuaPhieu_), KHÔNG phải mốc trượt n tháng kể từ
+  // hôm nay — mốc trượt sẽ cắt ngang giữa tháng và để lại nửa tháng cũ.
+  // Ghi đè được ở sheet Cau_Hinh, khoá SO_THANG_GIU_LAI. Tối thiểu 1.
+  SO_THANG_GIU_LAI: 1,
 
   // Giới hạn nhập liệu (giữ như bản cũ).
   MAX_PHU_TUNG: 5,
@@ -115,6 +120,18 @@ function soCauHinh_(gt, macDinh) {
   if (!s) return macDinh;
   const n = Number(s);
   return isFinite(n) && n >= 0 ? n : macDinh;
+}
+
+/**
+ * Số tháng lịch giữ lại trong Su_Co, đọc từ Cau_Hinh.
+ *
+ * Chặn dưới ở 1: đặt 0 là dọn cả tháng đang chạy, mà `sinhMaPhieu_` đếm mã phiếu
+ * trong ngày ngay trên Su_Co — dọn tháng hiện tại đi là mã phiếu đánh trùng.
+ */
+function soThangGiuLai_(cauHinh) {
+  const ch = cauHinh || docCauHinh_();
+  const n = Math.round(soCauHinh_(ch.SO_THANG_GIU_LAI, CONFIG.SO_THANG_GIU_LAI));
+  return n >= 1 ? n : 1;
 }
 
 /** Danh sách lý do dừng máy, đọc từ Cau_Hinh. Trống thì dùng mặc định trong code. */
@@ -256,6 +273,12 @@ const CAU_HINH_MAC_DINH = [
     'THÔNG BÁO TELEGRAM — quá ngần này PHÚT vẫn chưa ai nhận thì bot nhắc lần 2, ' +
     'lời gắt hơn và kèm SDT_KHAN_CAP. Mỗi phiếu tối đa 2 lần nhắc, không bao giờ ' +
     'nhiều hơn. Phải lớn hơn NHAC_LAN_1_PHUT. Đặt 0 để tắt riêng lần nhắc thứ hai.'],
+  ['SO_THANG_GIU_LAI', '1',
+    'LƯU TRỮ PHIẾU — số THÁNG giữ lại trong sheet Su_Co, tính cả tháng đang chạy. ' +
+    'Để 1 thì ngày 1 hằng tháng mọi phiếu ĐÃ HOÀN THÀNH của các tháng trước được ' +
+    'dời sang sheet Luu_Tru, Su_Co chỉ còn phiếu tháng này cộng phiếu chưa đóng. ' +
+    'Để 2 là giữ thêm tháng liền trước. Không mất dữ liệu: báo cáo ngày, báo cáo ' +
+    'tháng và tỉ lệ khả dụng đều đọc cả Luu_Tru. Nhỏ nhất là 1.'],
   ['HUONG_DAN_KHOA_LINK_THO', '',
     'KHOÁ LINK KHI THỢ NGHỈ VIỆC: xoá trắng ô Token của người đó trong sheet ' +
     'Danh_Muc_Tho, bỏ tick Hoat_Dong, rồi chạy menu 🔧 Bảo trì → "4. Sinh lại ' +
@@ -893,6 +916,7 @@ function setupSystem() {
   // Ngay_Ca lưu chuỗi 'yyyy-MM-dd'. Không ép dạng text thì Sheets tự đổi thành
   // Date lúc setValues, khiến việc gom nhóm theo ngày ở báo cáo so sánh sai kiểu.
   shSuCo.getRange(2, COT.Ngay_Ca + 1, shSuCo.getMaxRows() - 1, 1).setNumberFormat('@');
+  goQuyTacXacThuc_(shSuCo);
   ketQua.push(SHEET.SU_CO);
 
   // --- Nhật ký + Lưu trữ + Tổng hợp ----------------------------------------
@@ -900,7 +924,8 @@ function setupSystem() {
   dinhDangCotThoiGian_(shLog, [HEADER_NHAT_KY.indexOf('Thoi_Gian') + 1]);
   ketQua.push(SHEET.NHAT_KY);
 
-  taoSheet_(SHEET.LUU_TRU, HEADER_SU_CO); // cùng schema với Su_Co
+  const shLuuTru = taoSheet_(SHEET.LUU_TRU, HEADER_SU_CO); // cùng schema với Su_Co
+  goQuyTacXacThuc_(shLuuTru);
   ketQua.push(SHEET.LUU_TRU);
 
   taoSheet_(SHEET.TONG_HOP, null); // nội dung do refreshReports() dựng ở bước 4
@@ -921,6 +946,50 @@ function datDropdown_(sh, cot, giaTri, soCot) {
     .setAllowInvalid(false)
     .build();
   sh.getRange(2, cot, sh.getMaxRows() - 1, soCot || 1).setDataValidation(rule);
+}
+
+/** Số cột 1-based → chữ cột kiểu Sheets (1 → A, 32 → AF). Dùng khi báo lỗi cho người. */
+function chuCot_(n) {
+  let s = '', x = n;
+  while (x > 0) {
+    const du = (x - 1) % 26;
+    s = String.fromCharCode(65 + du) + s;
+    x = Math.floor((x - 1) / 26);
+  }
+  return s;
+}
+
+/** Các cột của Su_Co do MÃ ghi, người không bao giờ gõ tay vào. */
+const COT_MA_TU_GHI = [
+  'Phut_Tiep_Nhan', 'Phut_Xu_Ly', 'Thoi_Gian_Dung_May', 'Phut_Cho_Tho_Ban',
+  'Phut_Dap_Ung_Thuc', 'So_Chong_Viec', 'Loai_Phieu', 'Phut_Ban_Thuc_Te',
+  'Phut_KPI_Tho', 'So_Doan_Ban', 'KPI_Ap_Dung', 'Dat_Nguong',
+];
+
+/**
+ * Gỡ mọi quy tắc xác thực dữ liệu khỏi các cột mã tự ghi của Su_Co / Luu_Tru.
+ *
+ * VÌ SAO CẦN, và đây là bẫy đắt nhất từ trước tới nay của phần KPI: một quy tắc
+ * xác thực đặt nhầm cột sẽ **âm thầm huỷ** lệnh ghi của script. Apps Script gom
+ * lệnh ghi rồi mới đẩy xuống Sheet, nên `setValues` trả về êm ru, hàm báo "đã ghi
+ * 748 dòng", còn Google thì từ chối lúc đẩy xuống và không ai hay biết.
+ *
+ * Đã xảy ra thật ngày 12/09/2026: có người tạo tay dropdown Loai_Phieu (bản cũ,
+ * mới 4 giá trị, thiếu HO_TRO) nhưng đặt lên cột AF — tức KPI_Ap_Dung. Suốt nhiều
+ * ngày menu 🎯 báo tính xong mà không một ô nào được ghi, và cả người dùng lẫn
+ * người sửa mã đều không nhìn ra vì không có lấy một thông báo lỗi.
+ *
+ * Người vẫn gõ tay được ở các cột mô tả, ghi chú, nội dung xử lý — hàm này không
+ * đụng tới chúng.
+ */
+function goQuyTacXacThuc_(sh) {
+  const soDong = sh.getMaxRows() - 1;
+  if (soDong < 1) return;
+  COT_MA_TU_GHI.forEach(function (ten) {
+    const c = COT[ten];
+    if (c === undefined || c + 1 > sh.getMaxColumns()) return;
+    sh.getRange(2, c + 1, soDong, 1).clearDataValidations();
+  });
 }
 
 /**
@@ -1295,9 +1364,10 @@ function onOpen() {
     .addItem('➕ Bù phiếu dừng máy (thợ quên quét)…', 'menuBuPhieuDungMay')
     .addItem('📊 Cập nhật báo cáo tổng hợp', 'menuBaoCao')
     .addItem('🎯 Tính lại KPI đáp ứng của thợ', 'menuTinhLaiKpi')
+    .addItem('🩺 Chẩn đoán KPI (chỉ đọc)', 'menuChanDoanKpi')
     .addItem('📤 Xuất báo cáo (chọn ngày, bộ phận, thợ)…', 'menuXuatBaoCao')
     .addItem('📈 Báo cáo tỉ lệ khả dụng máy…', 'menuBaoCaoKhaDung')
-    .addItem('🗄️ Dọn phiếu cũ sang Lưu trữ', 'menuLuuTru')
+    .addItem('🗄️ Dọn phiếu tháng cũ sang Lưu trữ', 'menuLuuTru')
     .addItem('⏰ Cài trigger tự chạy', 'menuCaiTrigger')
     .addSeparator()
     .addSubMenu(SpreadsheetApp.getUi().createMenu('📨 Thông báo Telegram')
@@ -1355,9 +1425,12 @@ function menuMoKeHoachKhaDung() {
     'Tỉ lệ khả dụng A', 8);
 }
 
-function menuLuuTru() { chayVaBao_('Dọn phiếu cũ', archiveOldTickets); }
+// Chạy donPhieuCuHangThang chứ không chạy thẳng archiveOldTickets: bấm tay giữa
+// tháng cũng phải tính KPI trước khi dời phiếu đi, y như trigger ngày 1.
+function menuLuuTru() { chayVaBao_('Dọn phiếu cũ', donPhieuCuHangThang); }
 function menuCaiTrigger() { chayVaBao_('Cài trigger', caiDatTrigger); }
 function menuTinhLaiKpi() { chayVaBao_('Tính lại KPI đáp ứng', tinhLaiKpiTho); }
+function menuChanDoanKpi() { chayVaBao_('Chẩn đoán KPI', chanDoanKpi); }
 
 function menuBaoCao() {
   const ui = SpreadsheetApp.getUi();
