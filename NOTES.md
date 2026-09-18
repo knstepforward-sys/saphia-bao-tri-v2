@@ -1,3 +1,10 @@
+## [2026-09-18] Tổ trưởng khai kế hoạch máy — Bước 7a/8: thao tác nhanh Chủ nhật cho cả tổ
+- **Yêu cầu thực tế từ chủ dự án:** Chủ nhật thường nghỉ, nhưng trễ đơn hàng thì làm cả ca ngày lẫn ca đêm — cần thao tác nhanh cho TOÀN BỘ máy thay vì bấm từng máy một.
+- **Thêm:** 2 nút "🌙 Đóng Chủ nhật" / "☀️ Bố trí chạy Chủ nhật" phía trên danh sách máy, áp dụng cho tất cả máy của tổ trong MỘT lượt. Đóng Chủ nhật mở modal riêng (chọn ca + lý do + ghi chú) rồi ghi đè đúng slot Chủ nhật của từng máy — dùng đúng cơ chế cộng dồn theo khoá `ngày|ca` như modal 1 máy, không đụng các ngày khác đã khai riêng. Bố trí chạy Chủ nhật xoá mọi ngoại lệ Chủ nhật của mọi máy (có `confirm()` cảnh báo trước vì ảnh hưởng toàn bộ máy cùng lúc), giữ nguyên các ngày khác.
+- **`kiem-tra.ps1` sạch cả 5 lớp** (`ToTruong.html` 506 dòng).
+- **Trạng thái:** Đã sửa trong thư mục làm việc, **chưa commit** lúc viết dòng này (commit ngay sau). **CHƯA push GitHub, CHƯA `clasp push`, CHƯA deploy.**
+- **Việc cần làm tiếp theo:** Xác nhận `clasp push`, thử 2 nút Chủ nhật + luồng cộng dồn (T2-T6 rồi Sửa thêm CN) trên cùng 1 tuần, Lưu, F5 kiểm tra.
+
 ## [2026-09-18] Tổ trưởng khai kế hoạch máy — Bước 7a/8: "Sửa" giờ CỘNG DỒN thay vì ghi đè
 - **Câu hỏi thực tế từ chủ dự án:** đóng máy T2-T6 chỉ ca ngày, nhưng Chủ nhật tổ không sản xuất thì khai kiểu gì? Trả lời: khai làm 2 lượt (T2-T6 ca ngày, rồi "Sửa" thêm Chủ nhật cả 2 ca) — nhưng code cũ mỗi lần Xác nhận **thay hẳn** toàn bộ ngoại lệ của máy, nên lượt 2 sẽ xoá mất lượt 1.
 - **Sửa:** Chế độ **"Cả tuần"** vẫn thay hẳn (khai lại từ đầu). Chế độ **"Chọn ngày cụ thể"** giờ chỉ **ghi đè đúng (ngày, ca) vừa chọn**, giữ nguyên mọi (ngày, ca) khác đã khai từ lượt "Sửa" trước — gộp theo khoá `ngày|ca`. Thêm chú thích ngắn trong modal giải thích hành vi này.

@@ -122,6 +122,12 @@ select.chon {
   <div class="thong-ke" id="cThongKe"></div>
   <div id="cBaoChuaKhai"></div>
 
+  <div class="modal-nhan" style="margin-top:0">Thao tác nhanh Chủ nhật (áp cho tất cả máy)</div>
+  <div style="display:flex;gap:8px;margin-bottom:14px">
+    <button class="nut phu" id="nutDongCN" type="button" style="flex:1;padding:11px;font-size:13.5px">🌙 Đóng Chủ nhật</button>
+    <button class="nut phu" id="nutMoCN" type="button" style="flex:1;padding:11px;font-size:13.5px">☀️ Bố trí chạy Chủ nhật</button>
+  </div>
+
   <div class="the-tieu-de">Danh sách máy</div>
   <div id="cDsMay"></div>
 
@@ -173,6 +179,31 @@ select.chon {
     <div style="display:flex;gap:10px;margin-top:16px">
       <button class="nut phu" id="modalHuy" type="button" style="flex:1">Huỷ</button>
       <button class="nut do" id="modalXacNhan" type="button" style="flex:1">Xác nhận đóng máy</button>
+    </div>
+  </div>
+</div>
+
+<!-- =============== MODAL CHỦ NHẬT — ÁP CHO TẤT CẢ MÁY ===================== -->
+<div class="modal-nen an" id="modalCN">
+  <div class="modal-hop">
+    <div class="the-tieu-de" style="margin-top:0">Đóng Chủ nhật cho tất cả máy</div>
+    <div style="font-size:12.5px;color:var(--chu-nhat)">
+      Chỉ áp dụng Chủ nhật tuần đang xem. Không đụng tới các ngày khác đã khai
+      cho từng máy.
+    </div>
+
+    <div class="modal-nhan">Áp dụng ca</div>
+    <div class="chips" id="modalCNDsCa" style="grid-template-columns:repeat(3,1fr)"></div>
+
+    <div class="modal-nhan">Lý do đóng máy</div>
+    <select class="chon" id="modalCNLyDo"></select>
+
+    <div class="modal-nhan">Ghi chú <span style="font-weight:400">(bắt buộc nếu chọn "Khác")</span></div>
+    <textarea id="modalCNGhiChu" placeholder="Ví dụ: Chủ nhật nghỉ theo lịch thường" style="min-height:56px"></textarea>
+
+    <div style="display:flex;gap:10px;margin-top:16px">
+      <button class="nut phu" id="modalCNHuy" type="button" style="flex:1">Huỷ</button>
+      <button class="nut do" id="modalCNXacNhan" type="button" style="flex:1">Xác nhận đóng Chủ nhật</button>
     </div>
   </div>
 </div>
@@ -574,6 +605,78 @@ function boTriLai(maMay) {
   DA_THAY_DOI = true;
   veLaiDanhSachMay_();
 }
+
+// ===========================================================================
+// Thao tác nhanh CHỦ NHẬT — áp cho TẤT CẢ máy cùng lúc. Chủ nhật thường nghỉ
+// (mục 7 kế hoạch: không hard-code Chủ nhật = nghỉ), nhưng trễ đơn hàng thì
+// cần bật lại nhanh cả ngày lẫn đêm cho toàn bộ máy, không phải bấm từng máy.
+// ===========================================================================
+var MODAL_CN_CA = 'CA';
+
+$('nutDongCN').addEventListener('click', function () {
+  var coCaDem = !!(DATA.lich && DATA.lich.Co_Ca_Dem);
+  var hCa = '<div class="chip" data-gt="CA" aria-pressed="true">Cả 2 ca</div><div class="chip" data-gt="N">Ca ngày</div>';
+  if (coCaDem) hCa += '<div class="chip" data-gt="D">Ca đêm</div>';
+  else hCa = '<div class="chip" data-gt="N" aria-pressed="true">Ca ngày</div>';
+  $('modalCNDsCa').innerHTML = hCa;
+  MODAL_CN_CA = coCaDem ? 'CA' : 'N';
+
+  var dsLyDo = DATA.lyDoDongMay || [];
+  $('modalCNLyDo').innerHTML = dsLyDo.map(function (l) {
+    return '<option value="' + thoat(l) + '">' + thoat(l) + '</option>';
+  }).join('');
+  $('modalCNGhiChu').value = '';
+
+  hien('modalCN');
+});
+$('modalCNDsCa').addEventListener('click', function (ev) {
+  var nut = ev.target.closest('.chip');
+  if (!nut) return;
+  MODAL_CN_CA = nut.dataset.gt;
+  chonChip_('modalCNDsCa', MODAL_CN_CA);
+});
+$('modalCNHuy').addEventListener('click', function () { an('modalCN'); });
+
+$('modalCNXacNhan').addEventListener('click', function () {
+  var lyDo = $('modalCNLyDo').value;
+  var ghiChu = $('modalCNGhiChu').value.trim();
+  if (!lyDo) return alert('Vui lòng chọn lý do.');
+  if (lyDo === 'Khác' && !ghiChu) return alert('Chọn lý do "Khác" thì phải nhập ghi chú.');
+
+  var coCaDem = !!(DATA.lich && DATA.lich.Co_Ca_Dem);
+  var ngayCN = ymdCongNgay_(TUAN_BAT_DAU, 6);
+  var caApDung = [];
+  if (MODAL_CN_CA === 'N' || MODAL_CN_CA === 'CA') caApDung.push('N');
+  if (coCaDem && (MODAL_CN_CA === 'D' || MODAL_CN_CA === 'CA')) caApDung.push('D');
+
+  // Ghi đè đúng (Chủ nhật, ca đã chọn) cho MỌI máy — giữ nguyên các ngày khác
+  // đã khai riêng cho từng máy, đúng lối cộng dồn của modal đóng 1 máy.
+  (DATA.may || []).forEach(function (m) {
+    var theoKhoa = {};
+    (NGOAI_LE[m.maMay] || []).forEach(function (nl) { theoKhoa[nl.ngay + '|' + nl.ca] = nl; });
+    caApDung.forEach(function (ca) {
+      theoKhoa[ngayCN + '|' + ca] = { maMay: m.maMay, ngay: ngayCN, ca: ca, lyDo: lyDo, ghiChu: ghiChu };
+    });
+    NGOAI_LE[m.maMay] = Object.keys(theoKhoa).map(function (k) { return theoKhoa[k]; });
+  });
+
+  DA_THAY_DOI = true;
+  an('modalCN');
+  veLaiDanhSachMay_();
+});
+
+$('nutMoCN').addEventListener('click', function () {
+  if (!confirm('Bố trí chạy Chủ nhật cho TẤT CẢ máy trong tuần này? Các ngày khác không bị ảnh hưởng.')) return;
+
+  var ngayCN = ymdCongNgay_(TUAN_BAT_DAU, 6);
+  (DATA.may || []).forEach(function (m) {
+    var conLai = (NGOAI_LE[m.maMay] || []).filter(function (nl) { return nl.ngay !== ngayCN; });
+    if (conLai.length) NGOAI_LE[m.maMay] = conLai; else delete NGOAI_LE[m.maMay];
+  });
+
+  DA_THAY_DOI = true;
+  veLaiDanhSachMay_();
+});
 
 // ===========================================================================
 // Lưu kế hoạch tuần — gộp toàn bộ NGOAI_LE thành 1 lượt gọi luuKeHoachTuan
