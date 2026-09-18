@@ -146,20 +146,17 @@ select.chon {
     <div class="the-tieu-de" id="modalTieuDe" style="margin-top:0">Đóng máy</div>
 
     <div class="modal-nhan">Áp dụng</div>
-    <div class="chips" id="modalApDung">
+    <div class="chips" id="modalApDung" style="grid-template-columns:1fr 1fr">
       <div class="chip" data-gt="TUAN" aria-pressed="true">Cả tuần</div>
-      <div class="chip" data-gt="NGAY">Một ngày</div>
-      <div class="chip" data-gt="NGAY_CA">Một ngày, một ca</div>
+      <div class="chip" data-gt="NGAY">Chọn ngày cụ thể</div>
     </div>
 
     <div id="modalChonNgay" class="an">
-      <div class="modal-nhan">Chọn ngày</div>
+      <div class="modal-nhan">Chọn ngày (bấm được nhiều ngày)</div>
       <div class="chips chips-ngay" id="modalDsNgay"></div>
-    </div>
 
-    <div id="modalChonCa" class="an">
-      <div class="modal-nhan">Chọn ca</div>
-      <div class="chips" id="modalDsCa" style="grid-template-columns:1fr 1fr"></div>
+      <div class="modal-nhan">Áp dụng ca nào của những ngày đã chọn</div>
+      <div class="chips" id="modalDsCa" style="grid-template-columns:repeat(3,1fr)"></div>
     </div>
 
     <div class="modal-nhan">Lý do đóng máy</div>
@@ -446,12 +443,13 @@ function veLaiDanhSachMay_() {
 }
 
 // ===========================================================================
-// Modal đóng máy — áp cho MỘT máy: cả tuần / một ngày / một ngày-một ca
+// Modal đóng máy — áp cho MỘT máy: cả tuần, hoặc chọn NHIỀU ngày cụ thể +
+// một kiểu ca áp dụng chung cho các ngày đã chọn.
 // ===========================================================================
 var MAY_DANG_MO = '';
 var MODAL_AP_DUNG = 'TUAN';
-var MODAL_NGAY_CHON = '';
-var MODAL_CA_CHON = 'N';
+var MODAL_NGAY_CHON = {};  // { 'yyyy-MM-dd': true, ... } — chọn được nhiều ngày
+var MODAL_CA_CHON = 'CA';  // 'N' | 'D' | 'CA' (cả 2 ca)
 
 function moModalDong(maMay) {
   MAY_DANG_MO = maMay;
@@ -461,7 +459,6 @@ function moModalDong(maMay) {
   MODAL_AP_DUNG = 'TUAN';
   chonChip_('modalApDung', MODAL_AP_DUNG);
   an('modalChonNgay');
-  an('modalChonCa');
 
   var coCaDem = !!(DATA.lich && DATA.lich.Co_Ca_Dem);
   var hNgay = '';
@@ -471,14 +468,14 @@ function moModalDong(maMay) {
       '<span class="ngay-so">' + fmtDDMM_(ymd) + '</span></div>';
   }
   $('modalDsNgay').innerHTML = hNgay;
-  MODAL_NGAY_CHON = TUAN_BAT_DAU;
-  chonChip_('modalDsNgay', MODAL_NGAY_CHON);
+  MODAL_NGAY_CHON = {};
+  veChonNhieuNgay_();
 
-  var hCa = '<div class="chip" data-gt="N">Ca ngày</div>';
+  var hCa = '<div class="chip" data-gt="CA" aria-pressed="true">Cả 2 ca</div><div class="chip" data-gt="N">Ca ngày</div>';
   if (coCaDem) hCa += '<div class="chip" data-gt="D">Ca đêm</div>';
+  else hCa = '<div class="chip" data-gt="N" aria-pressed="true">Ca ngày</div>'; // tổ không có ca đêm thì khỏi hỏi
   $('modalDsCa').innerHTML = hCa;
-  MODAL_CA_CHON = 'N';
-  chonChip_('modalDsCa', MODAL_CA_CHON);
+  MODAL_CA_CHON = coCaDem ? 'CA' : 'N';
 
   var dsLyDo = DATA.lyDoDongMay || [];
   $('modalLyDo').innerHTML = dsLyDo.map(function (l) {
@@ -495,20 +492,26 @@ function chonChip_(idNhom, giaTri) {
   });
 }
 
+/** Vẽ lại trạng thái nhấn của các chip ngày theo MODAL_NGAY_CHON (chọn được nhiều). */
+function veChonNhieuNgay_() {
+  Array.prototype.forEach.call($('modalDsNgay').querySelectorAll('.chip'), function (c) {
+    c.setAttribute('aria-pressed', String(!!MODAL_NGAY_CHON[c.dataset.gt]));
+  });
+}
+
 $('modalApDung').addEventListener('click', function (ev) {
   var nut = ev.target.closest('.chip');
   if (!nut) return;
   MODAL_AP_DUNG = nut.dataset.gt;
   chonChip_('modalApDung', MODAL_AP_DUNG);
-  if (MODAL_AP_DUNG === 'TUAN') { an('modalChonNgay'); an('modalChonCa'); }
-  else if (MODAL_AP_DUNG === 'NGAY') { hien('modalChonNgay'); an('modalChonCa'); }
-  else { hien('modalChonNgay'); hien('modalChonCa'); }
+  MODAL_AP_DUNG === 'TUAN' ? an('modalChonNgay') : hien('modalChonNgay');
 });
 $('modalDsNgay').addEventListener('click', function (ev) {
   var nut = ev.target.closest('.chip');
   if (!nut) return;
-  MODAL_NGAY_CHON = nut.dataset.gt;
-  chonChip_('modalDsNgay', MODAL_NGAY_CHON);
+  var ymd = nut.dataset.gt;
+  MODAL_NGAY_CHON[ymd] = !MODAL_NGAY_CHON[ymd]; // bấm lần nữa để bỏ chọn
+  veChonNhieuNgay_();
 });
 $('modalDsCa').addEventListener('click', function (ev) {
   var nut = ev.target.closest('.chip');
@@ -525,20 +528,22 @@ $('modalXacNhan').addEventListener('click', function () {
   if (lyDo === 'Khác' && !ghiChu) return alert('Chọn lý do "Khác" thì phải nhập ghi chú.');
 
   var coCaDem = !!(DATA.lich && DATA.lich.Co_Ca_Dem);
-  var dsSlot = [];
+  var dsNgayApDung;
 
   if (MODAL_AP_DUNG === 'TUAN') {
-    for (var i = 0; i < 7; i++) {
-      var ymd = ymdCongNgay_(TUAN_BAT_DAU, i);
-      dsSlot.push({ ngay: ymd, ca: 'N' });
-      if (coCaDem) dsSlot.push({ ngay: ymd, ca: 'D' });
-    }
-  } else if (MODAL_AP_DUNG === 'NGAY') {
-    dsSlot.push({ ngay: MODAL_NGAY_CHON, ca: 'N' });
-    if (coCaDem) dsSlot.push({ ngay: MODAL_NGAY_CHON, ca: 'D' });
+    dsNgayApDung = [];
+    for (var i = 0; i < 7; i++) dsNgayApDung.push(ymdCongNgay_(TUAN_BAT_DAU, i));
   } else {
-    dsSlot.push({ ngay: MODAL_NGAY_CHON, ca: MODAL_CA_CHON });
+    dsNgayApDung = Object.keys(MODAL_NGAY_CHON).filter(function (k) { return MODAL_NGAY_CHON[k]; });
+    if (!dsNgayApDung.length) return alert('Vui lòng chọn ít nhất 1 ngày.');
   }
+
+  var dsSlot = [];
+  dsNgayApDung.forEach(function (ymd) {
+    var caCuaNgay = MODAL_AP_DUNG === 'TUAN' ? 'CA' : MODAL_CA_CHON;
+    if (caCuaNgay === 'N' || caCuaNgay === 'CA') dsSlot.push({ ngay: ymd, ca: 'N' });
+    if (coCaDem && (caCuaNgay === 'D' || caCuaNgay === 'CA')) dsSlot.push({ ngay: ymd, ca: 'D' });
+  });
 
   // Mỗi lần Xác nhận THAY HẲN toàn bộ ngoại lệ của máy này trong tuần — bấm
   // "Sửa" rồi xác nhận lại không cộng dồn với lựa chọn trước đó.

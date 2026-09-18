@@ -1,3 +1,10 @@
+## [2026-09-18] Tổ trưởng khai kế hoạch máy — Bước 7a/8: sửa modal cho chọn NHIỀU ngày
+- **Phát hiện lúc test tay:** Chủ dự án thử modal đóng máy, phát hiện "Một ngày" và "Một ngày, một ca" chỉ cho chọn **đúng 1 ngày** (chip hoạt động kiểu radio) — thực tế cần đóng máy vào vài ngày cụ thể cùng lúc (ví dụ thứ Tư và thứ Sáu), không phải cả tuần.
+- **Sửa:** Gộp "Một ngày"/"Một ngày, một ca" thành một chế độ **"Chọn ngày cụ thể"** — chip ngày giờ bấm được NHIỀU ngày (toggle độc lập, không còn radio), kèm 1 bộ chọn ca áp dụng chung cho các ngày đã chọn (**Cả 2 ca** / Ca ngày / Ca đêm — ẩn Ca đêm nếu tổ không có). "Áp dụng" giờ chỉ còn 2 lựa chọn: Cả tuần / Chọn ngày cụ thể.
+- **`kiem-tra.ps1` sạch cả 5 lớp** (`ToTruong.html` 427 dòng).
+- **Trạng thái:** Đã sửa trong thư mục làm việc, **chưa commit** lúc viết dòng này (commit ngay sau). **CHƯA push GitHub, CHƯA `clasp push`, CHƯA deploy.**
+- **Việc cần làm tiếp theo:** Xác nhận `clasp push`, thử lại modal — chọn được nhiều ngày cùng lúc, Lưu, F5 kiểm tra đúng dữ liệu.
+
 ## [2026-09-18] Tổ trưởng khai kế hoạch máy — Bước 7a/8: đóng/mở từng máy + lưu kế hoạch tuần
 - **Thay đổi:** Thêm modal đóng máy vào `ToTruong.html` (áp dụng: cả tuần / một ngày / một ngày-một ca, chọn lý do từ `Cau_Hinh.LY_DO_DONG_MAY_KE_HOACH`, ghi chú bắt buộc nếu "Khác"). Nút "Bố trí lại" xoá hết ngoại lệ của một máy. Nút "Lưu kế hoạch tuần" cố định đáy màn hình, gộp toàn bộ thay đổi thành 1 lượt gọi `luuKeHoachTuan`.
 - **Mô hình state client:** `NGOAI_LE` (map theo máy) chỉ được nạp từ server lúc `layKeHoachTuan` trả về; mọi thao tác đóng/mở/sửa chỉ sửa biến này trong bộ nhớ, KHÔNG gọi RPC — đúng nguyên tắc "tổ trưởng thao tác nhiều lần, chỉ 1 lượt ghi lên Sheet" của kế hoạch gốc. Đổi tuần mà còn thay đổi chưa lưu → `confirm()` cảnh báo trước khi bỏ.
