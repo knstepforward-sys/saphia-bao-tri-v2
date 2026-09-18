@@ -4,6 +4,11 @@
 - **Hệ quả cho các mục ghi "CHƯA deploy" ở các bước 1-7b bên dưới:** những dòng đó **không chính xác** — thực tế đã deploy lại nhiều lần trong quá trình test tay (chủ dự án tự làm, không qua xác nhận riêng từng lần với tôi vì tôi không biết đó là bước deploy). Không sửa lại các mục cũ (giữ nguyên lịch sử), chỉ đính chính tại đây.
 - **Thay đổi quy trình từ giờ:** mỗi lần cần test trên link thật, tôi sẽ xin xác nhận **CẢ HAI bước** `clasp push` **và** deploy (đúng quy trình an toàn ở trên) thay vì chỉ nói push như trước — vì đây là thay đổi trực tiếp lên hệ đang chạy thật, không phải một bản test tách biệt.
 
+## [2026-09-18] Vá `themMayMoi()` — ĐÃ `clasp push` + deploy
+- **Thay đổi:** Không sửa mã thêm. Chủ dự án xác nhận đã `clasp push` và deploy lại (đúng quy trình an toàn, giữ nguyên deployment ID).
+- **Trạng thái:** Đã push GitHub (commit `482ae0e`), **ĐÃ `clasp push`**, **ĐÃ DEPLOY**. Bản vá `themMayMoi()` dùng `soDongCoDuLieu_` đang chạy thật — lần tới thêm máy mới vào `MAY_THEM_MOI` và chạy menu sẽ ghi đúng vị trí, không còn lạc xuống dòng ~1000.
+- **Việc cần làm tiếp theo:** Không có gì khẩn cấp — theo dõi bình thường, chỉ cần nhớ bản vá đã sẵn sàng cho lần thêm máy tiếp theo.
+
 ## [2026-09-18] Vá lỗi `getLastRow()` xác nhận thật ở `themMayMoi()` (`DanhMuc.gs`)
 - **Xác nhận bằng kiểm tra tay trên Sheet thật:** `Ctrl+End` trên `Danh_Muc_May` nhảy tới dòng **1000** dù chỉ có ~162 máy thật — đúng lỗi `getLastRow()` bị `datCheckbox_` (cột `Hoat_Dong`) làm sai, cùng cơ chế đã vá ở tính năng tổ trưởng (`Lich_Lam_Viec_To`/`Ke_Hoach_May`).
 - **Tin tốt — không có dữ liệu bị mất/lạc:** `CMTD02`/`CMTD03` (thêm trước đây qua `themMayMoi()`) nằm đúng dòng 161-162, ngay sau `MCQTX02` (dòng 160) và trước `BT01` (dòng 163) — đúng thứ tự liền mạch. Nghĩa là lúc `themMayMoi()` chạy, `getLastRow()` vẫn còn tính đúng; checkbox chỉ "lan" tới dòng 1000 ở một lần `setupSystem()` chạy SAU đó. Rủi ro chỉ là **tương lai**: lần tới thêm máy mới sẽ bị ghi lạc xuống dòng ~1001.
