@@ -163,6 +163,7 @@ function getToTruongBootstrap(boPhan, token) {
       },
       lich: lichHienHanhCuaTo_(bp, homNay),
       may: dsMayCuaBoPhan_(bp),
+      lyDoDongMay: dsLyDoDongMayKeHoach_(),
     };
   } catch (err) {
     return { ok: false, error: err.message };
