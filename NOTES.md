@@ -1,3 +1,8 @@
+## [2026-09-18] Tổ trưởng khai kế hoạch máy — Bước 4/8: ĐÃ XÁC NHẬN bản vá đúng
+- **Thay đổi:** Không sửa mã. Chủ dự án đã `clasp push`, chạy lại `setupSystem()`, xoá 2 dòng rác ở 1001/1002 trong `Lich_Lam_Viec_To`, chạy lại test RPC ghi — lần này 2 dòng nằm đúng ở dòng **2 và 3**, dòng `2026-09-01` vẫn giữ nguyên `12:00–13:00` sau khi lưu thêm dòng `2026-10-01`. Bản vá `soDongCoDuLieu_` hoạt động đúng như thiết kế.
+- **Trạng thái:** Bước 4 hoàn tất, xác nhận chạy thật đúng.
+- **Việc cần làm tiếp theo:** Bước 5 — RPC đọc/ghi kế hoạch máy theo tuần (`Ke_Hoach_May`: ngoại lệ, upsert, chống double-tap, thao tác hàng loạt 50–60 máy).
+
 ## [2026-09-18] Tổ trưởng khai kế hoạch máy — Bước 4/8: vá lỗi `getLastRow()` bị checkbox làm sai
 - **Phát hiện lúc test tay:** `luuLichLamViec` ghi 2 dòng vào `Lich_Lam_Viec_To` đều báo `ok:true`, nhưng dữ liệu nằm ở dòng **1001/1002**, không phải dòng 2/3 như mong đợi. `Ctrl+End` xác nhận đúng vậy.
 - **Nguyên nhân:** `datCheckbox_(sh, cot)` áp data validation checkbox lên tới `sh.getMaxRows()-1` dòng (~999 dòng). Google Sheets coi các ô checkbox còn trống trong vùng đó là `FALSE`, khiến `sh.getLastRow()` báo có dữ liệu tới dòng ~1000 dù sheet trông như trống. `luuLichLamViec` dùng `getLastRow()+1` để tìm dòng trống kế tiếp → ghi lạc. Cùng lý do, đoạn seed `Danh_Muc_To` kiểu "chỉ chạy khi `getLastRow() < 2`" không bao giờ chạy — 9 bộ phận còn lại (SOI, TRANG, CMTX, CMTD, MTX, CO, ICM, LT, CHUNG) chưa từng được thêm, chỉ có dòng `DET` do chủ dự án tự gõ tay lúc test bước 2.
