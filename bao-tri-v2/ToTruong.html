@@ -193,7 +193,10 @@ function nhanBootstrap(kq) {
     return;
   }
   TUAN_BAT_DAU = fmtYMD_(thuHaiCuaTuan_(new Date()));
-  veManChinh();
+  // Gọi RPC thứ hai (layKeHoachTuan) NGAY trong callback của RPC thứ nhất đôi
+  // khi bị google.script.run báo lỗi thoáng qua "không tìm thấy hàm tập lệnh"
+  // vì cầu nối iframe chưa kịp sẵn sàng — lùi một nhịp cho chắc.
+  setTimeout(veManChinh, 100);
 }
 
 function baoLoi(td) {
@@ -288,13 +291,26 @@ function veManChinh() {
 
   hien('manChinh');
   $('cDsMay').innerHTML = '<div class="giua nho">Đang tải kế hoạch tuần…</div>';
+  taiKeHoachTuan_(TUAN_BAT_DAU, true);
+}
 
+/**
+ * Gọi layKeHoachTuan, tự thử lại đúng 1 lần nếu lỗi — google.script.run đôi
+ * khi báo lỗi thoáng qua "không tìm thấy hàm tập lệnh" do cầu nối iframe chưa
+ * sẵn sàng, nhất là ngay sau khi trang vừa tải. Người dùng không cần biết để
+ * tự bấm lại.
+ */
+function taiKeHoachTuan_(tuan, choThuLai) {
   google.script.run
-    .withSuccessHandler(veDsMay_)
+    .withSuccessHandler(function (kq) {
+      if (tuan === TUAN_BAT_DAU) veDsMay_(kq); // bỏ kết quả nếu người dùng đã đổi tuần khác trong lúc chờ
+    })
     .withFailureHandler(function (e) {
+      if (tuan !== TUAN_BAT_DAU) return;
+      if (choThuLai) { setTimeout(function () { taiKeHoachTuan_(tuan, false); }, 400); return; }
       $('cDsMay').innerHTML = '<div class="bao do">Không tải được kế hoạch tuần: ' + thoat(e.message) + '</div>';
     })
-    .layKeHoachTuan(BO_PHAN, TOKEN, TUAN_BAT_DAU);
+    .layKeHoachTuan(BO_PHAN, TOKEN, tuan);
 }
 
 function veDsMay_(kq) {
