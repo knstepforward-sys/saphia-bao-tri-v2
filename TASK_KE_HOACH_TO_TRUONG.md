@@ -235,7 +235,15 @@ trưởng xem chỉ số tuần của chính tổ + 1 mục menu xuất báo cá
 | 6 | ✅ **XONG** — `ToTruong.html` đầy đủ + vá lỗi thoáng qua `google.script.run` (gọi RPC liên tiếp ngay khi tải trang). Chủ dự án xác nhận cả 3 ca: tổ `DET` đã có dữ liệu vào thẳng màn hình chính không lỗi; tổ `CMTX` chưa khai lịch hiện đúng form khai lần đầu; bấm Lưu chuyển đúng sang màn hình chính, 38 máy đều "Bố trí chạy cả tuần". | ✅ Đã xác nhận |
 | 7a | ✅ **XONG — chủ dự án đã xác nhận toàn bộ.** Modal đóng máy (Cả tuần / Chọn ngày cụ thể, chọn được nhiều ngày, cộng dồn qua nhiều lượt "Sửa"), nút "Bố trí lại", nút "Lưu kế hoạch tuần", 2 nút thao tác nhanh Chủ nhật cho toàn bộ máy. Test tay: chọn nhiều ngày ✅, cộng dồn qua nhiều lượt Sửa ✅, 2 nút Chủ nhật ✅, Lưu + F5 giữ nguyên ✅. | ✅ Đã xác nhận |
 | 7b | ✅ **XONG — chủ dự án đã xác nhận toàn bộ luồng dữ liệu thật.** Checkbox chọn nhiều máy + thanh hành động, "Bố trí/Đóng tất cả máy" toàn tuần, sao chép kế hoạch giữa các ngày, tìm máy + lọc. Test tay: đóng hàng loạt máy đã chọn ✅, đóng/bố trí tất cả 48 máy ✅, sao chép 1 ngày sang nhiều ngày đúng ✅, tìm kiếm + lọc đúng ✅, Lưu + F5 giữ nguyên ✅. | ✅ Đã xác nhận |
-| 8 | ✅ Sửa code xong. Đối chiếu đủ 22 mục `plan18.9.md` mục 17 (18 mục đã có test từ bước 3-5, thêm 4 test mới: #3 DET/SOI, #9 đóng cả tuần, #18 ca đêm không lệch Ngay, #19 Chủ nhật bình thường; #17/#20/#21/#22 xác nhận bằng test tay + đọc mã). Cập nhật `bao-tri-v2/CLAUDE.md`: thêm mục 2b mô tả đầy đủ tính năng, sửa số test "340" đã lệch từ trước thành 401, cập nhật bảng file (24 file) và schema (14 sheet). `kiem-tra.ps1` sạch cả 5 lớp. **Chưa `clasp push`**, chờ xác nhận riêng. | Chạy menu 🧪 (kỳ vọng 401 = 397+4, không đỏ) |
+| 8 | ✅ **XONG — chủ dự án đã xác nhận.** Đối chiếu đủ 22 mục `plan18.9.md` mục 17 (18 mục đã có test từ bước 3-5, thêm 4 test mới: #3 DET/SOI, #9 đóng cả tuần, #18 ca đêm không lệch Ngay, #19 Chủ nhật bình thường). Cập nhật `bao-tri-v2/CLAUDE.md` (mục 2b, số test, bảng file/schema). Chạy menu 🧪 ra **402/402**, không đỏ. Đã `clasp push` + deploy + push GitHub. | ✅ Đã xác nhận |
+
+**→ ĐỢT 1 (TỔ TRƯỞNG KHAI KẾ HOẠCH) HOÀN TẤT CẢ 8 BƯỚC, XÁC NHẬN CHẠY THẬT ĐÚNG THIẾT KẾ.**
+
+## 9b. Việc làm thêm SAU khi Đợt 1 xong (không thuộc 8 bước gốc)
+
+- **Vá lỗi `getLastRow()` ở `themMayMoi()` (`DanhMuc.gs`)** — xác nhận thật trên Sheet (`Ctrl+End` nhảy dòng 1000 dù chỉ ~162 máy), vá bằng `soDongCoDuLieu_`. Không ảnh hưởng dữ liệu đã có (`CMTD02`/`CMTD03` vẫn đúng vị trí). Đã push + deploy.
+- **Sinh link + in QR cho tổ trưởng** — mở rộng `refreshPersonalLinks()` (Code.gs) và `MaQR.gs`/`InQr.html` thêm loại thứ 3 `to` cạnh `may`/`tho`. Dính 1 lần lỗi do **deploy trước khi push** (bản `/exec` chạy code cũ, `loai=to` rơi vào nhánh mặc định "máy") — đã sửa bằng làm lại đúng thứ tự push→deploy. Chủ dự án xác nhận chạy đúng.
+- **Bài học ghi lại: LUÔN push trước, deploy sau** — deploy trước sẽ đóng băng code cũ dù local/GitHub đã có bản mới hơn.
 
 ## 10. Việc cần làm khi mở chat mới để tiếp tục
 

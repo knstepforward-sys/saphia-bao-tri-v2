@@ -4,6 +4,13 @@
 - **Hệ quả cho các mục ghi "CHƯA deploy" ở các bước 1-7b bên dưới:** những dòng đó **không chính xác** — thực tế đã deploy lại nhiều lần trong quá trình test tay (chủ dự án tự làm, không qua xác nhận riêng từng lần với tôi vì tôi không biết đó là bước deploy). Không sửa lại các mục cũ (giữ nguyên lịch sử), chỉ đính chính tại đây.
 - **Thay đổi quy trình từ giờ:** mỗi lần cần test trên link thật, tôi sẽ xin xác nhận **CẢ HAI bước** `clasp push` **và** deploy (đúng quy trình an toàn ở trên) thay vì chỉ nói push như trước — vì đây là thay đổi trực tiếp lên hệ đang chạy thật, không phải một bản test tách biệt.
 
+## [2026-09-18] QR tổ trưởng ra nhầm QR máy — do deploy TRƯỚC khi push, đã sửa xong
+- **Phát hiện lúc test tay:** Mở link `?page=qr&loai=to&key=...`, tiêu đề tab và nội dung vẫn hiện "In mã QR — Máy" (176 máy) thay vì "Tổ trưởng" — kể cả ô lọc "Bộ phận" (đáng lẽ phải ẩn với `loai=to`) vẫn hiện. Khớp đúng hành vi của **code CŨ** trước khi thêm nhánh `to` (code cũ chỉ phân biệt `tho` hay không, `to` rơi vào mặc định "máy").
+- **Nguyên nhân:** Lần đó deploy **trước** khi push — deploy lấy đúng code đã push tại thời điểm đó (chưa có nhánh `to`), nên bản `/exec` thật vẫn chạy code cũ dù local đã sửa xong.
+- **Đã sửa bằng cách làm lại đúng thứ tự:** `clasp push` **trước**, deploy **sau**. Chủ dự án xác nhận mở tab mới, tiêu đề đúng "In mã QR — Tổ trưởng", không còn ô lọc "Bộ phận", QR quét ra đúng link `?page=kehoach&to=...`.
+- **Bài học ghi lại cho lần sau:** LUÔN push trước, deploy sau — deploy trước sẽ đóng băng code cũ dù local/GitHub đã có bản mới.
+- **Trạng thái:** Không sửa mã, không cần commit code — chỉ ghi nhận đã xác nhận đúng thứ tự push→deploy và tính năng chạy đúng.
+
 ## [2026-09-18] Sinh link + QR cho tổ trưởng — mở rộng cơ chế có sẵn của thợ/máy
 - **Thay đổi:** Chủ dự án đã điền tay `Token` cho tất cả bộ phận trong `Danh_Muc_To`, cần sinh `Link_Khai_Bao` + QR để phát cho từng tổ trưởng.
   - `Code.gs` — `refreshPersonalLinks()` thêm khối thứ 3 "Tổ trưởng": sinh `Link_Khai_Bao` theo mẫu `?page=kehoach&to=<Bo_Phan>&token=<token>`, giữ nguyên token đã có (giống hệt cách xử lý thợ), tự sinh token mới nếu còn thiếu. Dùng `soDongCoDuLieu_` (không dùng `getLastRow()` — `Danh_Muc_To` cũng có cột checkbox `Hoat_Dong`, cùng bẫy đã vá).
