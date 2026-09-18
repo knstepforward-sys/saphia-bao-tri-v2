@@ -171,6 +171,28 @@ chạy thật cho 162 máy.
 
 ---
 
+## 7c. Ý tưởng đã chốt HOÃN — tổ trưởng báo dừng máy hộ công nhân (Đợt 3, ngoài phạm vi hiện tại)
+
+Vấn đề thật do chủ dự án nêu: thợ xin nghỉ giữa ca (ví dụ chạy 2 tiếng rồi về) phải quét QR
+"Dừng máy không do hư", nhưng thợ ca sau nhiều khi không biết máy đang bị đánh dấu dừng nên
+không quét "bật lại" — phiếu `DM-` treo mãi. Công nhân cũng hay phản đối phải thao tác thêm.
+Muốn cho **tổ trưởng** báo hộ (vì xin nghỉ vốn phải xin phép tổ trưởng).
+
+**Đã chốt: KHÔNG làm trong đợt này (Đợt 1 — kế hoạch tuần).** Lý do:
+- `plan18.9.md` mục "TUYỆT ĐỐI KHÔNG ĐỤNG LUỒNG QR" ghi rõ: *"Không để dữ liệu kế hoạch tổ
+  trưởng tạo phiếu `Su_Co`"*. Việc này đòi hỏi trang tổ trưởng ghi thẳng vào `Su_Co` — đúng
+  điều bị cấm.
+- `Su_Co` đang chạy thật cho 162 máy, có KPI đáp ứng thợ (`Phut_Cho_Tho_Ban`, `Phut_KPI_Tho`...)
+  gắn chặt vào cấu trúc phiếu `DM-`/`SC-`/`HT-` — sửa vội có thể làm sai số liệu đang dùng thật.
+- Cần thiết kế riêng, cẩn thận: ai có quyền tạo hộ, ai đóng phiếu (công nhân ca sau vẫn quét
+  QR như cũ hay tổ trưởng cũng đóng được), cách audit "phiếu do tổ trưởng tạo hộ" để không lẫn
+  với số liệu công nhân tự báo.
+
+**Làm ở Đợt 3 riêng**, sau khi Đợt 1 (kế hoạch tuần) đã chạy ổn và Đợt 2 (2 chỉ số) đã xong —
+không mở trong lúc đang dở bước 7a.
+
+---
+
 ## 8. Đợt 2 — hai chỉ số (thiết kế xong, CHƯA code)
 
 Tính live từ 3 sheet Đợt 1 + `Su_Co`, **không cần sheet mới**. Đơn vị đếm: **lượt
