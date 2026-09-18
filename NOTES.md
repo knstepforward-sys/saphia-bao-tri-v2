@@ -1,3 +1,8 @@
+## [2026-09-18] Tổ trưởng khai kế hoạch máy — Bước 7a/8: ĐÃ XÁC NHẬN toàn bộ, bước 7a hoàn tất
+- **Thay đổi:** Không sửa mã. Chủ dự án xác nhận cả 4 phần đã sửa trong bước 7a: chọn nhiều ngày trong modal đúng, cộng dồn qua nhiều lượt "Sửa" đúng (không mất lượt trước), 2 nút thao tác nhanh Chủ nhật hoạt động hoàn hảo, Lưu kế hoạch tuần + F5 giữ đúng dữ liệu.
+- **Trạng thái:** Bước 7a hoàn tất toàn bộ, xác nhận chạy thật đúng thiết kế qua nhiều vòng chỉnh sửa theo phản hồi thực tế.
+- **Việc cần làm tiếp theo:** Bước 7b — chọn nhiều máy (checkbox + "Chọn tất cả"), nút "Bố trí tất cả máy chạy"/"Đóng tất cả máy" (toàn tuần, khác 2 nút Chủ nhật đã có), sao chép kế hoạch (ngày này → ngày khác), ô tìm máy theo mã/tên, bộ lọc "Chỉ xem máy đang đóng". Ý tưởng "tổ trưởng báo dừng máy hộ công nhân" đã hoãn sang Đợt 3 riêng (mục 7c của `TASK_KE_HOACH_TO_TRUONG.md`).
+
 ## [2026-09-18] Tổ trưởng khai kế hoạch máy — Bước 7a/8: thao tác nhanh Chủ nhật cho cả tổ
 - **Yêu cầu thực tế từ chủ dự án:** Chủ nhật thường nghỉ, nhưng trễ đơn hàng thì làm cả ca ngày lẫn ca đêm — cần thao tác nhanh cho TOÀN BỘ máy thay vì bấm từng máy một.
 - **Thêm:** 2 nút "🌙 Đóng Chủ nhật" / "☀️ Bố trí chạy Chủ nhật" phía trên danh sách máy, áp dụng cho tất cả máy của tổ trong MỘT lượt. Đóng Chủ nhật mở modal riêng (chọn ca + lý do + ghi chú) rồi ghi đè đúng slot Chủ nhật của từng máy — dùng đúng cơ chế cộng dồn theo khoá `ngày|ca` như modal 1 máy, không đụng các ngày khác đã khai riêng. Bố trí chạy Chủ nhật xoá mọi ngoại lệ Chủ nhật của mọi máy (có `confirm()` cảnh báo trước vì ảnh hưởng toàn bộ máy cùng lúc), giữ nguyên các ngày khác.
