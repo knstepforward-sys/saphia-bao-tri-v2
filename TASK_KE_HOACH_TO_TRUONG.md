@@ -89,7 +89,9 @@ kể cả khi không có ngoại lệ nào. Mục đích: phân biệt "0 ngoạ
 cả tuần chạy" với "0 dòng vì chưa ai khai" — đúng nguyên tắc `tiLe = null` khi chưa
 khai kế hoạch mà `HieuDung.gs` đã dùng.
 
-Khoá upsert: **`Tuan_Bat_Dau + Ca + Ma_May`**.
+Khoá upsert: **`Tuan_Bat_Dau + Ngay + Ca + Ma_May`** (sửa lại ở bước 5 — bản nháp trước đó ghi
+thiếu `Ngay`, nhưng ví dụ máy `4T-12` chỉ đóng đúng thứ Tư ca ngày ở mục 5 `plan18.9.md` cần
+đủ cả 4 phần mới phân biệt được từng lượt máy-ca).
 
 ## 4. File sẽ sửa / tạo — Đợt 1
 
@@ -207,7 +209,7 @@ trưởng xem chỉ số tuần của chính tổ + 1 mục menu xuất báo cá
 | 2 | ✅ **XONG** — `KeHoachTo.gs` mới, `ToTruong.html` khung rỗng, route trong `CongNhan.gs`, đã `clasp push`. Test qua URL "Triển khai thử nghiệm": token đúng → "Kế hoạch tuần — DET"; token sai → "Không có quyền truy cập". Chủ dự án đã xác nhận cả hai ca. | ✅ Đã xác nhận |
 | 3 | ✅ **XONG** — RPC `getToTruongBootstrap` + 12 test mới. `clasp push` xong, chạy menu 🧪 trong Sheet ra **370/370** (không đỏ — nền trước đó đã là 358, không phải 340 như `CLAUDE.md` ghi cũ; sửa lại số ở bước 8). | ✅ Đã xác nhận |
 | 4 | ✅ **XONG** — RPC `luuLichLamViec` + vá lỗi `getLastRow()` bị checkbox làm sai (mục 7b). Chủ dự án xác nhận: `setupSystem()` chạy lại thêm đủ bộ phận, dòng rác 1001/1002 đã dọn, test RPC ghi lại ra đúng dòng 2/3, dòng 01/09 giữ nguyên khi đổi lịch 01/10. | ✅ Đã xác nhận |
-| 5 | RPC đọc/ghi kế hoạch tuần (ngoại lệ + upsert + double-tap) | Test batch 60 máy, reload đúng, lưu 2 lần không trùng |
+| 5 | ✅ Sửa code xong. RPC `layKeHoachTuan` (đọc ngoại lệ + `daKhai`) và `luuKeHoachTuan` (ghi — thay toàn bộ ngoại lệ của đúng `Bo_Phan+Tuan_Bat_Dau`, giữ nguyên tuần/tổ khác, đúng khuôn đọc-sửa-ghi-1-lần của `dongBoDanhMucBoPhan_`). Tách 4 hàm thuần test được: `ngayTrongTuan_`, `chuanHoaNgoaiLe_`, `chuanHoaDanhSachNgoaiLe_`, `tachDuLieuKeHoachTuan_`. Thêm khoá `Cau_Hinh.LY_DO_DONG_MAY_KE_HOACH`. Dùng `soDongCoDuLieu_` (không lặp lại bẫy bước 4). +18 test. `kiem-tra.ps1` sạch cả 5 lớp. **Chưa `clasp push`**, chờ xác nhận riêng. | Chạy menu 🧪 (kỳ vọng 397 = 379+18), rồi test tay RPC ghi/đọc: lưu vài máy đóng, đọc lại đúng, lưu lần 2 đè đúng tuần đó mà không đụng tuần khác |
 | 6 | `ToTruong.html` — khung sườn + hiển thị danh sách máy | Xem giao diện thật trên điện thoại |
 | 7 | `ToTruong.html` — thao tác hàng loạt (chọn nhiều, áp cả tuần, sao chép, lý do đóng máy) | Thử luồng thật: đóng 1 máy, cả tuần, 1 ngày, 1 ca |
 | 8 | 22 test case vào `Test.gs` + cập nhật `bao-tri-v2/CLAUDE.md`/`NOTES.md` | `kiemtra\kiem-tra.ps1` xanh, 340 test cũ vẫn xanh |

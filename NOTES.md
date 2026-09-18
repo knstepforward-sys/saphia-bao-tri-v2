@@ -1,3 +1,13 @@
+## [2026-09-18] Tổ trưởng khai kế hoạch máy — Bước 5/8: RPC đọc/ghi kế hoạch tuần
+- **Thay đổi:** Thêm vào `KeHoachTo.gs`: `layKeHoachTuan(boPhan, token, tuanBatDau)` (đọc ngoại lệ + cờ `daKhai`) và `luuKeHoachTuan(boPhan, token, payload)` (ghi — đọc toàn bộ `Ke_Hoach_May`, giữ nguyên mọi dòng của tổ/tuần khác, thay hết ngoại lệ của đúng `Bo_Phan+Tuan_Bat_Dau` bằng dữ liệu mới + 1 dòng `DA_KHAI`, đúng khuôn đọc-sửa-ghi-1-lần của `dongBoDanhMucBoPhan_` trong `DanhMuc.gs`). Bốn hàm thuần mới: `ngayTrongTuan_`, `chuanHoaNgoaiLe_` (validate 1 ngoại lệ — máy thuộc đúng bộ phận, ngày trong tuần, ca hợp lệ, bắt buộc lý do, "Khác" bắt buộc ghi chú), `chuanHoaDanhSachNgoaiLe_` (validate cả danh sách, chặn khai trùng ngày+ca+máy trong cùng 1 lần lưu), `tachDuLieuKeHoachTuan_` (tách giữ lại / bỏ đi theo đúng tổ+tuần, tìm `Request_ID` cũ chống double-tap).
+- Thêm khoá `Cau_Hinh.LY_DO_DONG_MAY_KE_HOACH` (danh sách lý do đóng máy theo kế hoạch, sửa trên Sheet không cần deploy) — khác `LY_DO_DUNG_MAY` (lý do công nhân báo dừng máy tức thời).
+- **Sửa lại khoá upsert đã ghi sai ở lượt trước** — [`TASK_KE_HOACH_TO_TRUONG.md`](../TASK_KE_HOACH_TO_TRUONG.md) mục 5 trước đó ghi `Tuan_Bat_Dau + Ca + Ma_May`, thiếu `Ngay`. Sửa thành `Tuan_Bat_Dau + Ngay + Ca + Ma_May` — cần đủ 4 phần mới phân biệt được máy chỉ đóng một ngày (ví dụ `4T-12` chỉ thứ Tư ca ngày, mục 5 `plan18.9.md`).
+- Ghi thêm dùng đúng `soDongCoDuLieu_` (không lặp lại bẫy `getLastRow()` của bước 4), neo theo cột `Tuan_Bat_Dau` (mọi dòng thật, kể cả `DA_KHAI`, đều có cột này).
+- Thêm 18 test mới vào `Test.gs`.
+- **`kiem-tra.ps1` sạch cả 5 lớp.**
+- **Trạng thái:** Đã sửa trong thư mục làm việc, **chưa commit** lúc viết dòng này (commit ngay sau). **CHƯA push GitHub, CHƯA `clasp push`, CHƯA deploy.**
+- **Việc cần làm tiếp theo:** Xác nhận `clasp push`, chạy menu 🧪 (kỳ vọng **397** = 379 + 18), rồi test tay RPC ghi/đọc kế hoạch tuần qua Apps Script Editor (chưa có UI). Sau đó sang bước 6-7 (`ToTruong.html` thật).
+
 ## [2026-09-18] Tổ trưởng khai kế hoạch máy — Bước 4/8: ĐÃ XÁC NHẬN bản vá đúng
 - **Thay đổi:** Không sửa mã. Chủ dự án đã `clasp push`, chạy lại `setupSystem()`, xoá 2 dòng rác ở 1001/1002 trong `Lich_Lam_Viec_To`, chạy lại test RPC ghi — lần này 2 dòng nằm đúng ở dòng **2 và 3**, dòng `2026-09-01` vẫn giữ nguyên `12:00–13:00` sau khi lưu thêm dòng `2026-10-01`. Bản vá `soDongCoDuLieu_` hoạt động đúng như thiết kế.
 - **Trạng thái:** Bước 4 hoàn tất, xác nhận chạy thật đúng.

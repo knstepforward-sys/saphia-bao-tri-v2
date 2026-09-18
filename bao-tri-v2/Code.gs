@@ -142,6 +142,18 @@ function dsLyDoDungMay_(cauHinh) {
   return s.split(',').map(function (x) { return x.trim(); }).filter(Boolean);
 }
 
+/**
+ * Danh sách lý do ĐÓNG MÁY THEO KẾ HOẠCH TUẦN của tổ trưởng — KHÁC
+ * dsLyDoDungMay_ ở trên (đó là lý do CÔNG NHÂN báo dừng máy tức thời qua QR).
+ * Đọc từ Cau_Hinh, sửa trên Sheet không cần deploy lại.
+ */
+function dsLyDoDongMayKeHoach_(cauHinh) {
+  const ch = cauHinh || docCauHinh_();
+  const s = String(ch.LY_DO_DONG_MAY_KE_HOACH || '').trim() ||
+    'Thiếu đơn hàng, Thiếu thợ, Thiếu nguyên liệu, Bảo trì có kế hoạch, Máy dự phòng, Khác';
+  return s.split(',').map(function (x) { return x.trim(); }).filter(Boolean);
+}
+
 function layUrlCongKhai_() {
   return PropertiesService.getScriptProperties().getProperty('URL_CONG_KHAI') || '';
 }
@@ -321,6 +333,12 @@ const CAU_HINH_MAC_DINH = [
     'dời sang sheet Luu_Tru, Su_Co chỉ còn phiếu tháng này cộng phiếu chưa đóng. ' +
     'Để 2 là giữ thêm tháng liền trước. Không mất dữ liệu: báo cáo ngày, báo cáo ' +
     'tháng và tỉ lệ khả dụng đều đọc cả Luu_Tru. Nhỏ nhất là 1.'],
+  ['LY_DO_DONG_MAY_KE_HOACH',
+    'Thiếu đơn hàng, Thiếu thợ, Thiếu nguyên liệu, Bảo trì có kế hoạch, Máy dự phòng, Khác',
+    'KẾ HOẠCH TUẦN CỦA TỔ TRƯỞNG — lý do đóng máy theo kế hoạch, hiện thành nút bấm cho ' +
+    'tổ trưởng chọn khi đóng máy. Cách nhau bằng dấu phẩy. Sửa ở đây là đổi ngay trên app, ' +
+    'không cần deploy lại. KHÁC với LY_DO_DUNG_MAY (đó là lý do công nhân báo dừng máy tức ' +
+    'thời qua QR). Chọn "Khác" thì bắt buộc nhập ghi chú.'],
   ['HUONG_DAN_KHOA_LINK_THO', '',
     'KHOÁ LINK KHI THỢ NGHỈ VIỆC: xoá trắng ô Token của người đó trong sheet ' +
     'Danh_Muc_Tho, bỏ tick Hoat_Dong, rồi chạy menu 🔧 Bảo trì → "4. Sinh lại ' +

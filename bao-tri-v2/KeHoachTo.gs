@@ -295,3 +295,260 @@ function luuLichLamViec(boPhan, token, payload) {
     lock.releaseLock();
   }
 }
+
+// ============================================================================
+// 7. KẾ HOẠCH MÁY THEO TUẦN — chỉ lưu NGOẠI LỆ (máy Đóng máy)
+// ============================================================================
+//
+// Máy không có dòng ngoại lệ trong tuần = mặc định Bố trí chạy. Payload chỉ
+// gửi phần NGOẠI LỆ (đóng máy) — "áp dụng cả tuần" là việc CLIENT tự bung
+// thành nhiều dòng {ngay, ca} trước khi gửi, server luôn xử lý danh sách
+// slot cụ thể, không có khái niệm "cả tuần" ở tầng RPC.
+//
+// Trang_Thai = DA_KHAI là dòng CHỐT TUẦN (Ma_May để trống), ghi mỗi lần lưu
+// kể cả không có ngoại lệ nào, để phân biệt "0 ngoại lệ vì cả tuần chạy" với
+// "chưa ai khai tuần này". Xem TASK_KE_HOACH_TO_TRUONG.md mục 5.
+
+/** Ngày 'yyyy-MM-dd' có nằm trong khoảng [tuanBatDau, tuanBatDau+6] không. Hàm THUẦN. */
+function ngayTrongTuan_(tuanBatDau, ngay) {
+  const d0 = new Date(tuanBatDau + 'T00:00:00+07:00');
+  const d1 = new Date(ngay + 'T00:00:00+07:00');
+  const soNgay = Math.round((d1.getTime() - d0.getTime()) / 86400000);
+  return soNgay >= 0 && soNgay <= 6;
+}
+
+/**
+ * Validate + chuẩn hoá MỘT ngoại lệ (một máy đóng, một ngày, một ca) thành 1
+ * dòng đúng thứ tự HEADER_KE_HOACH_MAY. Hàm THUẦN.
+ *
+ * item = { maMay, ngay: 'yyyy-MM-dd', ca: 'N'|'D', lyDo, ghiChu }
+ */
+function chuanHoaNgoaiLe_(item, boPhan, tuanBatDau, dsLyDoHopLe) {
+  const p = item || {};
+  const maMay = String(p.maMay || '').trim().toUpperCase();
+  if (!maMay) return { ok: false, error: 'Thiếu mã máy.' };
+
+  const ngay = chuanHoaNgay_(p.ngay);
+  if (!ngay) return { ok: false, error: 'Ngày không hợp lệ cho máy ' + maMay + '.' };
+  if (!ngayTrongTuan_(tuanBatDau, ngay)) {
+    return { ok: false, error: 'Ngày ' + ngay + ' (máy ' + maMay + ') không thuộc tuần ' + tuanBatDau + '.' };
+  }
+
+  const ca = String(p.ca || '').trim().toUpperCase();
+  if (ca !== MA_CA.NGAY && ca !== MA_CA.DEM) {
+    return { ok: false, error: 'Ca không hợp lệ cho máy ' + maMay + '.' };
+  }
+
+  const lyDo = String(p.lyDo || '').trim();
+  if (!lyDo) return { ok: false, error: 'Máy ' + maMay + ' đóng máy phải chọn lý do.' };
+  if (dsLyDoHopLe && dsLyDoHopLe.indexOf(lyDo) === -1) {
+    return { ok: false, error: 'Lý do "' + lyDo + '" (máy ' + maMay + ') không có trong danh sách cho phép.' };
+  }
+
+  const ghiChu = String(p.ghiChu || '').trim().slice(0, 300);
+  if (lyDo === 'Khác' && !ghiChu) {
+    return { ok: false, error: 'Máy ' + maMay + ' chọn lý do "Khác" phải nhập ghi chú.' };
+  }
+
+  const dong = new Array(HEADER_KE_HOACH_MAY.length).fill('');
+  dong[HEADER_KE_HOACH_MAY.indexOf('Tuan_Bat_Dau')] = tuanBatDau;
+  dong[HEADER_KE_HOACH_MAY.indexOf('Ngay')] = ngay;
+  dong[HEADER_KE_HOACH_MAY.indexOf('Ca')] = ca;
+  dong[HEADER_KE_HOACH_MAY.indexOf('Ma_May')] = maMay;
+  dong[HEADER_KE_HOACH_MAY.indexOf('Bo_Phan')] = String(boPhan).trim().toUpperCase();
+  dong[HEADER_KE_HOACH_MAY.indexOf('Trang_Thai')] = TRANG_THAI_KE_HOACH_MAY.DONG;
+  dong[HEADER_KE_HOACH_MAY.indexOf('Ly_Do')] = lyDo;
+  dong[HEADER_KE_HOACH_MAY.indexOf('Ghi_Chu')] = ghiChu;
+
+  return { ok: true, dong: dong, maMay: maMay, ngay: ngay, ca: ca };
+}
+
+/**
+ * Validate + chuẩn hoá TOÀN BỘ danh sách ngoại lệ của một lần lưu tuần. Hàm
+ * THUẦN. dsMayHopLe: map { MA_MAY: true } các máy thuộc đúng bộ phận — chặn
+ * tổ này đóng máy của tổ khác dù client có gửi sai.
+ */
+function chuanHoaDanhSachNgoaiLe_(dsRaw, boPhan, tuanBatDau, dsMayHopLe, dsLyDoHopLe) {
+  const ds = Array.isArray(dsRaw) ? dsRaw : [];
+  const dsDong = [];
+  const daThay = {}; // chống khai trùng (Ngay, Ca, Ma_May) NGAY TRONG một payload
+
+  for (let i = 0; i < ds.length; i++) {
+    const chuan = chuanHoaNgoaiLe_(ds[i], boPhan, tuanBatDau, dsLyDoHopLe);
+    if (!chuan.ok) return chuan;
+
+    if (dsMayHopLe && !dsMayHopLe[chuan.maMay]) {
+      return { ok: false, error: 'Máy ' + chuan.maMay + ' không thuộc bộ phận này.' };
+    }
+
+    const khoa = chuan.ngay + '|' + chuan.ca + '|' + chuan.maMay;
+    if (daThay[khoa]) {
+      return {
+        ok: false,
+        error: 'Máy ' + chuan.maMay + ' bị khai trùng ngày ' + chuan.ngay + ', ca ' + chuan.ca + '.',
+      };
+    }
+    daThay[khoa] = true;
+
+    dsDong.push(chuan.dong);
+  }
+
+  return { ok: true, dsDong: dsDong };
+}
+
+/**
+ * Tách vùng dữ liệu HIỆN CÓ của Ke_Hoach_May (không kể header) thành:
+ *   giuLai  — mọi dòng KHÔNG thuộc đúng (Bo_Phan, Tuan_Bat_Dau) này, giữ
+ *             nguyên, không đụng tới tuần/tổ khác.
+ *   daKhaiCu — dòng DA_KHAI cũ của ĐÚNG (Bo_Phan, Tuan_Bat_Dau) này (để so
+ *              Request_ID chống double-tap), hoặc null nếu tuần chưa từng khai.
+ * Hàm THUẦN — test được không cần sheet.
+ */
+function tachDuLieuKeHoachTuan_(vung, boPhan, tuanBatDau) {
+  const bp = String(boPhan).trim().toUpperCase();
+  const iBoPhan = HEADER_KE_HOACH_MAY.indexOf('Bo_Phan');
+  const iTuan = HEADER_KE_HOACH_MAY.indexOf('Tuan_Bat_Dau');
+  const iTrangThai = HEADER_KE_HOACH_MAY.indexOf('Trang_Thai');
+  const iReqId = HEADER_KE_HOACH_MAY.indexOf('Request_ID');
+
+  const giuLai = [];
+  let daKhaiCu = null;
+
+  vung.forEach(function (r) {
+    const rBp = String(r[iBoPhan]).trim().toUpperCase();
+    const rTuan = chuanHoaNgay_(r[iTuan]);
+    if (rBp === bp && rTuan === tuanBatDau) {
+      if (String(r[iTrangThai]).trim().toUpperCase() === TRANG_THAI_KE_HOACH_MAY.DA_KHAI) {
+        daKhaiCu = { requestId: String(r[iReqId] || '').trim() };
+      }
+      return; // bỏ khỏi giuLai — sẽ ghi lại bằng dữ liệu mới (đóng ngoài, cùng lượt)
+    }
+    giuLai.push(r);
+  });
+
+  return { giuLai: giuLai, daKhaiCu: daKhaiCu };
+}
+
+// ============================================================================
+// 8. RPC — KẾ HOẠCH MÁY THEO TUẦN
+// ============================================================================
+
+/** Đọc ngoại lệ + trạng thái "đã khai" của một tuần. */
+function layKeHoachTuan(boPhan, token, tuanBatDau) {
+  try {
+    const to = xacThucTo_(boPhan, token);
+    if (!to) return { ok: false, error: 'Link không hợp lệ hoặc đã bị khoá.' };
+
+    const bp = String(to.Bo_Phan).trim().toUpperCase();
+    const tuan = chuanHoaNgay_(tuanBatDau);
+    if (!tuan) return { ok: false, error: 'Tuần không hợp lệ.' };
+
+    let daKhai = false;
+    const ngoaiLe = [];
+    docSheet_(SHEET.KE_HOACH_MAY, HEADER_KE_HOACH_MAY).forEach(function (r) {
+      if (String(r.Bo_Phan).trim().toUpperCase() !== bp) return;
+      if (chuanHoaNgay_(r.Tuan_Bat_Dau) !== tuan) return;
+
+      if (String(r.Trang_Thai).trim().toUpperCase() === TRANG_THAI_KE_HOACH_MAY.DA_KHAI) {
+        daKhai = true;
+        return;
+      }
+      ngoaiLe.push({
+        maMay: String(r.Ma_May).trim(),
+        ngay: chuanHoaNgay_(r.Ngay),
+        ca: String(r.Ca).trim(),
+        lyDo: String(r.Ly_Do || '').trim(),
+        ghiChu: String(r.Ghi_Chu || '').trim(),
+      });
+    });
+
+    return { ok: true, tuanBatDau: tuan, daKhai: daKhai, ngoaiLe: ngoaiLe };
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
+}
+
+/**
+ * Lưu kế hoạch tuần: thay TOÀN BỘ ngoại lệ của đúng (Bo_Phan, Tuan_Bat_Dau)
+ * bằng danh sách mới — không đụng dữ liệu tuần/tổ khác.
+ *
+ * payload = { tuanBatDau: 'yyyy-MM-dd', requestId, ngoaiLe: [{maMay, ngay, ca, lyDo, ghiChu}] }
+ *
+ * Chống double-tap: nếu Request_ID trùng với lần lưu gần nhất của ĐÚNG tuần
+ * này (đọc từ dòng DA_KHAI cũ) thì trả kết quả cũ, không ghi lại — bấm Lưu 2
+ * lần vì mạng chậm không sinh dữ liệu trùng.
+ */
+function luuKeHoachTuan(boPhan, token, payload) {
+  const to = xacThucTo_(boPhan, token);
+  if (!to) return { ok: false, error: 'Link không hợp lệ hoặc đã bị khoá.' };
+
+  const bp = String(to.Bo_Phan).trim().toUpperCase();
+  const p = payload || {};
+  const requestId = String(p.requestId || '').trim();
+  if (!requestId) return { ok: false, error: 'Thiếu mã request.' };
+
+  const tuanBatDau = chuanHoaNgay_(p.tuanBatDau);
+  if (!tuanBatDau) return { ok: false, error: 'Tuần không hợp lệ.' };
+
+  const dsMayHopLe = {};
+  dsMayCuaBoPhan_(bp).forEach(function (m) { dsMayHopLe[m.maMay.toUpperCase()] = true; });
+
+  const chuan = chuanHoaDanhSachNgoaiLe_(
+    p.ngoaiLe, bp, tuanBatDau, dsMayHopLe, dsLyDoDongMayKeHoach_());
+  if (!chuan.ok) return chuan;
+
+  const lock = LockService.getScriptLock();
+  try {
+    if (!lock.tryLock(CONFIG.KHOA_CHO_GIAY * 1000)) {
+      return { ok: false, error: 'Hệ thống đang bận, thử lại sau vài giây.' };
+    }
+
+    // KHÔNG dùng sh.getLastRow() — cùng bẫy checkbox đã vá ở bước 4. Neo theo
+    // cột Tuan_Bat_Dau vì MỌI dòng thật (kể cả dòng DA_KHAI) đều có cột này.
+    const sh = sheet_(SHEET.KE_HOACH_MAY);
+    const soDong = soDongCoDuLieu_(sh, HEADER_KE_HOACH_MAY.indexOf('Tuan_Bat_Dau') + 1);
+    const vung = soDong > 0 ? sh.getRange(2, 1, soDong, HEADER_KE_HOACH_MAY.length).getValues() : [];
+
+    const tach = tachDuLieuKeHoachTuan_(vung, bp, tuanBatDau);
+
+    if (tach.daKhaiCu && tach.daKhaiCu.requestId === requestId) {
+      return { ok: true, trung: true, soNgoaiLe: chuan.dsDong.length };
+    }
+
+    const luc = nowVN_();
+    const nguoiCapNhat = String(to.Ten_To_Truong || to.Ten_To || bp).trim();
+    const iNguoiCapNhat = HEADER_KE_HOACH_MAY.indexOf('Nguoi_Cap_Nhat');
+    const iCapNhatLuc = HEADER_KE_HOACH_MAY.indexOf('Cap_Nhat_Luc');
+    const iReqId = HEADER_KE_HOACH_MAY.indexOf('Request_ID');
+
+    chuan.dsDong.forEach(function (dong) {
+      dong[iNguoiCapNhat] = nguoiCapNhat;
+      dong[iCapNhatLuc] = luc;
+      dong[iReqId] = requestId;
+    });
+
+    const dongDaKhai = new Array(HEADER_KE_HOACH_MAY.length).fill('');
+    dongDaKhai[HEADER_KE_HOACH_MAY.indexOf('Tuan_Bat_Dau')] = tuanBatDau;
+    dongDaKhai[HEADER_KE_HOACH_MAY.indexOf('Bo_Phan')] = bp;
+    dongDaKhai[HEADER_KE_HOACH_MAY.indexOf('Trang_Thai')] = TRANG_THAI_KE_HOACH_MAY.DA_KHAI;
+    dongDaKhai[iNguoiCapNhat] = nguoiCapNhat;
+    dongDaKhai[iCapNhatLuc] = luc;
+    dongDaKhai[iReqId] = requestId;
+
+    const toanBo = tach.giuLai.concat(chuan.dsDong, [dongDaKhai]);
+
+    if (toanBo.length) {
+      sh.getRange(2, 1, toanBo.length, HEADER_KE_HOACH_MAY.length).setValues(toanBo);
+    }
+    if (soDong > toanBo.length) {
+      sh.getRange(toanBo.length + 2, 1, soDong - toanBo.length, HEADER_KE_HOACH_MAY.length)
+        .clearContent();
+    }
+
+    return { ok: true, soNgoaiLe: chuan.dsDong.length };
+  } catch (err) {
+    return { ok: false, error: err.message };
+  } finally {
+    lock.releaseLock();
+  }
+}

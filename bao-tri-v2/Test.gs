@@ -1617,6 +1617,96 @@ function chayTest() {
   t.bang('timDongLichTrungApDung_ cùng Ap_Dung_Tu nhưng khác Bo_Phan → -1, không lẫn giữa các tổ',
     timDongLichTrungApDung_(_vungLichTo_, 'CO', '2026-09-01'), -1);
 
+  // ============================================================================
+  // KẾ HOẠCH MÁY THEO TUẦN (KeHoachTo.gs) — bước 5/8
+  // ============================================================================
+
+  // --- ngayTrongTuan_ ----------------------------------------------------
+  t.bang('ngayTrongTuan_ đúng ngày đầu tuần → true',
+    ngayTrongTuan_('2026-09-21', '2026-09-21'), true);
+  t.bang('ngayTrongTuan_ đúng ngày cuối tuần (Chủ nhật, +6) → true',
+    ngayTrongTuan_('2026-09-21', '2026-09-27'), true);
+  t.bang('ngayTrongTuan_ trước tuần 1 ngày → false',
+    ngayTrongTuan_('2026-09-21', '2026-09-20'), false);
+  t.bang('ngayTrongTuan_ sau tuần 1 ngày → false',
+    ngayTrongTuan_('2026-09-21', '2026-09-28'), false);
+
+  // --- chuanHoaNgoaiLe_ ----------------------------------------------------
+  const _dsLyDoGia_ = ['Thiếu đơn hàng', 'Thiếu thợ', 'Khác'];
+  const _ngoaiLeDu_ = chuanHoaNgoaiLe_(
+    { maMay: '4t-08', ngay: '2026-09-23', ca: 'n', lyDo: 'Thiếu đơn hàng', ghiChu: '' },
+    'DET', '2026-09-21', _dsLyDoGia_);
+  t.bang('chuanHoaNgoaiLe_ đủ dữ liệu hợp lệ → ok, chuẩn hoá hoa/thường',
+    [_ngoaiLeDu_.ok, _ngoaiLeDu_.maMay, _ngoaiLeDu_.ca],
+    [true, '4T-08', 'N']);
+  t.bang('chuanHoaNgoaiLe_ thiếu mã máy → lỗi',
+    chuanHoaNgoaiLe_({ ngay: '2026-09-23', ca: 'N', lyDo: 'Thiếu thợ' }, 'DET', '2026-09-21', _dsLyDoGia_).ok,
+    false);
+  t.bang('chuanHoaNgoaiLe_ ngày ngoài tuần → lỗi',
+    chuanHoaNgoaiLe_({ maMay: '4T-08', ngay: '2026-10-01', ca: 'N', lyDo: 'Thiếu thợ' }, 'DET', '2026-09-21', _dsLyDoGia_).ok,
+    false);
+  t.bang('chuanHoaNgoaiLe_ ca sai → lỗi',
+    chuanHoaNgoaiLe_({ maMay: '4T-08', ngay: '2026-09-23', ca: 'X', lyDo: 'Thiếu thợ' }, 'DET', '2026-09-21', _dsLyDoGia_).ok,
+    false);
+  t.bang('chuanHoaNgoaiLe_ thiếu lý do → lỗi',
+    chuanHoaNgoaiLe_({ maMay: '4T-08', ngay: '2026-09-23', ca: 'N' }, 'DET', '2026-09-21', _dsLyDoGia_).ok,
+    false);
+  t.bang('chuanHoaNgoaiLe_ lý do ngoài danh sách cho phép → lỗi',
+    chuanHoaNgoaiLe_({ maMay: '4T-08', ngay: '2026-09-23', ca: 'N', lyDo: 'Bịa ra' }, 'DET', '2026-09-21', _dsLyDoGia_).ok,
+    false);
+  t.bang('chuanHoaNgoaiLe_ lý do "Khác" thiếu ghi chú → lỗi',
+    chuanHoaNgoaiLe_({ maMay: '4T-08', ngay: '2026-09-23', ca: 'N', lyDo: 'Khác' }, 'DET', '2026-09-21', _dsLyDoGia_).ok,
+    false);
+  t.bang('chuanHoaNgoaiLe_ lý do "Khác" có ghi chú → ok',
+    chuanHoaNgoaiLe_({ maMay: '4T-08', ngay: '2026-09-23', ca: 'N', lyDo: 'Khác', ghiChu: 'Thợ vận hành nghỉ phép' }, 'DET', '2026-09-21', _dsLyDoGia_).ok,
+    true);
+
+  // --- chuanHoaDanhSachNgoaiLe_ ------------------------------------------
+  const _dsMayHopLeGia_ = { '4T-08': true, '4T-12': true };
+  const _dsOk_ = chuanHoaDanhSachNgoaiLe_([
+    { maMay: '4T-08', ngay: '2026-09-21', ca: 'N', lyDo: 'Thiếu đơn hàng' },
+    { maMay: '4T-12', ngay: '2026-09-24', ca: 'D', lyDo: 'Thiếu thợ' },
+  ], 'DET', '2026-09-21', _dsMayHopLeGia_, _dsLyDoGia_);
+  t.bang('chuanHoaDanhSachNgoaiLe_ danh sách hợp lệ → ok, đủ số dòng',
+    [_dsOk_.ok, _dsOk_.dsDong.length], [true, 2]);
+  t.bang('chuanHoaDanhSachNgoaiLe_ máy không thuộc bộ phận → lỗi',
+    chuanHoaDanhSachNgoaiLe_([
+      { maMay: 'S-99', ngay: '2026-09-21', ca: 'N', lyDo: 'Thiếu đơn hàng' },
+    ], 'DET', '2026-09-21', _dsMayHopLeGia_, _dsLyDoGia_).ok, false);
+  t.bang('chuanHoaDanhSachNgoaiLe_ khai trùng (ngày, ca, máy) trong cùng payload → lỗi',
+    chuanHoaDanhSachNgoaiLe_([
+      { maMay: '4T-08', ngay: '2026-09-21', ca: 'N', lyDo: 'Thiếu đơn hàng' },
+      { maMay: '4T-08', ngay: '2026-09-21', ca: 'N', lyDo: 'Thiếu thợ' },
+    ], 'DET', '2026-09-21', _dsMayHopLeGia_, _dsLyDoGia_).ok, false);
+  t.bang('chuanHoaDanhSachNgoaiLe_ danh sách rỗng → ok, 0 dòng (bố trí tất cả máy chạy)',
+    chuanHoaDanhSachNgoaiLe_([], 'DET', '2026-09-21', _dsMayHopLeGia_, _dsLyDoGia_),
+    { ok: true, dsDong: [] });
+
+  // --- tachDuLieuKeHoachTuan_ ----------------------------------------------
+  function _dongKeHoach_(bp, tuan, maMay, trangThai, reqId) {
+    const r = new Array(HEADER_KE_HOACH_MAY.length).fill('');
+    r[HEADER_KE_HOACH_MAY.indexOf('Tuan_Bat_Dau')] = tuan;
+    r[HEADER_KE_HOACH_MAY.indexOf('Bo_Phan')] = bp;
+    r[HEADER_KE_HOACH_MAY.indexOf('Ma_May')] = maMay;
+    r[HEADER_KE_HOACH_MAY.indexOf('Trang_Thai')] = trangThai;
+    r[HEADER_KE_HOACH_MAY.indexOf('Request_ID')] = reqId || '';
+    return r;
+  }
+  const _vungKeHoach_ = [
+    _dongKeHoach_('DET', '2026-09-14', '4T-01', 'DONG', ''),        // tuần TRƯỚC — phải giữ nguyên
+    _dongKeHoach_('DET', '2026-09-14', '', 'DA_KHAI', 'req-tuan-truoc'),
+    _dongKeHoach_('DET', '2026-09-21', '4T-08', 'DONG', 'req-cu'),  // tuần ĐANG XÉT — sẽ bị thay
+    _dongKeHoach_('DET', '2026-09-21', '', 'DA_KHAI', 'req-cu'),
+    _dongKeHoach_('SOI', '2026-09-21', 'S-01', 'DONG', ''),         // tổ KHÁC — phải giữ nguyên
+  ];
+  const _tach_ = tachDuLieuKeHoachTuan_(_vungKeHoach_, 'DET', '2026-09-21');
+  t.bang('tachDuLieuKeHoachTuan_ giữ nguyên dòng tuần khác + tổ khác, bỏ đúng 2 dòng của tuần đang xét',
+    _tach_.giuLai.length, 3);
+  t.bang('tachDuLieuKeHoachTuan_ tìm đúng Request_ID của dòng DA_KHAI cũ',
+    _tach_.daKhaiCu, { requestId: 'req-cu' });
+  t.bang('tachDuLieuKeHoachTuan_ tuần chưa từng khai → daKhaiCu null',
+    tachDuLieuKeHoachTuan_(_vungKeHoach_, 'DET', '2026-10-01').daKhaiCu, null);
+
   // --- Kết quả ---------------------------------------------------------------
   const tong = kq.dat + kq.loi.length;
   const bao = kq.loi.length
