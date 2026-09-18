@@ -4,6 +4,11 @@
 - **Hệ quả cho các mục ghi "CHƯA deploy" ở các bước 1-7b bên dưới:** những dòng đó **không chính xác** — thực tế đã deploy lại nhiều lần trong quá trình test tay (chủ dự án tự làm, không qua xác nhận riêng từng lần với tôi vì tôi không biết đó là bước deploy). Không sửa lại các mục cũ (giữ nguyên lịch sử), chỉ đính chính tại đây.
 - **Thay đổi quy trình từ giờ:** mỗi lần cần test trên link thật, tôi sẽ xin xác nhận **CẢ HAI bước** `clasp push` **và** deploy (đúng quy trình an toàn ở trên) thay vì chỉ nói push như trước — vì đây là thay đổi trực tiếp lên hệ đang chạy thật, không phải một bản test tách biệt.
 
+## [2026-09-18] Tổ trưởng khai kế hoạch máy — Bước 7b/8: ĐÃ XÁC NHẬN, bước 7b hoàn tất
+- **Thay đổi:** Không sửa mã. Chủ dự án xác nhận đủ 6 luồng: đóng hàng loạt máy đã chọn, đóng/bố trí tất cả 48 máy (số liệu 48/0 khớp đúng), sao chép kế hoạch 1 ngày sang nhiều ngày đúng, tìm kiếm + lọc "chỉ xem máy đang đóng" đúng, Lưu kế hoạch tuần + F5 giữ nguyên dữ liệu.
+- **Trạng thái:** Bước 7b hoàn tất, xác nhận chạy thật đúng thiết kế. Toàn bộ giao diện tổ trưởng (bước 6-7b) đã xong: khai giờ làm việc lần đầu, xem/đổi tuần, đóng-mở từng máy, thao tác Chủ nhật, thao tác cả tuần, chọn nhiều máy, sao chép kế hoạch, tìm kiếm, lọc.
+- **Việc cần làm tiếp theo:** Bước 8 (bước cuối) — thêm 22 test case theo mục 17 `plan18.9.md` vào `Test.gs`, cập nhật `bao-tri-v2/CLAUDE.md` (thêm mục tính năng mới + sửa lại số test đã lệch từ trước) và `NOTES.md`.
+
 ## [2026-09-18] Tổ trưởng khai kế hoạch máy — Bước 7b/8: thao tác hàng loạt
 - **Thay đổi:** Thêm vào `ToTruong.html`: checkbox chọn nhiều máy + "Chọn tất cả"/"Bỏ chọn tất cả" (theo đúng danh sách đang lọc, không phải toàn bộ tổ), thanh hành động khi có máy được chọn ("Bố trí chạy" / "Đóng máy…"). Nút "Bố trí tất cả máy chạy"/"Đóng tất cả máy" cho toàn tuần — khác 2 nút Chủ nhật đã có ở bước 7a. "Sao chép kế hoạch": chọn 1 ngày nguồn + nhiều ngày đích, copy nguyên trạng thái từng máy sang, ghi đè đúng ngày đích. Ô tìm máy theo mã/tên (không phân biệt dấu, dùng `normalize('NFD')`) + lọc "chỉ xem máy đang đóng" — chỉ ảnh hưởng HIỂN THỊ, không đụng `NGOAI_LE`.
 - Tổng quát hoá modal đóng máy: `MAY_DANG_MO` (1 máy) → `DS_MAY_DANG_MO` (mảng), dùng chung logic cộng-dồn-theo-khoá `ngày|ca` cho cả trường hợp 1 máy lẫn nhiều máy — không viết trùng code.
