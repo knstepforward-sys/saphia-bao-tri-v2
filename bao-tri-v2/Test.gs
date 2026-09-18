@@ -1707,6 +1707,73 @@ function chayTest() {
   t.bang('tachDuLieuKeHoachTuan_ tuần chưa từng khai → daKhaiCu null',
     tachDuLieuKeHoachTuan_(_vungKeHoach_, 'DET', '2026-10-01').daKhaiCu, null);
 
+  // ============================================================================
+  // TỔ TRƯỞNG KHAI KẾ HOẠCH MÁY — bước 8/8: đối chiếu 22 test bắt buộc
+  // (plan18.9.md mục 17). Phần lớn đã có test ở các khối phía trên (bước 3-5) —
+  // đánh số ngay trong tên test để dễ đối chiếu với mục 17. Bốn mục dưới đây là
+  // 4 mục còn thiếu test riêng, thêm mới ở bước này.
+  //
+  // Đối chiếu đầy đủ 22 mục (theo đúng thứ tự plan18.9.md mục 17):
+  //  1. Token đúng → đọc được tổ            — xacThucTo_ (bước 3, trên)
+  //  2. Token sai → từ chối                 — xacThucTo_ (bước 3, trên)
+  //  3. Tổ DET không lấy máy SOI            — #3 dưới đây
+  //  4. Chỉ lấy máy Hoat_Dong=TRUE          — dsMayCuaBoPhan_ (bước 3, trên)
+  //  5. Lưu lịch lần đầu                    — chuanHoaPayloadLichTo_ + test tay bước 4
+  //  6. Đổi lịch không phá lịch cũ          — timDongLichTrungApDung_/lichHienHanhCuaTo_ + test tay bước 4
+  //  7. Lưu 60 máy chạy cả tuần             — chuanHoaDanhSachNgoaiLe_ danh sách rỗng (bước 5, trên)
+  //  8. Đóng riêng một máy                  — chuanHoaNgoaiLe_ (bước 5, trên)
+  //  9. Đóng máy cả tuần                    — #9 dưới đây
+  // 10. Đóng riêng một ngày                 — chuanHoaNgoaiLe_ (bước 5, trên)
+  // 11. Đóng riêng một ca                   — chuanHoaNgoaiLe_ (bước 5, trên)
+  // 12. Đóng bắt buộc lý do                 — chuanHoaNgoaiLe_ (bước 5, trên)
+  // 13. "Khác" bắt buộc ghi chú             — chuanHoaNgoaiLe_ (bước 5, trên)
+  // 14. Bố trí chạy không cần lý do         — chuanHoaDanhSachNgoaiLe_ danh sách rỗng (bước 5, trên)
+  // 15. Reload đọc đúng dữ liệu             — test tay bước 4/5/7a/7b (F5 xác nhận nhiều lần)
+  // 16. Lưu trùng Ngay+Ca+Ma_May → upsert   — chuanHoaDanhSachNgoaiLe_ trùng + tachDuLieuKeHoachTuan_ + test tay bước 5
+  // 17. Thao tác hàng loạt                  — test tay bước 7b (chọn nhiều máy, đóng/bố trí tất cả, sao chép)
+  // 18. Ca đêm không làm lệch Ngay          — #18 dưới đây
+  // 19. Chủ nhật khai bình thường           — #19 dưới đây
+  // 20. Không đổi Hoat_Dong của máy         — xác nhận bằng đọc mã: không hàm nào trong KeHoachTo.gs ghi vào SHEET.MAY
+  // 21. Không tạo dòng nào trong Su_Co      — xác nhận bằng đọc mã: không hàm nào trong KeHoachTo.gs tham chiếu SHEET.SU_CO
+  // 22. Luồng QR hiện tại vẫn xanh          — toàn bộ 397 test trước đó (thợ/công nhân) vẫn chạy chung trong đúng lượt chayTest() này
+  // ============================================================================
+
+  // --- #3: tổ DET không lấy được máy thuộc bộ phận khác (SOI) ---------------
+  const _dsMayHonHop_ = [
+    { Ma_May: '4T-01', Ten_May: 'Máy 01', Bo_Phan: 'DET', Hoat_Dong: true },
+    { Ma_May: 'S-01', Ten_May: 'Máy Sợi 01', Bo_Phan: 'SOI', Hoat_Dong: true },
+  ];
+  t.bang('#3 tổ DET không lấy được máy thuộc bộ phận SOI',
+    dsMayCuaBoPhan_('DET', _dsMayHonHop_).some(function (m) { return m.maMay === 'S-01'; }), false);
+
+  // --- #9: đóng máy CẢ TUẦN (7 ngày × 2 ca = 14 lượt cho một máy) ------------
+  const _tuanBatDau89_ = '2026-09-21';
+  const _ngayCaTuan89_ = ['2026-09-21', '2026-09-22', '2026-09-23', '2026-09-24',
+    '2026-09-25', '2026-09-26', '2026-09-27'];
+  const _dsCaTuan_ = [];
+  _ngayCaTuan89_.forEach(function (ngay) {
+    _dsCaTuan_.push({ maMay: '4T-08', ngay: ngay, ca: 'N', lyDo: 'Thiếu đơn hàng' });
+    _dsCaTuan_.push({ maMay: '4T-08', ngay: ngay, ca: 'D', lyDo: 'Thiếu đơn hàng' });
+  });
+  const _kqCaTuan_ = chuanHoaDanhSachNgoaiLe_(
+    _dsCaTuan_, 'DET', _tuanBatDau89_, { '4T-08': true }, _dsLyDoGia_);
+  t.bang('#9 đóng máy cả tuần (7 ngày × 2 ca) → ok, đủ 14 dòng',
+    [_kqCaTuan_.ok, _kqCaTuan_.dsDong.length], [true, 14]);
+
+  // --- #18: ca đêm ở ngày cuối tuần không làm lệch Ngay đã chọn --------------
+  const _caDemCuoiTuan_ = chuanHoaNgoaiLe_(
+    { maMay: '4T-08', ngay: '2026-09-27', ca: 'D', lyDo: 'Thiếu thợ' },
+    'DET', '2026-09-21', _dsLyDoGia_);
+  t.bang('#18 ca đêm ngày cuối tuần vẫn giữ đúng Ngay đã chọn, không lệch qua tuần sau',
+    [_caDemCuoiTuan_.ok, _caDemCuoiTuan_.ngay], [true, '2026-09-27']);
+
+  // --- #19: Chủ nhật khai đóng máy bình thường, không bị chặn riêng ----------
+  const _chuNhat19_ = chuanHoaNgoaiLe_(
+    { maMay: '4T-08', ngay: '2026-09-27', ca: 'N', lyDo: 'Thiếu đơn hàng' },
+    'DET', '2026-09-21', _dsLyDoGia_);
+  t.bang('#19 Chủ nhật khai đóng máy bình thường như mọi ngày khác',
+    _chuNhat19_.ok, true);
+
   // --- Kết quả ---------------------------------------------------------------
   const tong = kq.dat + kq.loi.length;
   const bao = kq.loi.length

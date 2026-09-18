@@ -47,13 +47,14 @@ người dùng để hiện cửa sổ đăng nhập.
 
 ---
 
-## 2. Cấu trúc file — 22 file
+## 2. Cấu trúc file — 24 file
 
 | File | Vai trò |
 |---|---|
 | `Code.gs` | Cấu hình, schema, hàm nền (ca/lịch trực/mã phiếu/log), `setupSystem`, menu |
 | `CongNhan.gs` | `doGet` routing, `getWorkerBootstrap`, `getOnDutyContacts_`, `reportIncident`, `reportMachineStop`, `reportMachineRestart` |
 | `LuongTho.gs` | Xác thực thợ, nhận việc, cập nhật hiện trạng, hoàn thành, sửa phiếu đã đóng, việc chung, bảo trì |
+| `KeHoachTo.gs` | **Mới** — tổ trưởng khai kế hoạch máy theo tuần: xác thực tổ, lịch làm việc, `Ke_Hoach_May`. Xem mục 2b |
 | `BaoCao.gs` | `refreshReports` (sheet `Tong_Hop`), `archiveOldTickets`, `caiDatTrigger` |
 | `BaoCaoNgay.gs` | Báo cáo trong ngày một trang + sửa nội dung tại chỗ |
 | `HieuDung.gs` | Tỉ lệ hiệu dụng A: đọc kế hoạch chạy máy, cắt/hợp khoảng dừng, khối cho `Tong_Hop` và sheet `Hieu_Dung` |
@@ -64,9 +65,10 @@ người dùng để hiện cửa sổ đăng nhập.
 | `DonDuLieu.gs` | Xoá phiếu / dọn dữ liệu chạy thử, có thùng rác. **Chỉ menu, không có route web** |
 | `DoTai.gs` | Đo chi phí thật của từng hàm RPC, chỉ đọc |
 | `ThongBao.gs` | Bot Telegram nhắc thợ: soạn tin, gửi, công tắc, cầu chì, hai mục menu, trigger nhắc |
-| `Test.gs` | 340 test chạy bằng dữ liệu giả, **không đụng sheet nào** |
+| `Test.gs` | 401 test chạy bằng dữ liệu giả, **không đụng sheet nào** |
 | `Index.html` | Trang công nhân |
 | `Tho.html` | Trang thợ |
+| `ToTruong.html` | **Mới** — trang tổ trưởng khai kế hoạch máy theo tuần. Xem mục 2b |
 | `InQr.html` | Trang in QR |
 | `TrangNgay.html` | Trang báo cáo trong ngày |
 | `HopXuat.html` | Hộp thoại chọn kỳ / bộ phận / thợ khi xuất báo cáo (modal trong Sheet) |
@@ -82,11 +84,62 @@ thì `clasp push` sẽ đẩy nhầm chúng lên Apps Script.
 
 ---
 
-## 3. Schema — 11 sheet
+## 2b. Tổ trưởng khai kế hoạch máy theo tuần (mới, 09/2026)
+
+Tính năng **riêng biệt** với luồng công nhân/thợ ở trên — tổ trưởng (mỗi tổ = một bộ phận
+sản xuất) khai máy nào tuần này "Bố trí chạy" hay "Đóng máy" (+ lý do). Thiết kế đầy đủ, lý
+do đằng sau từng quyết định, và lộ trình từng bước nằm ở
+[`../TASK_KE_HOACH_TO_TRUONG.md`](../TASK_KE_HOACH_TO_TRUONG.md) — đọc file đó trước khi
+sửa phần này, đừng hỏi lại những gì đã ghi ở đó.
+
+**File:** `KeHoachTo.gs` (backend) + `ToTruong.html` (giao diện) + 1 nhánh `page=kehoach`
+trong `doGet` (`CongNhan.gs`) + phần schema/`setupSystem()`/`dsLyDoDongMayKeHoach_` trong
+`Code.gs`.
+
+**3 sheet mới**, tách hẳn khỏi `Ke_Hoach_Chay_May`/`Khung_Ngung_Ke_Hoach` (mẫu số A cũ, theo
+BỘ PHẬN, đang tắt) — hai nguồn "giờ ca" này **không tự đồng bộ với nhau**:
+
+| Sheet | Vai trò |
+|---|---|
+| `Danh_Muc_To` | 1 dòng/bộ phận: `Bo_Phan, Ten_To, Ten_To_Truong, Token, Hoat_Dong, Link_Khai_Bao`. Token độc lập với `Danh_Muc_Tho.Token` |
+| `Lich_Lam_Viec_To` | Giờ ca của tổ, versioned theo `Ap_Dung_Tu` — đổi lịch KHÔNG ghi đè, luôn thêm dòng mới |
+| `Ke_Hoach_May` | **Chỉ lưu NGOẠI LỆ** (máy Đóng máy). Máy không có dòng nào trong tuần = mặc định Bố trí chạy. Dòng `Trang_Thai=DA_KHAI` (Ma_May trống) là dòng chốt tuần, phân biệt "0 ngoại lệ vì cả tuần chạy" với "chưa ai khai" |
+
+Khoá upsert `Ke_Hoach_May`: `Tuan_Bat_Dau + Ngay + Ca + Ma_May`.
+
+**Route:** `?page=kehoach&to=<Bo_Phan>&token=<token>`. Xác thực bằng `xacThucTo_()` — bản
+sao độc lập của `xacThucTho_`, không dùng chung cột/hàm với thợ.
+
+**RPC chính:** `getToTruongBootstrap` (gộp thông tin tổ + lịch hiện hành + danh sách máy +
+danh sách lý do đóng máy trong 1 lần gọi), `luuLichLamViec`, `layKeHoachTuan`,
+`luuKeHoachTuan` (thay toàn bộ ngoại lệ của đúng `Bo_Phan+Tuan_Bat_Dau`, giữ nguyên tuần/tổ
+khác — đọc-sửa-ghi-1-lần đúng khuôn `dongBoDanhMucBoPhan_` trong `DanhMuc.gs`).
+
+**⚠️ Bẫy đã dính khi xây tính năng này — `datCheckbox_` làm sai `getLastRow()`:** áp data
+validation checkbox lên tới `sh.getMaxRows()-1` dòng khiến Sheets coi các ô checkbox còn
+trống là `FALSE`, và `sh.getLastRow()` báo có dữ liệu tới dòng ~1000 dù sheet trông như
+trống — ghi thêm theo `getLastRow()+1` bị lạc dòng. Vá bằng `soDongCoDuLieu_(sh, cotNeo)`
+trong `Code.gs`, đếm dòng thật theo một cột neo cụ thể. Nghi ngờ cùng lỗi tồn tại từ trước ở
+`themMayMoi()` (`DanhMuc.gs`) — **chưa xác nhận, chưa sửa**, cần chủ dự án kiểm tra riêng.
+
+**Đợt 2 (chưa code):** 2 chỉ số **tỷ lệ huy động máy** và **hiệu suất máy được bố trí
+chạy**, tính từ 3 sheet trên + `Su_Co` — không cần schema mới, không đụng `HieuDung.gs`.
+Công thức đầy đủ ở `TASK_KE_HOACH_TO_TRUONG.md` mục 8.
+
+**Cố ý CHƯA làm** (ngoài phạm vi hiện tại): tổ trưởng báo dừng máy hộ công nhân giữa ca —
+đụng thẳng vào `Su_Co` đang chạy thật, hoãn sang một đợt riêng, xem mục 7c của tài liệu
+thiết kế.
+
+---
+
+## 3. Schema — 11 sheet gốc (+ 3 sheet của tính năng tổ trưởng, xem mục 2b)
 
 `Danh_Muc_May` · `Danh_Muc_Tho` · `Ca_Lam_Viec` · `Ke_Hoach_Chay_May` ·
 `Khung_Ngung_Ke_Hoach` · `Cau_Hinh` ·
 `Lich_Truc_Thang` · `Su_Co` · `Nhat_Ky_Su_Co` · `Tong_Hop` · `Luu_Tru` · `Thung_Rac`
+
+> `Danh_Muc_To` · `Lich_Lam_Viec_To` · `Ke_Hoach_May` (tổ trưởng khai kế hoạch máy, mục 2b)
+> tách riêng khỏi danh sách trên — không dùng chung dữ liệu với `Ke_Hoach_Chay_May`.
 
 `Danh_Muc_Tho` có **10 cột**: 9 cột gốc + `Telegram_Chat_ID` thêm vào cuối (09/2026).
 Cột đó phải để **định dạng text** — chat id dài 10–13 chữ số, để dạng số thì Sheets hiện
@@ -859,8 +912,10 @@ hàm thuần**: soi mã nguồn từng hàm soạn tin bằng `Function.prototyp
 thật nằm chung file — kéo nhầm một lời gọi mạng vào nhóm hàm soạn tin là mất luôn khả năng
 kiểm thử tại máy.
 
-Lớp thứ sáu: menu **🧪 Chạy test logic** trong Sheet — 340 test bằng dữ liệu giả,
-**không đọc/ghi sheet nào**.
+Lớp thứ sáu: menu **🧪 Chạy test logic** trong Sheet — 401 test bằng dữ liệu giả,
+**không đọc/ghi sheet nào**. (Số cũ "340" trong tài liệu này đã lệch thực tế từ trước —
+một lần kéo trực tiếp từ Apps Script Editor đã thêm test lưu trữ phiếu mà không cập nhật
+số ở đây; xác nhận lại đúng 401 khi thêm test cho tính năng tổ trưởng, mục 2b.)
 
 Điều này làm được nhờ `getOnDutyContacts_` nhận tham số `duLieu` **tiêm theo từng trường**:
 `{ dsTho, cauHinhCa, lichTheoThang, cauHinh }`. Thiếu trường nào thì hàm tự đọc sheet — nên
