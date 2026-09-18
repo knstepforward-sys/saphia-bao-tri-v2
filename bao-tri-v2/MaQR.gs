@@ -72,6 +72,19 @@ function layDanhSachQr_(loai) {
     return ds;
   }
 
+  if (loai === 'to') {
+    return docSheet_(SHEET.TO, HEADER_TO)
+      .filter(function (t) { return String(t.Bo_Phan).trim() && laTrue_(t.Hoat_Dong); })
+      .map(function (t) {
+        return {
+          ma: String(t.Bo_Phan).trim(),
+          ten: String(t.Ten_To || t.Bo_Phan).trim(),
+          phu: String(t.Ten_To_Truong || '').trim(),
+          url: String(t.Link_Khai_Bao || '').trim(),
+        };
+      });
+  }
+
   return docSheet_(SHEET.MAY, HEADER_MAY)
     .filter(function (m) { return String(m.Ma_May).trim() && laTrue_(m.Hoat_Dong); })
     .map(function (m) {
@@ -91,14 +104,16 @@ function renderTrangQr_(p) {
       'Trang in mã QR cần khoá truy cập. Mở từ menu 🔧 Bảo trì → "🖨️ In mã QR" trong Google Sheet.');
   }
 
-  const loai = String(p.loai || 'may').trim().toLowerCase() === 'tho' ? 'tho' : 'may';
+  const loaiRaw = String(p.loai || 'may').trim().toLowerCase();
+  const loai = (loaiRaw === 'tho' || loaiRaw === 'to') ? loaiRaw : 'may';
   const ds = layDanhSachQr_(loai);
   const thieuLink = ds.filter(function (x) { return !x.url; });
 
   if (!ds.length) {
-    return trangThongBao_('Chưa có dữ liệu',
-      loai === 'tho' ? 'Danh_Muc_Tho chưa có ai đang hoạt động.'
-                     : 'Danh_Muc_May chưa có máy nào đang hoạt động.');
+    return trangThongBao_('Chưa có dữ liệu', {
+      tho: 'Danh_Muc_Tho chưa có ai đang hoạt động.',
+      to: 'Danh_Muc_To chưa có tổ nào đang hoạt động (nhớ tick Hoat_Dong).',
+    }[loai] || 'Danh_Muc_May chưa có máy nào đang hoạt động.');
   }
   if (thieuLink.length === ds.length) {
     return trangThongBao_('Chưa sinh link',
@@ -108,7 +123,8 @@ function renderTrangQr_(p) {
   // Gắn sẵn ảnh QR để trang không phải gọi thêm vòng nào về server.
   ds.forEach(function (x) { x.anh = x.url ? urlAnhQr_(x.url) : ''; });
 
-  return renderTrang_('InQr', loai === 'tho' ? 'In mã QR — Thợ' : 'In mã QR — Máy', {
+  const tieuDe = { tho: 'In mã QR — Thợ', to: 'In mã QR — Tổ trưởng' }[loai] || 'In mã QR — Máy';
+  return renderTrang_('InQr', tieuDe, {
     loai: loai,
     duLieu: JSON.stringify(ds),
     soThieu: thieuLink.length,
@@ -127,6 +143,7 @@ function menuInQr() {
 
   const linkMay = goc + noi + 'page=qr&loai=may&key=' + encodeURIComponent(khoa);
   const linkTho = goc + noi + 'page=qr&loai=tho&key=' + encodeURIComponent(khoa);
+  const linkTo = goc + noi + 'page=qr&loai=to&key=' + encodeURIComponent(khoa);
 
   const html = HtmlService.createHtmlOutput(
     '<div style="font-family:system-ui,-apple-system,sans-serif;font-size:14px;line-height:1.6">' +
@@ -135,17 +152,20 @@ function menuInQr() {
     '<p style="margin:0 0 8px"><a href="' + linkMay + '" target="_blank" rel="noopener" ' +
     'style="display:inline-block;background:#1a73e8;color:#fff;text-decoration:none;' +
     'padding:10px 18px;border-radius:8px;font-weight:600">🖨️ QR của MÁY</a></p>' +
-    '<p style="margin:0 0 14px"><a href="' + linkTho + '" target="_blank" rel="noopener" ' +
+    '<p style="margin:0 0 8px"><a href="' + linkTho + '" target="_blank" rel="noopener" ' +
     'style="display:inline-block;background:#e37400;color:#fff;text-decoration:none;' +
     'padding:10px 18px;border-radius:8px;font-weight:600">🖨️ QR của THỢ</a></p>' +
+    '<p style="margin:0 0 14px"><a href="' + linkTo + '" target="_blank" rel="noopener" ' +
+    'style="display:inline-block;background:#188038;color:#fff;text-decoration:none;' +
+    'padding:10px 18px;border-radius:8px;font-weight:600">🖨️ QR của TỔ TRƯỞNG</a></p>' +
     '<p style="margin:0;padding:10px 12px;background:#fef7e0;border-left:4px solid #e37400;' +
     'border-radius:6px;color:#7a4f01;font-size:13px">' +
-    '<b>QR của thợ chứa mật khẩu đăng nhập của họ.</b> Chỉ in và đưa tận tay từng người, ' +
-    'không dán lên tường, không chụp gửi nhóm chung.</p>' +
+    '<b>QR của thợ và của tổ trưởng chứa mật khẩu đăng nhập của người đó.</b> Chỉ in và đưa ' +
+    'tận tay từng người, không dán lên tường, không chụp gửi nhóm chung.</p>' +
     '<p style="margin:14px 0 0;color:#5f6368;font-size:12.5px">Khoá mở trang in nằm ở dòng ' +
     '<code>KHOA_IN_QR</code> trong sheet <b>Cau_Hinh</b>. In xong nên xoá trắng ô đó.</p>' +
     '</div>'
-  ).setWidth(460).setHeight(340);
+  ).setWidth(460).setHeight(400);
 
   ui.showModalDialog(html, 'In mã QR');
 }

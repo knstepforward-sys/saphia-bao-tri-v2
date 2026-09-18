@@ -98,14 +98,18 @@
   var DS = JSON.parse(GOC.dataset.json);
 
   var laTho = LOAI === 'tho';
+  var laTo = LOAI === 'to';
+  var coBoPhan = !laTho && !laTo; // chỉ máy mới có nhiều dòng cùng 1 bộ phận đáng lọc
 
-  document.getElementById('tieuDe').textContent =
-    laTho ? 'Mã QR cá nhân của thợ — ' + DS.length + ' người'
-          : 'Mã QR dán lên máy — ' + DS.length + ' máy';
+  document.getElementById('tieuDe').textContent = {
+    tho: 'Mã QR cá nhân của thợ — ' + DS.length + ' người',
+    to: 'Mã QR khai kế hoạch của tổ trưởng — ' + DS.length + ' tổ',
+  }[LOAI] || 'Mã QR dán lên máy — ' + DS.length + ' máy';
 
-  document.getElementById('moTa').textContent = laTho
-    ? 'Mỗi thợ quét mã của mình một lần để mở trang công việc, rồi ghim vào màn hình chính hoặc lưu link lại.'
-    : 'Công nhân quét mã dán trên máy để báo sự cố. Mỗi máy một mã riêng, không dùng lẫn được.';
+  document.getElementById('moTa').textContent = {
+    tho: 'Mỗi thợ quét mã của mình một lần để mở trang công việc, rồi ghim vào màn hình chính hoặc lưu link lại.',
+    to: 'Mỗi tổ trưởng quét mã của tổ mình một lần để mở trang khai kế hoạch tuần, rồi ghim vào màn hình chính hoặc lưu link lại.',
+  }[LOAI] || 'Công nhân quét mã dán trên máy để báo sự cố. Mỗi máy một mã riêng, không dùng lẫn được.';
 
   if (SO_THIEU) {
     document.getElementById('canhBaoThieu').textContent =
@@ -118,6 +122,11 @@
       '<div class="canh-bao"><b>Mã QR của thợ chứa mật khẩu đăng nhập của người đó.</b> ' +
       'Chỉ in và đưa tận tay từng người. Không dán lên tường, không chụp gửi nhóm chung. ' +
       'Ai quét được mã của người khác sẽ nhận việc và đóng phiếu dưới tên người đó.</div>';
+  } else if (laTo) {
+    document.getElementById('khuCanhBao').innerHTML =
+      '<div class="canh-bao"><b>Mã QR của tổ trưởng chứa mật khẩu khai kế hoạch máy của tổ đó.</b> ' +
+      'Chỉ in và đưa tận tay đúng tổ trưởng phụ trách. Không dán lên tường, không chụp gửi nhóm chung. ' +
+      'Ai quét được mã của tổ khác sẽ sửa được kế hoạch máy của tổ đó.</div>';
   }
 
   function thoat(s) {
@@ -130,8 +139,8 @@
   // rồi in từng bộ phận, cầm đi dán là xong.
   var oLoc = document.getElementById('locBoPhan');
 
-  if (laTho) {
-    // Thợ không chia theo bộ phận — bỏ hẳn ô lọc cho đỡ rối.
+  if (!coBoPhan) {
+    // Thợ / tổ trưởng không chia theo bộ phận — bỏ hẳn ô lọc cho đỡ rối.
     document.getElementById('nhanLoc').style.display = 'none';
     oLoc.style.display = 'none';
   } else {
@@ -152,7 +161,7 @@
   }
 
   function dsHienTai() {
-    var bp = laTho ? '' : oLoc.value;
+    var bp = coBoPhan ? oLoc.value : '';
     if (!bp) return DS;
     return DS.filter(function (x) {
       return (x.phu || '(chưa ghi bộ phận)').trim() === bp;

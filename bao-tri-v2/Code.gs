@@ -1221,12 +1221,13 @@ function laTrue_(v) {
 }
 
 // ============================================================================
-// 10. refreshPersonalLinks() — sinh link QR máy + link cá nhân thợ
+// 10. refreshPersonalLinks() — sinh link QR máy + link cá nhân thợ + tổ trưởng
 // ============================================================================
 
 /**
- * Sinh lại cột Link_QR (Danh_Muc_May) và Token + Link_Ca_Nhan (Danh_Muc_Tho).
- * Token đã có thì GIỮ NGUYÊN — sinh lại sẽ làm hỏng mọi link đã phát cho thợ.
+ * Sinh lại cột Link_QR (Danh_Muc_May), Token + Link_Ca_Nhan (Danh_Muc_Tho), và
+ * Token + Link_Khai_Bao (Danh_Muc_To).
+ * Token đã có thì GIỮ NGUYÊN — sinh lại sẽ làm hỏng mọi link đã phát cho thợ/tổ trưởng.
  *
  * Cần chạy datWebAppUrl() một lần trước đó.
  */
@@ -1268,8 +1269,33 @@ function refreshPersonalLinks() {
     vung.setValues(tho);
   }
 
-  return 'Đã sinh link cho ' + soMay + ' máy và ' + soTho + ' thợ (' +
-    tokenMoi + ' token mới).';
+  // --- Tổ trưởng (Danh_Muc_To) ------------------------------------------------
+  // KHÔNG dùng sh.getLastRow(): cột Hoat_Dong có checkbox validation áp bằng
+  // datCheckbox_, cùng bẫy getLastRow() đã vá ở soDongCoDuLieu_ (xem hàm đó).
+  const shTo = sheet_(SHEET.TO);
+  const soTo = soDongCoDuLieu_(shTo, 1);
+  let tokenMoiTo = 0;
+  if (soTo > 0) {
+    const vungTo = shTo.getRange(2, 1, soTo, HEADER_TO.length);
+    const to = vungTo.getValues();
+    const iBoPhanTo = HEADER_TO.indexOf('Bo_Phan');
+    const iTokenTo = HEADER_TO.indexOf('Token');
+    const iLinkTo = HEADER_TO.indexOf('Link_Khai_Bao');
+
+    to.forEach(function (r) {
+      const boPhan = String(r[iBoPhanTo]).trim();
+      if (!boPhan) { r[iLinkTo] = ''; return; }
+      if (!String(r[iTokenTo]).trim()) { r[iTokenTo] = sinhToken_(); tokenMoiTo++; }
+      r[iLinkTo] = baseUrl +
+        '?page=kehoach&to=' + encodeURIComponent(boPhan) +
+        '&token=' + encodeURIComponent(r[iTokenTo]);
+    });
+
+    vungTo.setValues(to);
+  }
+
+  return 'Đã sinh link cho ' + soMay + ' máy, ' + soTho + ' thợ (' + tokenMoi +
+    ' token mới), ' + soTo + ' tổ trưởng (' + tokenMoiTo + ' token mới).';
 }
 
 // ============================================================================

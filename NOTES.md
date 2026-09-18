@@ -4,6 +4,15 @@
 - **Hệ quả cho các mục ghi "CHƯA deploy" ở các bước 1-7b bên dưới:** những dòng đó **không chính xác** — thực tế đã deploy lại nhiều lần trong quá trình test tay (chủ dự án tự làm, không qua xác nhận riêng từng lần với tôi vì tôi không biết đó là bước deploy). Không sửa lại các mục cũ (giữ nguyên lịch sử), chỉ đính chính tại đây.
 - **Thay đổi quy trình từ giờ:** mỗi lần cần test trên link thật, tôi sẽ xin xác nhận **CẢ HAI bước** `clasp push` **và** deploy (đúng quy trình an toàn ở trên) thay vì chỉ nói push như trước — vì đây là thay đổi trực tiếp lên hệ đang chạy thật, không phải một bản test tách biệt.
 
+## [2026-09-18] Sinh link + QR cho tổ trưởng — mở rộng cơ chế có sẵn của thợ/máy
+- **Thay đổi:** Chủ dự án đã điền tay `Token` cho tất cả bộ phận trong `Danh_Muc_To`, cần sinh `Link_Khai_Bao` + QR để phát cho từng tổ trưởng.
+  - `Code.gs` — `refreshPersonalLinks()` thêm khối thứ 3 "Tổ trưởng": sinh `Link_Khai_Bao` theo mẫu `?page=kehoach&to=<Bo_Phan>&token=<token>`, giữ nguyên token đã có (giống hệt cách xử lý thợ), tự sinh token mới nếu còn thiếu. Dùng `soDongCoDuLieu_` (không dùng `getLastRow()` — `Danh_Muc_To` cũng có cột checkbox `Hoat_Dong`, cùng bẫy đã vá).
+  - `MaQR.gs` — `layDanhSachQr_` + `renderTrangQr_` thêm `loai='to'` làm loại thứ 3 (cạnh `may`/`tho`). `menuInQr()` thêm nút "QR của TỔ TRƯỞNG" (màu lục, phân biệt với máy/thợ).
+  - `InQr.html` — thêm tiêu đề/mô tả/cảnh báo bảo mật riêng cho tổ trưởng (cùng mức độ nhạy cảm như QR thợ — chứa mật khẩu khai kế hoạch), tắt bộ lọc theo bộ phận cho cả thợ lẫn tổ trưởng (trước đó chỉ tắt cho thợ).
+- **`kiem-tra.ps1` sạch cả 5 lớp** (`InQr.html` 103 dòng, tăng từ 94 do thêm nhánh `to`).
+- **Trạng thái:** Đã sửa trong thư mục làm việc, **chưa commit** lúc viết dòng này (commit ngay sau). **CHƯA push GitHub, CHƯA `clasp push`, CHƯA deploy.**
+- **Việc cần làm tiếp theo:** Xác nhận `clasp push` + deploy. Sau đó trong Sheet: menu 🔧 Bảo trì → **"4. Sinh lại link QR / link cá nhân"** (sinh `Link_Khai_Bao` cho `Danh_Muc_To`) → **"5. 🖨️ In mã QR (máy và thợ)"** → bấm nút **"QR của TỔ TRƯỞNG"** mới thêm.
+
 ## [2026-09-18] Vá `themMayMoi()` — ĐÃ `clasp push` + deploy
 - **Thay đổi:** Không sửa mã thêm. Chủ dự án xác nhận đã `clasp push` và deploy lại (đúng quy trình an toàn, giữ nguyên deployment ID).
 - **Trạng thái:** Đã push GitHub (commit `482ae0e`), **ĐÃ `clasp push`**, **ĐÃ DEPLOY**. Bản vá `themMayMoi()` dùng `soDongCoDuLieu_` đang chạy thật — lần tới thêm máy mới vào `MAY_THEM_MOI` và chạy menu sẽ ghi đúng vị trí, không còn lạc xuống dòng ~1000.
