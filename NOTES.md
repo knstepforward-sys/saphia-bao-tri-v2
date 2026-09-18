@@ -1,3 +1,8 @@
+## [2026-09-18] Tổ trưởng khai kế hoạch máy — Bước 2/8: ĐÃ XÁC NHẬN chạy thật qua Test deployments
+- **Thay đổi:** Không sửa mã. Chủ dự án đã điền tay `Token=test123` cho dòng `DET` trong `Danh_Muc_To`, mở URL "Triển khai thử nghiệm" (`.../exec?page=kehoach&to=DET&token=...` — deployment test riêng, KHÔNG phải bản `/exec` đang phục vụ 162 máy thật) và xác nhận cả hai ca: token đúng → "Kế hoạch tuần — DET" (đúng cả nội dung lẫn tiêu đề tab), token sai → "Không có quyền truy cập".
+- **Trạng thái:** `xacThucTo_` + route `page=kehoach` đã chạy thật đúng như thiết kế. Vẫn **CHƯA deploy** bản `/exec` chính thức — bước này không cần, vì test deployment đã đủ xác nhận logic. Sẽ deploy chung một lượt khi cả tính năng hoàn chỉnh (sau bước 7-8), tránh deploy nhiều lần giữa chừng.
+- **Việc cần làm tiếp theo:** Bước 3 — RPC đọc thông tin tổ + lịch làm việc hiện hành + danh sách máy của tổ, test bằng `chayTest()` (chưa cần UI).
+
 ## [2026-09-18] Tổ trưởng khai kế hoạch máy — Bước 2/8: ĐÃ `clasp push` (24 file, 15:38)
 - **Thay đổi:** Không sửa dòng mã nào thêm. Chủ dự án đã tự chạy `clasp.cmd push --force`, có `KeHoachTo.gs` và `ToTruong.html`.
 - **Trạng thái:** Đã push GitHub, **ĐÃ `clasp push`** lúc 15:38, 24 file. **CHƯA deploy.** Theo đúng `bao-tri-v2/CLAUDE.md` mục 12: *"Chỉ trang web `/exec` mới phục vụ theo version đã deploy"* — nghĩa là URL `/exec` thật (QR đang dùng) sẽ **KHÔNG** thấy `page=kehoach` cho tới khi deploy. Test route mới phải dùng URL **"Triển khai thử nghiệm" (Test deployments)** trong Apps Script Editor — URL riêng luôn chạy đúng code HEAD vừa push, không đụng gì tới bản `/exec` đang phục vụ 162 máy thật, không cần deploy.

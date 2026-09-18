@@ -172,7 +172,7 @@ trưởng xem chỉ số tuần của chính tổ + 1 mục menu xuất báo cá
 | # | Việc | Xem trước khi duyệt bước sau |
 |---|---|---|
 | 1 | ✅ **XONG** — sửa code, `clasp push`, chạy `setupSystem()` thật trong Sheet. Chủ dự án xác nhận 3 sheet đúng cột, không đụng sheet cũ. | ✅ Đã xác nhận |
-| 2 | ✅ Sửa code xong (`KeHoachTo.gs` mới + `ToTruong.html` khung rỗng + route trong `CongNhan.gs`). `kiem-tra.ps1` sạch cả 5 lớp. **Chưa `clasp push`**, chờ xác nhận riêng. | Mở link token sai → từ chối; token đúng (điền tay `Danh_Muc_To.Token`) → trang trống hiện đúng tên tổ |
+| 2 | ✅ **XONG** — `KeHoachTo.gs` mới, `ToTruong.html` khung rỗng, route trong `CongNhan.gs`, đã `clasp push`. Test qua URL "Triển khai thử nghiệm": token đúng → "Kế hoạch tuần — DET"; token sai → "Không có quyền truy cập". Chủ dự án đã xác nhận cả hai ca. | ✅ Đã xác nhận |
 | 3 | RPC đọc: thông tin tổ + lịch làm việc hiện hành + danh sách máy | Test bằng `chayTest()`, chưa cần UI |
 | 4 | RPC ghi: lưu lịch làm việc (có `Ap_Dung_Tu`) | Test lưu lần đầu + đổi lịch không phá lịch cũ |
 | 5 | RPC đọc/ghi kế hoạch tuần (ngoại lệ + upsert + double-tap) | Test batch 60 máy, reload đúng, lưu 2 lần không trùng |
