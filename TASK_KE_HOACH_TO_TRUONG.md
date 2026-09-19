@@ -268,7 +268,7 @@ Bộ phận chỉ chạy ca ngày; ngày tăng ca thì máy chạy 07:00–20:30
 | 1 | Khoá cấu hình + `gioTangCa_`, `truKhoangNghi_`, `khungKeHoachNgayCuaMay_` + 13 test | ✅ viết xong |
 | 2 | `chuanHoaTangCa_`, `chuanHoaDanhSachTangCa_`, `phanLoaiDongKeHoach_`, sửa `luu/layKeHoachTuan` + 17 test | ✅ viết xong |
 | 3 | `ToTruong.html`: nút tăng ca từng máy / máy đã chọn / tất cả máy, sao chép ngày mang theo tăng ca | ✅ viết xong, thử với dữ liệu giả |
-| 4 | Test + tài liệu + push | ✅ đã `clasp push`, menu 🧪 ra **432/432**. **Chờ**: deploy + test tay trên link thật |
+| 4 | Test + tài liệu + push | ✅ `clasp push`, menu 🧪 **432/432**, đã deploy, **chủ dự án test tay trên link thật ổn (19/09/2026)** |
 
 **Việc còn lại trước khi coi là XONG:** `clasp push` (chủ dự án xác nhận riêng), chạy menu 🧪
 xem số test (đã đo: **432/432**), rồi test tay: bật tăng ca vài
@@ -297,7 +297,7 @@ là bình thường, không ai phải quét bật lại. **Không đụng** `Ind
 | 1 | 2 cột mới, khoá `LY_DO_VE_GIUA_CA`, `khungCaDemCuaMay_`, `tinhVeGiuaCa_` + 25 test | ✅ viết xong |
 | 2 | `chuanHoaDanhSachVeGiuaCa_`, 3 RPC, `layKeHoachTuan` trả `veGiuaCa`, `luuKeHoachTuan` giữ lại + 25 test | ✅ viết xong |
 | 3 | `ToTruong.html`: mục "Về giữa ca", hộp thoại ghi nhiều máy, quay lại, huỷ; thử với dữ liệu giả | ✅ viết xong |
-| 4 | Tài liệu + push | ✅ đã `clasp push`, menu 🧪 ra **482/482**. **Chờ**: menu "1. Cài đặt hệ thống" + deploy + test tay trên link thật |
+| 4 | Tài liệu + push | ✅ `clasp push`, menu 🧪 **482/482**, đã deploy, **chủ dự án test tay trên link thật ổn (19/09/2026)**. Sau test tay bổ sung dòng "🏠 Về giữa ca" trên thẻ máy (commit `5a3cea2`), đã deploy lại |
 
 **Test tay trên link thật (dùng MỘT máy thử, dọn ngay sau đó):** ghi về giữa ca 1 máy → F5 vẫn còn;
 ghi 2 máy một lượt; cập nhật giờ quay lại; huỷ; đóng máy đúng ngày đó rồi Lưu tuần → lượt về

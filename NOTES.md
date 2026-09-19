@@ -1,3 +1,9 @@
+## [2026-09-19] Tổ trưởng — Đợt 2 (tăng ca + về giữa ca): ĐÃ DEPLOY, test tay ổn
+- **Xác nhận từ chủ dự án:** đã deploy bản có thẻ máy hiện dòng "🏠 Về giữa ca" (commit `5a3cea2`), test tay trên link thật ổn. Sau lần test đầu chủ dự án phát hiện thẻ máy chưa hiện dòng về giữa ca (chỉ có danh sách riêng) — đã bổ sung và vẽ lại thẻ ngay sau khi ghi/quay lại/huỷ.
+- **Làm rõ ý nghĩa (chủ dự án hỏi lại):** "về giữa ca" là về HẾT CA; nút "Quay lại…" chỉ để phòng công nhân đổi ý quay lại làm tiếp. Ca sau / ngày sau không phải bấm gì — bản ghi gắn với đúng (máy, ngày, ca).
+- **Trạng thái:** đã push GitHub (`5a3cea2`; commit tài liệu này chưa đẩy lúc viết dòng này) / đã `clasp push` / **ĐÃ deploy**. Tăng ca và về giữa ca đang chạy thật.
+- **Việc cần làm tiếp theo:** (1) nhớ dọn dữ liệu thử nếu chưa dọn: sheet `Ke_Hoach_May`, lọc `Trang_Thai` = `VE_GIUA_CA`/`TANG_CA`, xoá dòng của máy thử, giữ `DONG`/`DA_KHAI` thật; (2) hướng dẫn tổ trưởng khai báo; (3) Đợt 3 — hai chỉ số huy động/hiệu suất, cần phương án + duyệt. Chưa làm, chờ chủ dự án quyết định: dòng báo "đã cho về giữa ca" trên màn hình công nhân quét QR (đụng luồng QR, cần duyệt riêng).
+
 ## [2026-09-19] Tổ trưởng — Đợt 2(b) "Về giữa ca": ĐÃ `clasp push`, test 482/482
 - **Xác nhận từ chủ dự án:** đã `clasp push` xong, menu 🧪 **Chạy test logic** ra **482/482**, không đỏ (432 cũ + 50 test về giữa ca mới, đúng dự kiến). Cập nhật số test trong `bao-tri-v2/CLAUDE.md` (432 → 482) và trạng thái bước 4 ở `TASK_KE_HOACH_TO_TRUONG.md` mục 9d.
 - **Trạng thái:** đã push GitHub (`cf4f1bf`; commit tài liệu này chưa đẩy lúc viết dòng này) / **ĐÃ `clasp push`** / **CHƯA deploy**. Link `/exec` vẫn chạy bản cũ nên trang tổ trưởng thật chưa có mục "Về giữa ca".
