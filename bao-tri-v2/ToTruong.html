@@ -648,6 +648,15 @@ function veLaiDanhSachMay_() {
           return tenThu_(ymd) + ' (' + fmtDDMM_(ymd) + ')';
         }).join(', ') + '</div>'
       : '';
+    // Về giữa ca của máy này trong tuần đang xem — hiện ngay trên thẻ máy, không chỉ ở danh sách riêng.
+    var dongVeGiuaCa = VE_GIUA_CA.filter(function (v) { return v.maMay === m.maMay; })
+      .sort(function (a, b) { return (a.ngay + a.gioVe).localeCompare(b.ngay + b.gioVe); })
+      .map(function (v) {
+        return '<div class="may-tt-tangca">🏠 Về giữa ca: ' + tenThu_(v.ngay) + ' (' + fmtDDMM_(v.ngay) + '), ' +
+          (TEN_CA[v.ca] || v.ca) + ', ' + thoat(v.gioVe) + ' → ' +
+          (v.gioQuayLai ? thoat(v.gioQuayLai) : 'hết ca') + ' — ' + thoat(v.lyDo) + '</div>';
+      }).join('');
+    dongTangCa += dongVeGiuaCa;
     var nutTangCa = coTangCa
       ? '<button class="nut phu" style="flex:1" onclick="moModalTangCa(\'' + m.maMay + '\')">Tăng ca…</button>'
       : '';
@@ -1177,7 +1186,7 @@ function napLaiVeGiuaCa_() {
     .withSuccessHandler(function (kq) {
       if (tuan !== TUAN_BAT_DAU || !kq || !kq.ok) return;
       VE_GIUA_CA = kq.veGiuaCa || [];
-      veDsVeGiuaCa_();
+      veLaiDanhSachMay_(); // vẽ lại danh sách lượt + thẻ máy từ trạng thái đang chỉnh (không mất thay đổi chưa lưu)
       veLaiDsMayVgc_();
     })
     .layKeHoachTuan(BO_PHAN, TOKEN, tuan);
