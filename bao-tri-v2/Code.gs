@@ -189,6 +189,17 @@ function dsLyDoVeGiuaCa_(cauHinh) {
   return s.split(',').map(function (x) { return x.trim(); }).filter(Boolean);
 }
 
+/**
+ * Số PHÚT nghỉ trong ca đêm của một bộ phận, đọc từ Cau_Hinh khoá NGHI_DEM_PHUT_<BO_PHAN>.
+ * Khoá thiếu, trống hoặc sai định dạng = 0 (không nghỉ đêm). Hàm THUẦN khi truyền `cauHinh`.
+ */
+function nghiDemPhut_(boPhan, cauHinh) {
+  const ch = cauHinh || docCauHinh_();
+  const bp = String(boPhan || '').trim().toUpperCase().replace(/\s+/g, '_');
+  if (!bp) return 0;
+  return Math.round(soCauHinh_(ch['NGHI_DEM_PHUT_' + bp], 0));
+}
+
 function layUrlCongKhai_() {
   return PropertiesService.getScriptProperties().getProperty('URL_CONG_KHAI') || '';
 }
@@ -393,6 +404,14 @@ const CAU_HINH_MAC_DINH = [
     'VỀ GIỮA CA (tổ trưởng ghi cho công nhân xin về) — lý do hiện thành nút bấm. Cách nhau ' +
     'bằng dấu phẩy. Sửa ở đây là đổi ngay, không cần deploy lại. Nên giữ danh sách ngắn và ' +
     'cố định để báo cáo gom nhóm được. Khác với LY_DO_DUNG_MAY (công nhân báo dừng máy qua QR).'],
+  ['NGHI_DEM_PHUT_DET', '60',
+    'CA ĐÊM — số PHÚT nghỉ trong ca đêm của bộ phận DET. Đêm không quản lý giờ nghỉ cụ thể ' +
+    '(mọi người tự sắp xếp), nên chỉ khai TỔNG số phút và trừ vào phút kế hoạch của ca đêm. ' +
+    'Mỗi bộ phận một dòng riêng, tên khoá là NGHI_DEM_PHUT_<MÃ BỘ PHẬN> (VD NGHI_DEM_PHUT_SOI). ' +
+    'Đặt 0 hoặc xoá dòng = bộ phận đó KHÔNG nghỉ đêm. Bộ phận mới có ca đêm thì thêm một dòng theo ' +
+    'đúng mẫu này. Ca ngày và ngày tăng ca không dùng khoá này (đã có giờ nghỉ cụ thể).'],
+  ['NGHI_DEM_PHUT_SOI', '60', 'CA ĐÊM — số phút nghỉ của bộ phận SOI. Xem NGHI_DEM_PHUT_DET.'],
+  ['NGHI_DEM_PHUT_CMTX', '60', 'CA ĐÊM — số phút nghỉ của bộ phận CMTX. Xem NGHI_DEM_PHUT_DET.'],
   ['HUONG_DAN_KHOA_LINK_THO', '',
     'KHOÁ LINK KHI THỢ NGHỈ VIỆC: xoá trắng ô Token của người đó trong sheet ' +
     'Danh_Muc_Tho, bỏ tick Hoat_Dong, rồi chạy menu 🔧 Bảo trì → "4. Sinh lại ' +

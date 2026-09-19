@@ -778,14 +778,21 @@ function khungKeHoachNgayCuaMay_(lich, tangCa, gioTangCa) {
  * Khung giờ kế hoạch CA ĐÊM của một máy, theo Ca_Dem_Tu/Ca_Dem_Den của tổ. Cùng dạng
  * kết quả với khungKeHoachNgayCuaMay_. Giờ kết thúc <= bắt đầu thì hiểu là qua nửa đêm
  * (+1440). Trả null nếu tổ không có ca đêm hoặc chưa khai giờ ca đêm. Hàm THUẦN.
+ *
+ * nghiDemPhut: tổng số phút nghỉ trong ca đêm (nghiDemPhut_). Đêm không quản lý giờ nghỉ cụ
+ * thể nên khung vẫn là MỘT đoạn liền; nghỉ chỉ trừ vào tongPhut (phút kế hoạch). Bị chặn để
+ * luôn còn ít nhất 1 phút. Trả thêm phutKhung (độ dài ca) và nghiPhut (số phút đã trừ) để nơi
+ * gọi quy đổi theo tỷ lệ.
  */
-function khungCaDemCuaMay_(lich) {
+function khungCaDemCuaMay_(lich, nghiDemPhut) {
   if (!lich || !lich.Co_Ca_Dem) return null;
   const tu = gioSangPhut_(lich.Ca_Dem_Tu);
   let den = gioSangPhut_(lich.Ca_Dem_Den);
   if (tu === null || den === null) return null;
   if (den <= tu) den += 1440;
-  return { khung: [[tu, den]], tongPhut: den - tu, hetCa: den };
+  const phutKhung = den - tu;
+  const nghi = Math.min(Math.max(0, Math.round(Number(nghiDemPhut) || 0)), phutKhung - 1);
+  return { khung: [[tu, den]], tongPhut: phutKhung - nghi, hetCa: den, phutKhung: phutKhung, nghiPhut: nghi };
 }
 
 /** Quy 'HH:mm' về trục liên tục của một ca bắt đầu lúc `batDauCa` (phút): sớm hơn thì +1440. */
@@ -812,17 +819,19 @@ function phutGiaoKhung_(khung, tu, den) {
  *   gioVe      'HH:mm' bắt buộc
  *   gioQuayLai 'HH:mm' hoặc rỗng (rỗng = nghỉ tới hết ca)
  *   gioTangCa  kết quả gioTangCa_() (tiêm cho test)
+ *   nghiDemPhut tổng phút nghỉ ca đêm của bộ phận (nghiDemPhut_), mặc định 0. CA ĐÊM không
+ *              có giờ nghỉ cụ thể nên phút mất được quy đổi THEO TỶ LỆ: giao × (kế hoạch / độ dài ca)
  *
  * Trả { ok:true, phutMat, veLuc, denLuc, hetCa } (giờ trên trục liên tục, phút) hoặc
  * { ok:false, error }. Chặn: tổ chưa khai lịch/ca, giờ về ngoài ca, giờ quay lại không
  * sau giờ về hoặc sau hết ca. Hàm THUẦN.
  */
-function tinhVeGiuaCa_(lich, tangCa, ca, gioVe, gioQuayLai, gioTangCa) {
+function tinhVeGiuaCa_(lich, tangCa, ca, gioVe, gioQuayLai, gioTangCa, nghiDemPhut) {
   if (ca !== MA_CA.NGAY && ca !== MA_CA.DEM) return { ok: false, error: 'Ca không hợp lệ.' };
   if (!lich) return { ok: false, error: 'Tổ chưa khai giờ làm việc.' };
 
   const info = ca === MA_CA.DEM
-    ? khungCaDemCuaMay_(lich)
+    ? khungCaDemCuaMay_(lich, nghiDemPhut)
     : khungKeHoachNgayCuaMay_(lich, tangCa, gioTangCa);
   if (!info) {
     return { ok: false, error: ca === MA_CA.DEM ? 'Tổ không có ca đêm.' : 'Lịch của tổ không có khung ca ngày hợp lệ.' };
@@ -843,7 +852,12 @@ function tinhVeGiuaCa_(lich, tangCa, ca, gioVe, gioQuayLai, gioTangCa) {
     if (den > hetCa) return { ok: false, error: 'Giờ quay lại nằm ngoài ca.' };
   }
 
-  return { ok: true, phutMat: phutGiaoKhung_(info.khung, ve, den), veLuc: ve, denLuc: den, hetCa: hetCa };
+  let phutMat = phutGiaoKhung_(info.khung, ve, den);
+  // Ca đêm không có giờ nghỉ cụ thể → trừ phần nghỉ THEO TỶ LỆ, không đoán nghỉ rơi vào lúc nào.
+  if (ca === MA_CA.DEM && info.nghiPhut > 0) {
+    phutMat = Math.round(phutMat * info.tongPhut / info.phutKhung);
+  }
+  return { ok: true, phutMat: phutMat, veLuc: ve, denLuc: den, hetCa: hetCa };
 }
 
 // ============================================================================
@@ -933,7 +947,7 @@ function chuanHoaDanhSachVeGiuaCa_(p, ctx) {
     }
 
     const tinh = tinhVeGiuaCa_(ctx.lich, !!(ctx.tangCa && ctx.tangCa[maMay + '|' + ngay]),
-      ca, q.gioVe, q.gioQuayLai, ctx.gioTangCa);
+      ca, q.gioVe, q.gioQuayLai, ctx.gioTangCa, ctx.nghiDemPhut);
     if (!tinh.ok) return { ok: false, error: 'Máy ' + maMay + ': ' + tinh.error };
 
     const dong = new Array(HEADER_KE_HOACH_MAY.length).fill('');
@@ -1066,6 +1080,7 @@ function ghiVeGiuaCa(boPhan, token, payload) {
       dangDong: nc.dangDong,
       dsLyDo: dsLyDoVeGiuaCa_(),
       gioTangCa: gioTangCa_(),
+      nghiDemPhut: nghiDemPhut_(bp),
     });
     if (!chuan.ok) return chuan;
 
@@ -1129,7 +1144,7 @@ function capNhatQuayLaiVeGiuaCa(boPhan, token, payload) {
     const r = doc.vung[i];
     const nc = docNguCanhVeGiuaCa_(doc.vung, bp, ngay);
     const tinh = tinhVeGiuaCa_(lichHienHanhCuaTo_(bp, ngay), !!nc.tangCa[maMay + '|' + ngay], ca,
-      chuanHoaGio_(r[HEADER_KE_HOACH_MAY.indexOf('Gio_Ve')]), p.gioQuayLai, gioTangCa_());
+      chuanHoaGio_(r[HEADER_KE_HOACH_MAY.indexOf('Gio_Ve')]), p.gioQuayLai, gioTangCa_(), nghiDemPhut_(bp));
     if (!tinh.ok) return { ok: false, error: 'Máy ' + maMay + ': ' + tinh.error };
 
     r[HEADER_KE_HOACH_MAY.indexOf('Gio_Quay_Lai')] = chuanHoaGio_(p.gioQuayLai) || '';

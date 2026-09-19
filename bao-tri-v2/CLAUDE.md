@@ -135,6 +135,11 @@ trang tổ trưởng — KHÔNG đụng luồng QR công nhân, không tạo phi
 dòng này). Lý do ở `Cau_Hinh.LY_DO_VE_GIUA_CA`. Phút mất: `tinhVeGiuaCa_`. Chi tiết: mục 9d của
 `TASK_KE_HOACH_TO_TRUONG.md`. Khác hẳn "dừng máy không hư" (`DM-`, công nhân báo qua QR).
 
+**Nghỉ ca đêm theo bộ phận (19/09/2026, chờ `clasp push` + deploy):** đêm không quản lý giờ nghỉ cụ thể, nên
+khai TỔNG số phút nghỉ ở `Cau_Hinh.NGHI_DEM_PHUT_<MÃ BỘ PHẬN>` (seed DET/SOI/CMTX = 60; 0 hoặc thiếu =
+không nghỉ). Trừ vào phút kế hoạch ca đêm; về giữa ca ban đêm quy đổi theo tỷ lệ. Không thêm cột.
+Mục 9e của `TASK_KE_HOACH_TO_TRUONG.md`.
+
 **Đợt 3 (chưa code, trước đây gọi là Đợt 2):** 2 chỉ số **tỷ lệ huy động máy** và **hiệu suất máy được bố trí
 chạy**, tính từ 3 sheet trên + `Su_Co` — không cần schema mới, không đụng `HieuDung.gs`.
 Công thức đầy đủ ở `TASK_KE_HOACH_TO_TRUONG.md` mục 8.

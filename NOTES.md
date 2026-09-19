@@ -1,3 +1,14 @@
+## [2026-09-19] Tổ trưởng — nghỉ ca đêm theo từng bộ phận (`Cau_Hinh.NGHI_DEM_PHUT_*`)
+- **Vấn đề (chủ dự án phát hiện khi khai lịch):** form khai lịch tổ chỉ có giờ nghỉ trưa, thiếu giờ nghỉ ca đêm. Đêm không quản lý giờ nghỉ cụ thể (tự sắp xếp, ~1 tiếng), mỗi bộ phận nghỉ khác nhau, có bộ phận không nghỉ.
+- **Quyết định:** không thêm cột, không sửa form. Khai TỔNG số phút nghỉ theo bộ phận ở `Cau_Hinh`, khoá `NGHI_DEM_PHUT_<MÃ BỘ PHẬN>`. Đề xuất thêm 3 cột trước đó đã RÚT LẠI.
+- **Thay đổi:**
+  - `Code.gs` — seed 3 khoá `NGHI_DEM_PHUT_DET/SOI/CMTX` = 60, hàm `nghiDemPhut_(boPhan)` (thiếu/sai/âm = 0).
+  - `KeHoachTo.gs` — `khungCaDemCuaMay_` nhận số phút nghỉ (trừ vào phút kế hoạch, luôn còn ≥ 1); `tinhVeGiuaCa_` quy đổi phút mất ca đêm THEO TỶ LỆ (VD về 23:00: 480 → 447); `ghiVeGiuaCa` và `capNhatQuayLaiVeGiuaCa` lấy số phút nghỉ của đúng bộ phận. Ca ngày/tăng ca không đổi.
+  - `Test.gs` — thêm 14 test (khoá theo bộ phận, thiếu/sai định dạng, nghỉ quá lớn bị chặn, quy đổi tỷ lệ, qua `chuanHoaDanhSachVeGiuaCa_`). Dự kiến tổng **496** (482 + 14), **chưa chạy trong Sheet**.
+- **Đã kiểm tại máy:** `kiem-tra.ps1` sạch cả 5 lớp; khối test tăng ca + về giữa ca + nghỉ đêm chạy bằng node 64/64.
+- **Trạng thái:** đã push GitHub (commit ngay sau dòng này) / **CHƯA `clasp push`** / **CHƯA deploy**.
+- **Việc cần làm tiếp theo:** `clasp push` → menu 🔧 "1. Cài đặt hệ thống" (thêm 3 dòng cấu hình) → menu 🧪 xem số test (dự kiến 496) → **deploy** (RPC ghi về giữa ca chạy bản đã deploy, nên phải deploy mới có hiệu lực trên trang tổ trưởng; push xong mà chưa deploy thì trang vẫn tính ca đêm như cũ) → chủ dự án chỉnh số phút nghỉ từng bộ phận trong `Cau_Hinh` cho đúng thực tế (bộ phận không nghỉ đặt 0).
+
 ## [2026-09-19] Tổ trưởng — Đợt 2 (tăng ca + về giữa ca): ĐÃ DEPLOY, test tay ổn
 - **Xác nhận từ chủ dự án:** đã deploy bản có thẻ máy hiện dòng "🏠 Về giữa ca" (commit `5a3cea2`), test tay trên link thật ổn. Sau lần test đầu chủ dự án phát hiện thẻ máy chưa hiện dòng về giữa ca (chỉ có danh sách riêng) — đã bổ sung và vẽ lại thẻ ngay sau khi ghi/quay lại/huỷ.
 - **Làm rõ ý nghĩa (chủ dự án hỏi lại):** "về giữa ca" là về HẾT CA; nút "Quay lại…" chỉ để phòng công nhân đổi ý quay lại làm tiếp. Ca sau / ngày sau không phải bấm gì — bản ghi gắn với đúng (máy, ngày, ca).

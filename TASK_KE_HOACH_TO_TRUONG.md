@@ -305,6 +305,26 @@ giữa ca của máy đó biến mất, các lượt khác còn; máy đang đó
 **Dọn dữ liệu thử:** mở sheet `Ke_Hoach_May`, lọc cột `Trang_Thai` = `VE_GIUA_CA` (và `TANG_CA`
 nếu có thử), xoá các dòng của máy thử; các dòng `DONG`/`DA_KHAI` do tổ trưởng khai thật thì KHÔNG xoá.
 
+## 9e. Nghỉ trong CA ĐÊM — theo từng bộ phận (chủ dự án chốt 19/09/2026)
+
+Form khai lịch tổ chỉ có MỘT giờ nghỉ (nghỉ trưa), nên ca đêm coi như chạy liền. Đêm không quản lý
+giờ nghỉ cụ thể (mọi người tự sắp xếp, khoảng 1 tiếng) và mỗi bộ phận nghỉ khác nhau, có bộ phận
+không nghỉ. Quyết định: **không thêm cột, không sửa form** — chỉ khai TỔNG số phút nghỉ trong
+`Cau_Hinh`.
+
+| Chủ đề | Đã chốt |
+|---|---|
+| Khoá | `NGHI_DEM_PHUT_<MÃ BỘ PHẬN>` — mỗi bộ phận một dòng. Seed sẵn DET, SOI, CMTX = 60 (các tổ có ca đêm theo bảng ca); bộ phận khác/mới thì thêm dòng theo mẫu |
+| Không nghỉ | Đặt 0, xoá dòng, để trống hoặc sai định dạng đều = 0 |
+| Phút kế hoạch ca đêm | Độ dài ca − số phút nghỉ (luôn còn ≥ 1 phút). Đợt 3 dùng làm mẫu số ca đêm |
+| Về giữa ca ban đêm | Quy đổi **theo tỷ lệ**: phút giao × (kế hoạch / độ dài ca), vì không biết nghỉ rơi lúc nào. VD ca 16:30–07:00, nghỉ 60, về 23:00: 480 × 810/870 = 447 phút. Không nghỉ → giữ 480 |
+| Ca ngày / ngày tăng ca | Không dùng khoá này (đã có giờ nghỉ cụ thể) |
+| Hàm | `nghiDemPhut_(boPhan)` (Code.gs), `khungCaDemCuaMay_(lich, nghiDemPhut)`, `tinhVeGiuaCa_(..., nghiDemPhut)` (KeHoachTo.gs) |
+
+**Trạng thái:** đã viết + 14 test mới, kiểm bằng node và `kiem-tra.ps1` sạch; số test trong Sheet dự kiến
+**496** (482 + 14), **chưa kiểm chứng**. Chờ: `clasp push` + menu "1. Cài đặt hệ thống" (thêm 3 dòng
+cấu hình) + menu 🧪 + **deploy** (RPC `ghiVeGiuaCa` chạy bản đã deploy, không chạy bản HEAD).
+
 ## 9b. Việc làm thêm SAU khi Đợt 1 xong (không thuộc 8 bước gốc)
 
 - **Vá lỗi `getLastRow()` ở `themMayMoi()` (`DanhMuc.gs`)** — xác nhận thật trên Sheet (`Ctrl+End` nhảy dòng 1000 dù chỉ ~162 máy), vá bằng `soDongCoDuLieu_`. Không ảnh hưởng dữ liệu đã có (`CMTD02`/`CMTD03` vẫn đúng vị trí). Đã push + deploy.

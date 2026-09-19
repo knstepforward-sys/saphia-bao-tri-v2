@@ -2091,6 +2091,48 @@ function chayTest() {
     [_plVe_.ngoaiLe.length, _plVe_.veGiuaCa],
     [1, [{ maMay: '4T-01', ngay: '2026-09-19', ca: 'N', lyDo: 'Nghỉ có phép', ghiChu: '', gioVe: '14:00', gioQuayLai: '' }]]);
 
+  // ============================================================================
+  // NGHỈ CA ĐÊM THEO TỪNG BỘ PHẬN — khoá Cau_Hinh NGHI_DEM_PHUT_<BO_PHAN>, quy đổi theo tỷ lệ
+  // ============================================================================
+  const _chDem_ = { NGHI_DEM_PHUT_DET: '60', NGHI_DEM_PHUT_SOI: '45', NGHI_DEM_PHUT_TRANG: '0', NGHI_DEM_PHUT_MTX: 'abc' };
+  t.bang('nghiDemPhut_ mỗi bộ phận một số riêng: DET 60, SOI 45',
+    [nghiDemPhut_('DET', _chDem_), nghiDemPhut_('SOI', _chDem_)], [60, 45]);
+  t.bang('nghiDemPhut_ đặt 0 → không nghỉ; khoá thiếu → 0; sai định dạng → 0; bộ phận rỗng → 0',
+    [nghiDemPhut_('TRANG', _chDem_), nghiDemPhut_('CMTX', _chDem_), nghiDemPhut_('MTX', _chDem_), nghiDemPhut_('', _chDem_)],
+    [0, 0, 0, 0]);
+  t.bang('nghiDemPhut_ không phân biệt hoa/thường, bỏ khoảng trắng đầu cuối',
+    nghiDemPhut_(' det ', _chDem_), 60);
+  t.bang('nghiDemPhut_ số âm → 0',
+    nghiDemPhut_('DET', { NGHI_DEM_PHUT_DET: '-30' }), 0);
+  t.bang('seed cấu hình có sẵn 3 bộ phận có ca đêm: DET, SOI, CMTX = 60',
+    ['NGHI_DEM_PHUT_DET', 'NGHI_DEM_PHUT_SOI', 'NGHI_DEM_PHUT_CMTX'].map(function (k) {
+      const r = CAU_HINH_MAC_DINH.filter(function (x) { return x[0] === k; })[0];
+      return r ? r[1] : null;
+    }), ['60', '60', '60']);
+
+  t.bang('khungCaDemCuaMay_ có nghỉ 60: kế hoạch 870 − 60 = 810, độ dài ca vẫn 870, hết ca không đổi',
+    (function () { const k = khungCaDemCuaMay_(_lichVe_, 60); return [k.tongPhut, k.phutKhung, k.nghiPhut, k.hetCa]; })(),
+    [810, 870, 60, 1860]);
+  t.bang('khungCaDemCuaMay_ nghỉ lớn hơn cả ca bị chặn, luôn còn ≥ 1 phút kế hoạch',
+    khungCaDemCuaMay_(_lichVe_, 99999).tongPhut, 1);
+  t.bang('khungCaDemCuaMay_ không truyền nghỉ → như cũ (870)',
+    khungCaDemCuaMay_(_lichVe_).tongPhut, 870);
+
+  t.bang('CA ĐÊM nghỉ 60: về 23:00 đến hết ca — 480 phút giao × 810/870 = 447 (quy đổi theo tỷ lệ)',
+    tinhVeGiuaCa_(_lichVe_, false, 'D', '23:00', '', _gioMacDinh_, 60).phutMat, 447);
+  t.bang('CA ĐÊM nghỉ 60: về 02:00 sáng — 300 phút giao × 810/870 = 279',
+    tinhVeGiuaCa_(_lichVe_, false, 'D', '02:00', '', _gioMacDinh_, 60).phutMat, 279);
+  t.bang('CA ĐÊM nghỉ 0 (bộ phận không nghỉ) → giữ nguyên số phút giao (480)',
+    tinhVeGiuaCa_(_lichVe_, false, 'D', '23:00', '', _gioMacDinh_, 0).phutMat, 480);
+  t.bang('CA NGÀY không bị ảnh hưởng bởi nghỉ ca đêm (vẫn 150 phút)',
+    tinhVeGiuaCa_(_lichVe_, false, 'N', '14:00', '', _gioMacDinh_, 60).phutMat, 150);
+  t.bang('ghi về giữa ca ca đêm qua chuanHoaDanhSachVeGiuaCa_ dùng đúng nghỉ của bộ phận (447)',
+    chuanHoaDanhSachVeGiuaCa_(_pVe_({ ca: 'D', gioVe: '23:00' }),
+      Object.assign({}, _ctxVe_, { nghiDemPhut: 60 })).ketQua, [{ maMay: '4T-01', phutMat: 447 }]);
+  t.bang('ghi về giữa ca ca đêm bộ phận không nghỉ (không truyền nghỉ) → 480',
+    chuanHoaDanhSachVeGiuaCa_(_pVe_({ ca: 'D', gioVe: '23:00' }), _ctxVe_).ketQua,
+    [{ maMay: '4T-01', phutMat: 480 }]);
+
   // --- Kết quả ---------------------------------------------------------------
   const tong = kq.dat + kq.loi.length;
   const bao = kq.loi.length
