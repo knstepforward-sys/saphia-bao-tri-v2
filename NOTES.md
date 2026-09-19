@@ -1,3 +1,8 @@
+## [2026-09-19] Đã `clasp push`, test 503/503 (tăng ca luôn hiện + tăng ca thay ca đêm)
+- **Xác nhận từ chủ dự án:** đã `clasp push` xong, menu 🧪 **Chạy test logic** ra **503/503**, không đỏ (496 cũ + 7 test mới, đúng dự kiến). Cập nhật số test trong `bao-tri-v2/CLAUDE.md` (496 → 503).
+- **Trạng thái:** đã push GitHub (`d6b6240`; commit tài liệu này chưa đẩy lúc viết dòng này) / **ĐÃ `clasp push`** / **CHƯA xác nhận deploy** — trang tổ trưởng chạy bản đã deploy nên tổ TRANG chưa thấy mục Tăng ca hiện lại cho tới khi deploy.
+- **Việc cần làm tiếp theo:** deploy (Phiên bản mới, giữ deployment ID) → F5 trang tổ TRANG kiểm tra mục tăng ca đã hiện → chốt câu hỏi còn treo: tổ có ca đêm hiếm thì tổ trưởng đóng ca đêm hàng ngày (A) hay thêm chế độ "ca đêm mặc định không chạy" cho từng tổ (B) — ảnh hưởng cách tính huy động ở Đợt 3.
+
 ## [2026-09-19] Tăng ca luôn hiện kể cả tổ có ca đêm; tăng ca ngày THAY cho ca đêm
 - **Vấn đề (chủ dự án phát hiện ở tổ TRANG):** mục tăng ca biến mất vì lịch tổ tick "Có ca đêm". Thực tế ca đêm KHÔNG cố định: tổ chạy tăng ca ngày nếu đủ người, chỉ khi không đủ mới chạy ca đêm; lâu lâu mới có ca đêm. Nên "có ca đêm" không được làm mất tăng ca.
 - **Luật đã chốt:** máy tăng ca ngày nào thì KHÔNG chạy ca đêm ngày đó (tăng ca thay ca đêm).
