@@ -140,7 +140,7 @@ khai TỔNG số phút nghỉ ở `Cau_Hinh.NGHI_DEM_PHUT_<MÃ BỘ PHẬN>` (se
 không nghỉ). Trừ vào phút kế hoạch ca đêm; về giữa ca ban đêm quy đổi theo tỷ lệ. Không thêm cột.
 Mục 9e của `TASK_KE_HOACH_TO_TRUONG.md`.
 
-**Giao diện viết lại + Chạy ca đêm (19/09/2026, chờ `clasp push` + deploy):** trang tổ trưởng chỉ còn nút lớn theo việc
+**Giao diện viết lại + Chạy ca đêm (19/09/2026; chế độ ca đêm theo bộ phận `Cau_Hinh.CA_DEM_MAC_DINH_*`: CHAY = DET/SOI/CMTX luôn chạy ca đêm, ẩn Chạy ca đêm + Tăng ca, ngày không chạy thì Đóng máy → Ca đêm; KHONG = TRANG, mặc định không chạy, bấm Chạy ca đêm; chờ `clasp push` + deploy):** trang tổ trưởng chỉ còn nút lớn theo việc
 (Đóng máy / Tăng ca / Chạy ca đêm / Có người xin về / Xem kế hoạch tuần), từng bước, bấm Xác nhận là lưu ngay. Ca
 đêm KHÔNG cố định: mặc định máy không chạy ca đêm, ngày nào chạy thì chọn "Chạy ca đêm" (dòng `CHAY_DEM`, Ca='D');
 loại trừ với tăng ca cùng máy-ngày. Mục 9f của `TASK_KE_HOACH_TO_TRUONG.md`.

@@ -165,6 +165,7 @@ function getToTruongBootstrap(boPhan, token) {
       may: dsMayCuaBoPhan_(bp),
       lyDoDongMay: dsLyDoDongMayKeHoach_(),
       lyDoVeGiuaCa: dsLyDoVeGiuaCa_(),
+      caDemMacDinh: caDemMacDinh_(bp), // 'CHAY' | 'KHONG' — quyết định nút Chạy ca đêm / Tăng ca hiện hay ẩn
       gioTangCa: gioTangCa_(), // phút từ 00:00 — client tự đổi ra HH:mm để hiện trên modal tăng ca
     };
   } catch (err) {
@@ -676,9 +677,13 @@ function luuKeHoachTuan(boPhan, token, payload) {
     const iReqId = HEADER_KE_HOACH_MAY.indexOf('Request_ID');
 
     // Client cũ không gửi tangCa → giữ nguyên dòng TANG_CA đã lưu (đã có đủ metadata).
-    const dsTangCaGhi = guiTangCa ? chuanTangCa.dsDong : tach.tangCaCu;
+    // Tổ CHAY (luôn chạy ca đêm): không dùng tăng ca và "Chạy ca đêm" — bỏ hết, kể cả dữ liệu cũ.
+    const cheDoCaDem = caDemMacDinh_(bp);
+    const chon = chonTangCaChayDemGhi_(cheDoCaDem, guiTangCa, chuanTangCa.dsDong, tach.tangCaCu,
+      guiChayDem, chuanChayDem.dsDong, tach.chayDemCu);
+    const dsTangCaGhi = chon.tangCa;
     // Client cũ không gửi chayDem → giữ nguyên dòng CHAY_DEM đã lưu.
-    const dsChayDemGhi = guiChayDem ? chuanChayDem.dsDong : tach.chayDemCu;
+    const dsChayDemGhi = chon.chayDem;
 
     // Tăng ca ngày và chạy ca đêm loại trừ nhau trên cùng máy-ngày. Kiểm cả trường hợp một
     // bên là dữ liệu đã lưu (client cũ chỉ gửi một trong hai).
@@ -702,8 +707,9 @@ function luuKeHoachTuan(boPhan, token, payload) {
     // Về giữa ca ghi riêng lúc xảy ra (ghiVeGiuaCa) nên luôn được GIỮ LẠI — trừ lượt nào
     // vừa bị đóng máy đè lên đúng (máy, ngày, ca) đó (một máy-ngày-ca một trạng thái).
     // Về giữa ca ĐÊM chỉ còn nghĩa khi máy đó vẫn chạy ca đêm ngày đó (CHAY_DEM).
-    const veGiuaCaGhi = boVeGiuaCaDemKhongChayDem_(
-      boVeGiuaCaBiDongDe_(tach.veGiuaCaCu, chuan.dsDong), dsChayDemGhi);
+    // Tổ CHAY: ca đêm mặc định chạy, lượt về giữa ca đêm chỉ bị bỏ khi máy đó bị đóng ca đêm.
+    const veSauDong = boVeGiuaCaBiDongDe_(tach.veGiuaCaCu, chuan.dsDong);
+    const veGiuaCaGhi = cheDoCaDem === 'CHAY' ? veSauDong : boVeGiuaCaDemKhongChayDem_(veSauDong, dsChayDemGhi);
     const toanBo = tach.giuLai.concat(chuan.dsDong, dsTangCaGhi, dsChayDemGhi, veGiuaCaGhi, [dongDaKhai]);
 
     if (toanBo.length) {
@@ -939,6 +945,19 @@ function boVeGiuaCaDemKhongChayDem_(dsVeRows, dsChayDemRows) {
 }
 
 /**
+ * Chọn danh sách TĂNG CA và CHẠY CA ĐÊM thật sự được ghi. Tổ CHAY (luôn chạy ca đêm) không dùng cả hai
+ * → bỏ hết (kể cả dữ liệu cũ đã lưu). Tổ KHONG: client có gửi thì lấy bản mới, không gửi (client cũ)
+ * thì giữ nguyên bản đã lưu. Hàm THUẦN.
+ */
+function chonTangCaChayDemGhi_(cheDo, guiTangCa, tangCaMoi, tangCaCu, guiChayDem, chayDemMoi, chayDemCu) {
+  if (cheDo === 'CHAY') return { tangCa: [], chayDem: [] };
+  return {
+    tangCa: guiTangCa ? tangCaMoi : tangCaCu,
+    chayDem: guiChayDem ? chayDemMoi : chayDemCu,
+  };
+}
+
+/**
  * Validate + chuẩn hoá MỘT lượt "chạy ca đêm" (một máy, một ngày): dòng CHAY_DEM, Ca='D'.
  * item = { maMay, ngay }. Hàm THUẦN.
  */
@@ -1067,7 +1086,8 @@ function chuanHoaDanhSachVeGiuaCa_(p, ctx) {
 
     // Ca đêm KHÔNG cố định: mặc định máy không chạy ca đêm. Chỉ ghi "về giữa ca" ở ca đêm khi
     // tổ trưởng đã chọn "Chạy ca đêm" cho máy-ngày đó (tăng ca ngày thì không chạy ca đêm).
-    if (ca === MA_CA.DEM && !(ctx.chayDem && ctx.chayDem[maMay + '|' + ngay])) {
+    // (Tổ CHAY luôn chạy ca đêm: máy nào chưa bị đóng ca đêm là ghi được — luật "đang đóng" ở trên lo.)
+    if (ca === MA_CA.DEM && ctx.caDemMacDinh !== 'CHAY' && !(ctx.chayDem && ctx.chayDem[maMay + '|' + ngay])) {
       return { ok: false, error: 'Máy ' + maMay + ' không chạy ca đêm ngày ' + ngay + '. Chọn "Chạy ca đêm" cho máy này trước.' };
     }
 
@@ -1205,6 +1225,7 @@ function ghiVeGiuaCa(boPhan, token, payload) {
       lich: ngay ? lichHienHanhCuaTo_(bp, ngay) : null,
       tangCa: nc.tangCa,
       chayDem: nc.chayDem,
+      caDemMacDinh: caDemMacDinh_(bp),
       dangDong: nc.dangDong,
       dsLyDo: dsLyDoVeGiuaCa_(),
       gioTangCa: gioTangCa_(),

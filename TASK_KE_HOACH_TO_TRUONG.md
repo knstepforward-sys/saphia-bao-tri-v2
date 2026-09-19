@@ -335,7 +335,18 @@ Có người xin về · Xem kế hoạch tuần · "Việc khác…" (Đóng Ch
 vài BƯỚC, mỗi bước một câu hỏi; **bấm Xác nhận là LƯU LUÔN** (không còn nút "Lưu kế hoạch tuần"; lưu lỗi thì
 tự khôi phục về trạng thái trước). "Xem kế hoạch tuần" gom theo NGÀY, mỗi mục có nút ✕ xoá.
 
-**Mô hình ca đêm (đã đổi):** ca đêm KHÔNG cố định (chạy khi không đủ người tăng ca, lâu lâu mới có), nên với tổ
+**⚠️ ĐÍNH CHÍNH 19/09/2026 — chế độ ca đêm THEO TỪNG BỘ PHẬN (thay cho "mọi tổ mặc định không chạy" bên dưới):**
+chủ dự án báo lại: **Dệt (DET), Sợi (SOI), CMTX luôn có ca đêm**; chỉ **TRANG** lâu lâu mới có; **ICM, MTX không có ca đêm
+nhưng có tăng ca**. Khoá `Cau_Hinh.CA_DEM_MAC_DINH_<BO_PHAN>`: `CHAY` (seed DET/SOI/CMTX) hoặc `KHONG` (thiếu/trống = KHONG,
+gồm TRANG). Chỉ có tác dụng với tổ tick "Có ca đêm" trong lịch.
+- **CHAY (luôn chạy ca đêm):** ca đêm mặc định chạy, ngày không chạy thì Đóng máy → Ca đêm (dòng `DONG` Ca='D', có lý do). **Ẩn nút
+  "Chạy ca đêm" và nút Tăng ca** (chủ dự án chốt: ba tổ này không dùng tăng ca). Server bỏ mọi tăng ca / CHAY_DEM gửi lên hoặc đã lưu
+  của tổ CHAY (`chonTangCaChayDemGhi_`). Về giữa ca ca đêm ghi được khi máy chưa bị đóng ca đêm.
+- **KHONG (TRANG):** như mô tả bên dưới — mặc định không chạy ca đêm, ngày chạy thì bấm "Chạy ca đêm"; tăng ca dùng được; tăng ca thay ca đêm.
+- **Tổ không ca đêm (ICM, MTX…):** không có bước "Ca nào?" và không có nút ca đêm; tăng ca dùng bình thường.
+- **Đợt 3:** ca đêm của một máy-ngày được tính khi: tổ CHAY = không có dòng DONG ca D; tổ KHONG = có dòng CHAY_DEM.
+
+**Mô hình ca đêm (dành cho tổ KHONG):** ca đêm KHÔNG cố định (chạy khi không đủ người tăng ca, lâu lâu mới có), nên với tổ
 có ca đêm **mặc định máy KHÔNG chạy ca đêm**; ngày nào chạy thì tổ trưởng chọn "Chạy ca đêm" cho máy đó —
 dòng `Ke_Hoach_May` `Trang_Thai='CHAY_DEM'`, `Ca='D'`, không thêm cột. **Tăng ca ngày và chạy ca đêm loại
 trừ nhau** trên cùng máy-ngày (server báo lỗi `xungDotTangCaChayDem_`; giao diện tự bỏ qua và báo). Đóng máy chỉ

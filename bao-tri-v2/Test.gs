@@ -2257,6 +2257,40 @@ function chayTest() {
      chuanHoaDanhSachVeGiuaCa_(_pVe_({ dsMay: ['4T-01'], ca: 'N', gioVe: '14:00' }),
        Object.assign({}, _ctxVe_, { chayDem: {} })).ok], [true, false, true]);
 
+  // ============================================================================
+  // CHẾ ĐỘ CA ĐÊM THEO BỘ PHẬN — CA_DEM_MAC_DINH_<BO_PHAN>: CHAY (luôn chạy) / KHONG (mặc định không chạy)
+  // ============================================================================
+  const _chCd_ = { CA_DEM_MAC_DINH_DET: 'CHAY', CA_DEM_MAC_DINH_TRANG: 'khong', CA_DEM_MAC_DINH_SOI: ' chay ', CA_DEM_MAC_DINH_MTX: 'abc' };
+  t.bang('caDemMacDinh_ DET = CHAY; giá trị viết thường/khoảng trắng vẫn nhận (SOI)',
+    [caDemMacDinh_('DET', _chCd_), caDemMacDinh_('soi', _chCd_)], ['CHAY', 'CHAY']);
+  t.bang('caDemMacDinh_ khoá thiếu / KHONG / giá trị lạ / bộ phận rỗng → KHONG',
+    [caDemMacDinh_('ICM', _chCd_), caDemMacDinh_('TRANG', _chCd_), caDemMacDinh_('MTX', _chCd_), caDemMacDinh_('', _chCd_)],
+    ['KHONG', 'KHONG', 'KHONG', 'KHONG']);
+  t.bang('seed cấu hình: DET, SOI, CMTX = CHAY; TRANG không có dòng (= KHONG)',
+    ['CA_DEM_MAC_DINH_DET', 'CA_DEM_MAC_DINH_SOI', 'CA_DEM_MAC_DINH_CMTX', 'CA_DEM_MAC_DINH_TRANG'].map(function (k) {
+      const r = CAU_HINH_MAC_DINH.filter(function (x) { return x[0] === k; })[0];
+      return r ? r[1] : null;
+    }), ['CHAY', 'CHAY', 'CHAY', null]);
+
+  t.bang('chonTangCaChayDemGhi_ tổ CHAY: bỏ hết tăng ca + chạy ca đêm, kể cả dữ liệu cũ đã lưu',
+    chonTangCaChayDemGhi_('CHAY', true, ['tm'], ['tc'], true, ['dm'], ['dc']), { tangCa: [], chayDem: [] });
+  t.bang('chonTangCaChayDemGhi_ tổ KHONG: client có gửi thì lấy bản mới',
+    chonTangCaChayDemGhi_('KHONG', true, ['tm'], ['tc'], true, ['dm'], ['dc']), { tangCa: ['tm'], chayDem: ['dm'] });
+  t.bang('chonTangCaChayDemGhi_ tổ KHONG: client cũ không gửi → giữ nguyên bản đã lưu',
+    chonTangCaChayDemGhi_('KHONG', false, [], ['tc'], false, [], ['dc']), { tangCa: ['tc'], chayDem: ['dc'] });
+  t.bang('chonTangCaChayDemGhi_ tổ KHONG: gửi danh sách RỖNG là xoá hết (khác với không gửi)',
+    chonTangCaChayDemGhi_('KHONG', true, [], ['tc'], true, [], ['dc']), { tangCa: [], chayDem: [] });
+
+  const _ctxChay_ = Object.assign({}, _ctxVe_, { caDemMacDinh: 'CHAY', chayDem: {} });
+  t.bang('tổ CHAY: về giữa ca ĐÊM ghi được dù không có dòng "Chạy ca đêm" (ca đêm mặc định chạy)',
+    chuanHoaDanhSachVeGiuaCa_(_pVe_({ dsMay: ['4T-01'], ca: 'D', gioVe: '23:00' }), _ctxChay_).ok, true);
+  t.bang('tổ CHAY: máy đã bị ĐÓNG ca đêm hôm đó thì không về giữa ca đêm được',
+    chuanHoaDanhSachVeGiuaCa_(_pVe_({ dsMay: ['4T-01'], ca: 'D', gioVe: '23:00' }),
+      Object.assign({}, _ctxChay_, { dangDong: { '4T-01|2026-09-19|D': true } })).ok, false);
+  t.bang('tổ KHONG (mặc định) vẫn đòi "Chạy ca đêm" như cũ',
+    chuanHoaDanhSachVeGiuaCa_(_pVe_({ dsMay: ['4T-01'], ca: 'D', gioVe: '23:00' }),
+      Object.assign({}, _ctxVe_, { chayDem: {} })).ok, false);
+
   // --- Kết quả ---------------------------------------------------------------
   const tong = kq.dat + kq.loi.length;
   const bao = kq.loi.length

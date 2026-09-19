@@ -200,6 +200,19 @@ function nghiDemPhut_(boPhan, cauHinh) {
   return Math.round(soCauHinh_(ch['NGHI_DEM_PHUT_' + bp], 0));
 }
 
+/**
+ * Chế độ ca đêm mặc định của một bộ phận, đọc từ Cau_Hinh khoá CA_DEM_MAC_DINH_<BO_PHAN>:
+ * 'CHAY' (luôn chạy ca đêm, ngày nào không chạy thì đóng ca đêm) hoặc 'KHONG' (mặc định không chạy,
+ * ngày nào chạy thì chọn "Chạy ca đêm"). Thiếu, trống hay giá trị lạ = 'KHONG'. Hàm THUẦN khi truyền
+ * `cauHinh`.
+ */
+function caDemMacDinh_(boPhan, cauHinh) {
+  const ch = cauHinh || docCauHinh_();
+  const bp = String(boPhan || '').trim().toUpperCase().replace(/\s+/g, '_');
+  if (!bp) return 'KHONG';
+  return String(ch['CA_DEM_MAC_DINH_' + bp] || '').trim().toUpperCase() === 'CHAY' ? 'CHAY' : 'KHONG';
+}
+
 function layUrlCongKhai_() {
   return PropertiesService.getScriptProperties().getProperty('URL_CONG_KHAI') || '';
 }
@@ -415,6 +428,14 @@ const CAU_HINH_MAC_DINH = [
     'đúng mẫu này. Ca ngày và ngày tăng ca không dùng khoá này (đã có giờ nghỉ cụ thể).'],
   ['NGHI_DEM_PHUT_SOI', '60', 'CA ĐÊM — số phút nghỉ của bộ phận SOI. Xem NGHI_DEM_PHUT_DET.'],
   ['NGHI_DEM_PHUT_CMTX', '60', 'CA ĐÊM — số phút nghỉ của bộ phận CMTX. Xem NGHI_DEM_PHUT_DET.'],
+  ['CA_DEM_MAC_DINH_DET', 'CHAY',
+    'CA ĐÊM MẶC ĐỊNH của bộ phận DET — CHAY: luôn chạy ca đêm, ngày nào KHÔNG chạy thì tổ trưởng ' +
+    'chọn Đóng máy → Ca đêm; nút "Chạy ca đêm" và nút Tăng ca bị ẩn. KHONG (hoặc xoá dòng, để trống): ' +
+    'ca đêm mặc định KHÔNG chạy, ngày nào chạy thì tổ trưởng bấm "Chạy ca đêm"; Tăng ca dùng được. ' +
+    'Mỗi bộ phận một dòng, tên khoá CA_DEM_MAC_DINH_<MÃ BỘ PHẬN>. Chỉ có tác dụng với bộ phận có ' +
+    'tick "Có ca đêm" trong lịch làm việc của tổ. Sửa ở đây là đổi ngay, không cần deploy lại.'],
+  ['CA_DEM_MAC_DINH_SOI', 'CHAY', 'CA ĐÊM MẶC ĐỊNH của bộ phận SOI. Xem CA_DEM_MAC_DINH_DET.'],
+  ['CA_DEM_MAC_DINH_CMTX', 'CHAY', 'CA ĐÊM MẶC ĐỊNH của bộ phận CMTX. Xem CA_DEM_MAC_DINH_DET.'],
   ['HUONG_DAN_KHOA_LINK_THO', '',
     'KHOÁ LINK KHI THỢ NGHỈ VIỆC: xoá trắng ô Token của người đó trong sheet ' +
     'Danh_Muc_Tho, bỏ tick Hoat_Dong, rồi chạy menu 🔧 Bảo trì → "4. Sinh lại ' +

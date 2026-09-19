@@ -174,7 +174,7 @@
     <span class="bieu-tuong">🔴</span>
     <span><div class="ten">Đóng máy</div><div class="mo-ta">Máy nghỉ, không chạy</div></span>
   </button>
-  <button class="viec cam" type="button" data-act="viec-tang">
+  <button class="viec cam" type="button" data-act="viec-tang" id="nutViecTang">
     <span class="bieu-tuong">⏱</span>
     <span><div class="ten">Tăng ca</div><div class="mo-ta" id="hMoTaTang">Máy chạy ca ngày lâu hơn</div></span>
   </button>
@@ -404,12 +404,25 @@ var VE_GIUA_CA = [];   // [{maMay,ngay,ca,lyDo,gioVe,gioQuayLai}] ghi thẳng l�
 var DA_KHAI_TUAN = false;
 
 function coCaDem_() { return !!(DATA && DATA.lich && DATA.lich.Co_Ca_Dem); }
+/**
+ * Tổ CHAY (Dệt, Sợi, CMTX): luôn chạy ca đêm — ngày nào không chạy thì Đóng máy → Ca đêm; KHÔNG dùng
+ * "Chạy ca đêm" và Tăng ca. Tổ còn lại (KHONG): ca đêm mặc định không chạy, ngày nào chạy thì bấm
+ * "Chạy ca đêm"; Tăng ca dùng được. Cấu hình ở Cau_Hinh.CA_DEM_MAC_DINH_<BO_PHAN>.
+ */
+function modeChay_() { return coCaDem_() && !!DATA && DATA.caDemMacDinh === 'CHAY'; }
 function dsMay_() { return (DATA.may || []).slice().sort(function (a, b) { return a.maMay.localeCompare(b.maMay); }); }
 function dangDongN_(ma, ymd) {
   return (NGOAI_LE[ma] || []).some(function (nl) { return nl.ngay === ymd && nl.ca === 'N'; });
 }
 function coTang_(ma, ymd) { return !!(TANG_CA[ma] && TANG_CA[ma][ymd]); }
-function coDem_(ma, ymd) { return !!(CHAY_DEM[ma] && CHAY_DEM[ma][ymd]); }
+function dangDongD_(ma, ymd) {
+  return (NGOAI_LE[ma] || []).some(function (nl) { return nl.ngay === ymd && nl.ca === 'D'; });
+}
+/** Máy có chạy ca đêm ngày đó không: tổ CHAY = chưa bị đóng ca đêm; tổ KHONG = đã chọn "Chạy ca đêm". */
+function coDem_(ma, ymd) {
+  if (!coCaDem_()) return false;
+  return modeChay_() ? !dangDongD_(ma, ymd) : !!(CHAY_DEM[ma] && CHAY_DEM[ma][ymd]);
+}
 
 /** Đóng ca ngày / chạy ca đêm ngày nào thì tăng ca ngày đó bị bỏ (một máy-ngày một trạng thái). */
 function damBaoKhongChong_() {
@@ -424,8 +437,10 @@ function damBaoKhongChong_() {
 function nhanKeHoach_(kq) {
   NGOAI_LE = {}; TANG_CA = {}; CHAY_DEM = {};
   (kq.ngoaiLe || []).forEach(function (nl) { (NGOAI_LE[nl.maMay] = NGOAI_LE[nl.maMay] || []).push(nl); });
-  (kq.tangCa || []).forEach(function (x) { (TANG_CA[x.maMay] = TANG_CA[x.maMay] || {})[x.ngay] = true; });
-  (kq.chayDem || []).forEach(function (x) { (CHAY_DEM[x.maMay] = CHAY_DEM[x.maMay] || {})[x.ngay] = true; });
+  if (!modeChay_()) {
+    (kq.tangCa || []).forEach(function (x) { (TANG_CA[x.maMay] = TANG_CA[x.maMay] || {})[x.ngay] = true; });
+    (kq.chayDem || []).forEach(function (x) { (CHAY_DEM[x.maMay] = CHAY_DEM[x.maMay] || {})[x.ngay] = true; });
+  }
   VE_GIUA_CA = kq.veGiuaCa || [];
   DA_KHAI_TUAN = !!kq.daKhai;
 }
@@ -526,7 +541,8 @@ function veHome_() {
 
   var g = DATA.gioTangCa || {};
   $('hMoTaTang').textContent = g.den ? 'Máy chạy ca ngày đến ' + phutSangGio_(g.den) : 'Máy chạy ca ngày lâu hơn';
-  (coCaDem_() ? hien : an)('nutViecDem');
+  (coCaDem_() && !modeChay_() ? hien : an)('nutViecDem');   // tổ CHAY luôn chạy ca đêm: không cần nút này
+  (modeChay_() ? an : hien)('nutViecTang');                  // tổ CHAY không dùng tăng ca
 
   var soDong = Object.keys(NGOAI_LE).filter(function (ma) { return NGOAI_LE[ma].length; }).length;
   var soTang = Object.keys(TANG_CA).length;
@@ -537,8 +553,8 @@ function veHome_() {
   $('hTomTat').innerHTML =
     o((DATA.may || []).length, 'máy', 'var(--chu)') +
     o(soDong, 'máy đóng', 'var(--do)') +
-    o(soTang, 'tăng ca', '#b45309') +
-    (coCaDem_() ? o(soDem, 'ca đêm', '#5e35b1') : '') +
+    (modeChay_() ? '' : o(soTang, 'tăng ca', '#b45309')) +
+    (coCaDem_() && !modeChay_() ? o(soDem, 'ca đêm', '#5e35b1') : '') +
     o(VE_GIUA_CA.length, 'xin về', 'var(--xanh)');
 
   $('hBao').innerHTML = DA_KHAI_TUAN ? '' :
@@ -701,7 +717,7 @@ var TEN_VIEC = { DONG: 'Đóng máy', TANG: 'Tăng ca', DEM: 'Chạy ca đêm', 
 function capNhatDsBuoc_() {
   WZ.dsBuoc = CAC_BUOC[WZ.loai].filter(function (b) {
     if (b === 'ca' && !coCaDem_()) return false;
-    if (b === 'lydo' && WZ.loai === 'DONG' && WZ.ca === 'D') return false;
+    if (b === 'lydo' && WZ.loai === 'DONG' && WZ.ca === 'D' && !modeChay_()) return false;
     return true;
   });
 }
@@ -746,7 +762,7 @@ function ghiChuMay_(ma) {
 /** Về giữa ca: máy nào KHÔNG chọn được (trả lý do, rỗng = chọn được). */
 function khoaMayVe_(ma) {
   var y = ngayDaChon_()[0];
-  if (WZ.ca === 'D') return coDem_(ma, y) ? '' : 'không chạy ca đêm ngày này';
+  if (WZ.ca === 'D') return coDem_(ma, y) ? '' : (modeChay_() ? 'đã đóng ca đêm ngày này' : 'không chạy ca đêm ngày này');
   return dangDongN_(ma, y) ? 'đang đóng' : '';
 }
 
@@ -777,7 +793,9 @@ function veBuoc_() {
       '<button type="button" class="lua-chon" data-act="ca" data-ca="D" aria-pressed="' + (WZ.ca === 'D') + '">🌙 Ca đêm</button>' +
       (WZ.loai === 'DONG'
         ? '<button type="button" class="lua-chon" data-act="ca" data-ca="ND" aria-pressed="' + (WZ.ca === 'ND') + '">☀️🌙 Cả hai ca</button>' +
-          '<div class="goi-y" style="margin-top:6px">Ca đêm mặc định không chạy. Đóng ca đêm là bỏ "Chạy ca đêm" của các máy đã chọn.</div>'
+          '<div class="goi-y" style="margin-top:6px">' + (modeChay_()
+            ? 'Tổ luôn chạy ca đêm. Đóng ca đêm là máy nghỉ ca đêm ngày đã chọn.'
+            : 'Ca đêm mặc định không chạy. Đóng ca đêm là bỏ "Chạy ca đêm" của các máy đã chọn.') + '</div>'
         : '');
   } else if (b === 'may') {
     var goiY = { DONG: 'Chọn máy cần đóng.', TANG: 'Chọn máy tăng ca.', DEM: 'Chọn máy chạy ca đêm.', VE: 'Chọn máy công nhân đang trông.' }[WZ.loai];
@@ -835,10 +853,10 @@ function tomTatXacNhan_() {
     var dongN = WZ.ca === 'N' || WZ.ca === 'ND', dongD = WZ.ca === 'D' || WZ.ca === 'ND';
     var tenCa = WZ.ca === 'ND' ? 'ca ngày và ca đêm' : (WZ.ca === 'D' ? 'ca đêm' : 'ca ngày');
     var dangChayDem = 0;
-    if (dongD) may.forEach(function (ma) { ngayDaChon_().forEach(function (y) { if (coDem_(ma, y)) dangChayDem++; }); });
+    if (dongD && !modeChay_()) may.forEach(function (ma) { ngayDaChon_().forEach(function (y) { if (coDem_(ma, y)) dangChayDem++; }); });
     return '<b>Đóng ' + soMay + '</b> (' + tenCa + ')<br>Ngày: ' + ngay +
-      (dongN ? '<br>Lý do: ' + thoat(WZ.lyDo) + (WZ.ghiChu ? ' (' + thoat(WZ.ghiChu) + ')' : '') : '') +
-      (dongD ? '<br><span class="nho">' + (dangChayDem
+      (dongN || (dongD && modeChay_()) ? '<br>Lý do: ' + thoat(WZ.lyDo) + (WZ.ghiChu ? ' (' + thoat(WZ.ghiChu) + ')' : '') : '') +
+      (dongD && !modeChay_() ? '<br><span class="nho">' + (dangChayDem
         ? 'Bỏ "Chạy ca đêm" của ' + dangChayDem + ' lượt máy-ngày.'
         : 'Các máy này chưa chạy ca đêm ngày đã chọn, không có gì phải bỏ.') + '</span>' : '');
   }
@@ -892,7 +910,9 @@ function xacNhanWizard_() {
     var coGiDeBo = false;
     dsMay.forEach(function (ma) { dsNgay.forEach(function (y) { if (coDem_(ma, y)) coGiDeBo = true; }); });
     if (!dongN && !coGiDeBo) {
-      return alert('Các máy này chưa chạy ca đêm vào những ngày đã chọn nên không có gì để đóng.');
+      return alert(modeChay_()
+        ? 'Các máy này đã đóng ca đêm vào những ngày đã chọn rồi.'
+        : 'Các máy này chưa chạy ca đêm vào những ngày đã chọn nên không có gì để đóng.');
     }
     return suaVaLuu_(function () {
       dsMay.forEach(function (ma) {
@@ -902,12 +922,18 @@ function xacNhanWizard_() {
           dsNgay.forEach(function (y) { theoKhoa[y + '|N'] = { maMay: ma, ngay: y, ca: 'N', lyDo: WZ.lyDo, ghiChu: WZ.ghiChu.trim() }; });
           NGOAI_LE[ma] = Object.keys(theoKhoa).map(function (k) { return theoKhoa[k]; });
         }
-        if (dongD && CHAY_DEM[ma]) {
+        if (dongD && modeChay_()) {
+          // Tổ luôn chạy ca đêm: đóng ca đêm = ghi dòng đóng máy ca 'D' kèm lý do.
+          var theoKhoaD = {};
+          (NGOAI_LE[ma] || []).forEach(function (nl) { theoKhoaD[nl.ngay + '|' + nl.ca] = nl; });
+          dsNgay.forEach(function (y) { theoKhoaD[y + '|D'] = { maMay: ma, ngay: y, ca: 'D', lyDo: WZ.lyDo, ghiChu: WZ.ghiChu.trim() }; });
+          NGOAI_LE[ma] = Object.keys(theoKhoaD).map(function (k) { return theoKhoaD[k]; });
+        } else if (dongD && CHAY_DEM[ma]) {
           dsNgay.forEach(function (y) { delete CHAY_DEM[ma][y]; });
           if (!Object.keys(CHAY_DEM[ma]).length) delete CHAY_DEM[ma];
         }
       });
-    }, dongN ? 'Đã đóng ' + dsMay.length + ' máy' : 'Đã bỏ ca đêm cho ' + dsMay.length + ' máy', veHomeSauLuu_);
+    }, dongN || modeChay_() ? 'Đã đóng ' + dsMay.length + ' máy' : 'Đã bỏ ca đêm cho ' + dsMay.length + ' máy', veHomeSauLuu_);
   }
 
   if (WZ.loai === 'TANG' || WZ.loai === 'DEM') {
