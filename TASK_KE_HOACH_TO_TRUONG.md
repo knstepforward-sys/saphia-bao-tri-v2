@@ -19,9 +19,14 @@ ghi rõ ở dưới).
 "Bố trí chạy" / "Đóng máy" (+ lý do), lưu vào Sheet. Mục tiêu: thứ Hai có thể bắt đầu
 nhập dữ liệu thật. **Đây là đợt sẽ làm trước, xem mục 5.**
 
-**Đợt 2 — HAI CHỈ SỐ (huy động + hiệu suất).** Tính từ dữ liệu Đợt 1 cộng `Su_Co`.
-**Chưa code, làm sau khi Đợt 1 chạy ổn vài tuần và có dữ liệu thật để đối chiếu số ra
-có hợp lý không** (quyết định của chủ dự án, xem mục 8).
+**Đợt 2 — HOÀN THIỆN KHAI BÁO (đổi thứ tự 19/09/2026, chủ dự án chốt).** Khai báo phải
+đủ trước rồi mới làm báo cáo, vì số liệu báo cáo sẽ sai nếu thiếu dữ liệu đầu vào. Gồm:
+**(a) tăng ca theo máy-ngày** (đang làm, xem mục 9c) và **(b) nút "Về giữa ca"** (ý tưởng ở
+mục 7c, làm sau (a), phương án + duyệt riêng).
+
+**Đợt 3 — HAI CHỈ SỐ (huy động + hiệu suất)** (trước đây gọi là Đợt 2). Tính từ dữ liệu
+Đợt 1-2 cộng `Su_Co`. **Chưa code, làm sau khi Đợt 2 xong và chạy ổn có dữ liệu thật để
+đối chiếu số ra có hợp lý không** (xem mục 8).
 
 Không làm trong cả hai đợt: KPI đáp ứng thợ, báo cáo tháng, so sánh ca ngày/đêm, đề
 xuất quản trị, phân tích nguyên nhân — vẫn để phase sau như `plan18.9.md` đã ghi.
@@ -171,7 +176,7 @@ chạy thật cho 162 máy.
 
 ---
 
-## 7c. Ý tưởng đã chốt HOÃN — tổ trưởng báo dừng máy hộ công nhân (Đợt 3, ngoài phạm vi hiện tại)
+## 7c. Ý tưởng đã chốt HOÃN — tổ trưởng báo dừng máy hộ công nhân (nay là Đợt 2(b), ngoài phạm vi hiện tại)
 
 Vấn đề thật do chủ dự án nêu: thợ xin nghỉ giữa ca (ví dụ chạy 2 tiếng rồi về) phải quét QR
 "Dừng máy không do hư", nhưng thợ ca sau nhiều khi không biết máy đang bị đánh dấu dừng nên
@@ -188,14 +193,19 @@ Muốn cho **tổ trưởng** báo hộ (vì xin nghỉ vốn phải xin phép t
   QR như cũ hay tổ trưởng cũng đóng được), cách audit "phiếu do tổ trưởng tạo hộ" để không lẫn
   với số liệu công nhân tự báo.
 
-**Làm ở Đợt 3 riêng**, sau khi Đợt 1 (kế hoạch tuần) đã chạy ổn và Đợt 2 (2 chỉ số) đã xong —
-không mở trong lúc đang dở bước 7a.
+**Làm ở Đợt 2(b) riêng**, sau khi tăng ca (Đợt 2(a)) xong — phương án khác so với ý ban đầu
+ở trên: nút "Về giữa ca" nằm trong luồng QR, tạo phiếu `DM-` (lý do riêng "Về giữa ca") có
+giờ kết thúc = giờ hết ca lấy từ `Lich_Lam_Viec_To` (ngày tăng ca thì 20:30 theo `TANG_CA_DEN`),
+đóng sẵn lúc ghi nên ca sau không phải quét bật lại. Còn phải chốt: phiếu này tính mất giờ chạy
+hay như đóng máy ở Đợt 3, ai được bấm, bộ phận chưa khai lịch thì xử lý sao.
 
 ---
 
-## 8. Đợt 2 — hai chỉ số (thiết kế xong, CHƯA code)
+## 8. Đợt 3 — hai chỉ số (thiết kế xong, CHƯA code)
 
-Tính live từ 3 sheet Đợt 1 + `Su_Co`, **không cần sheet mới**. Đơn vị đếm: **lượt
+Tính live từ 3 sheet Đợt 1 + `Su_Co`, **không cần sheet mới**. Phút kế hoạch của một
+máy-ngày lấy từ `khungKeHoachNgayCuaMay_()` (Đợt 2(a)): ngày thường trừ nghỉ trưa, ngày tăng
+ca 07:00–20:30 trừ nghỉ trưa + nghỉ tối = 705 phút với lịch mẫu. Đơn vị đếm: **lượt
 máy-ca** (máy × ngày × ca áp dụng trong tuần theo `Lich_Lam_Viec_To` — có ca đêm thì 1
 máy = 14 lượt/tuần, không thì 7 lượt/tuần).
 
@@ -238,6 +248,32 @@ trưởng xem chỉ số tuần của chính tổ + 1 mục menu xuất báo cá
 | 8 | ✅ **XONG — chủ dự án đã xác nhận.** Đối chiếu đủ 22 mục `plan18.9.md` mục 17 (18 mục đã có test từ bước 3-5, thêm 4 test mới: #3 DET/SOI, #9 đóng cả tuần, #18 ca đêm không lệch Ngay, #19 Chủ nhật bình thường). Cập nhật `bao-tri-v2/CLAUDE.md` (mục 2b, số test, bảng file/schema). Chạy menu 🧪 ra **402/402**, không đỏ. Đã `clasp push` + deploy + push GitHub. | ✅ Đã xác nhận |
 
 **→ ĐỢT 1 (TỔ TRƯỞNG KHAI KẾ HOẠCH) HOÀN TẤT CẢ 8 BƯỚC, XÁC NHẬN CHẠY THẬT ĐÚNG THIẾT KẾ.**
+
+## 9c. Đợt 2(a) — tăng ca theo máy-ngày (chủ dự án chốt 19/09/2026)
+
+Bộ phận chỉ chạy ca ngày; ngày tăng ca thì máy chạy 07:00–20:30. Quyết định đã chốt:
+
+| Chủ đề | Đã chốt |
+|---|---|
+| Phạm vi | **Theo từng máy** (không theo cả bộ phận), theo ngày |
+| Lưu ở đâu | `Ke_Hoach_May`, dòng `Trang_Thai='TANG_CA'`, `Ca='N'`, có `Ma_May`, không lý do. **Không thêm cột/sheet** |
+| Giờ | `Cau_Hinh`: `TANG_CA_DEN`=20:30, `NGHI_TOI_TU`=17:00, `NGHI_TOI_DEN`=18:00. Giờ bắt đầu = `Ca_Ngay_Tu` của tổ. Nghỉ trưa vẫn theo `Lich_Lam_Viec_To` (giả định 11:30–12:15, chưa xác nhận từng tổ) |
+| Phút kế hoạch | Ngày thường: theo lịch tổ trừ nghỉ trưa. Ngày tăng ca: 07:00–20:30 − nghỉ trưa 45 − nghỉ tối 60 = **705 phút** |
+| Một máy-ngày một trạng thái | Đóng ca ngày ngày nào thì ngày đó không tăng ca. Server báo lỗi; giao diện bỏ qua và báo lại; đóng máy vào ngày đang tăng ca thì tăng ca ngày đó tự bỏ |
+| Tổ có ca đêm | Ẩn hẳn giao diện tăng ca (chỉ bộ phận chạy ca ngày mới tăng ca) |
+| Client bản cũ | Không gửi `tangCa` → server GIỮ NGUYÊN tăng ca đã lưu, không xoá nhầm |
+
+| # | Việc | Trạng thái |
+|---|---|---|
+| 1 | Khoá cấu hình + `gioTangCa_`, `truKhoangNghi_`, `khungKeHoachNgayCuaMay_` + 13 test | ✅ viết xong |
+| 2 | `chuanHoaTangCa_`, `chuanHoaDanhSachTangCa_`, `phanLoaiDongKeHoach_`, sửa `luu/layKeHoachTuan` + 17 test | ✅ viết xong |
+| 3 | `ToTruong.html`: nút tăng ca từng máy / máy đã chọn / tất cả máy, sao chép ngày mang theo tăng ca | ✅ viết xong, thử với dữ liệu giả |
+| 4 | Test + tài liệu + push GitHub | ✅ tài liệu + test đã viết. **Chờ**: `clasp push` + chạy menu 🧪 + test tay trên link thật |
+
+**Việc còn lại trước khi coi là XONG:** `clasp push` (chủ dự án xác nhận riêng), chạy menu 🧪
+xem số test (dự kiến 402 + 13 + 17 = **432**, chưa kiểm chứng), rồi test tay: bật tăng ca vài
+máy → Lưu → F5 giữ nguyên; đóng máy ngày đang tăng ca → tăng ca ngày đó biến mất; tổ có ca đêm
+không thấy nút tăng ca. Deploy sau push, giữ đúng deployment ID.
 
 ## 9b. Việc làm thêm SAU khi Đợt 1 xong (không thuộc 8 bước gốc)
 

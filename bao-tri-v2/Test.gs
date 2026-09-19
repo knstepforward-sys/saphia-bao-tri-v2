@@ -1774,6 +1774,142 @@ function chayTest() {
   t.bang('#19 Chủ nhật khai đóng máy bình thường như mọi ngày khác',
     _chuNhat19_.ok, true);
 
+  // ============================================================================
+  // TĂNG CA THEO MÁY — bước 1: cấu hình giờ + hàm thuần tính khung kế hoạch
+  // ============================================================================
+  const _lichTC_ = {
+    Bo_Phan: 'DET', Ca_Ngay_Tu: '07:00', Ca_Ngay_Den: '16:30',
+    Co_Nghi_Trua: true, Nghi_Trua_Tu: '11:30', Nghi_Trua_Den: '12:15',
+  };
+  const _gioMacDinh_ = gioTangCa_({});
+  t.bang('gioTangCa_ khoá thiếu → mặc định 20:30, nghỉ tối 17:00–18:00',
+    _gioMacDinh_, { den: 1230, nghiToiTu: 1020, nghiToiDen: 1080 });
+  t.bang('gioTangCa_ đọc đúng giá trị cấu hình',
+    gioTangCa_({ TANG_CA_DEN: '21:00', NGHI_TOI_TU: '17:30', NGHI_TOI_DEN: '18:15' }),
+    { den: 1260, nghiToiTu: 1050, nghiToiDen: 1095 });
+  t.bang('gioTangCa_ hai ô nghỉ tối để trống → tắt nghỉ tối',
+    gioTangCa_({ TANG_CA_DEN: '20:30', NGHI_TOI_TU: '', NGHI_TOI_DEN: '' }),
+    { den: 1230, nghiToiTu: null, nghiToiDen: null });
+  t.bang('gioTangCa_ giờ sai định dạng → rơi về mặc định',
+    gioTangCa_({ TANG_CA_DEN: 'abc', NGHI_TOI_TU: '18:00', NGHI_TOI_DEN: '17:00' }),
+    { den: 1230, nghiToiTu: 1020, nghiToiDen: 1080 });
+
+  t.bang('truKhoangNghi_ trừ hai khoảng nghỉ ở giữa',
+    truKhoangNghi_(420, 1230, [[1020, 1080], [690, 735]]),
+    [[420, 690], [735, 1020], [1080, 1230]]);
+  t.bang('truKhoangNghi_ khoảng nghỉ chồng nhau không bị trừ hai lần',
+    truKhoangNghi_(0, 100, [[10, 30], [20, 40]]), [[0, 10], [40, 100]]);
+  t.bang('truKhoangNghi_ khoảng nghỉ nằm ngoài khung bị bỏ qua',
+    truKhoangNghi_(100, 200, [[0, 50], [300, 400]]), [[100, 200]]);
+
+  const _ngayThuong_ = khungKeHoachNgayCuaMay_(_lichTC_, false, _gioMacDinh_);
+  t.bang('ngày thường 07:00–16:30 trừ nghỉ trưa 45 phút = 525 phút',
+    [_ngayThuong_.tongPhut, _ngayThuong_.hetCa], [525, 990]);
+  const _ngayTangCa_ = khungKeHoachNgayCuaMay_(_lichTC_, true, _gioMacDinh_);
+  t.bang('ngày tăng ca 07:00–20:30 trừ nghỉ trưa 45 + nghỉ tối 60 = 705 phút',
+    [_ngayTangCa_.tongPhut, _ngayTangCa_.hetCa], [705, 1230]);
+  t.bang('ngày tăng ca chia đúng 3 đoạn quanh hai giờ nghỉ',
+    _ngayTangCa_.khung, [[420, 690], [735, 1020], [1080, 1230]]);
+  t.bang('tổ chưa khai lịch → null, không suy diễn giờ mặc định',
+    khungKeHoachNgayCuaMay_(null, true, _gioMacDinh_), null);
+  t.bang('lịch không nghỉ trưa: chỉ trừ nghỉ tối khi tăng ca',
+    khungKeHoachNgayCuaMay_(
+      { Ca_Ngay_Tu: '07:00', Ca_Ngay_Den: '16:00', Co_Nghi_Trua: false },
+      true, _gioMacDinh_).tongPhut, 810 - 60);
+  t.bang('tăng ca không làm ngắn ca: TANG_CA_DEN sớm hơn Ca_Ngay_Den → giữ Ca_Ngay_Den',
+    khungKeHoachNgayCuaMay_(_lichTC_, true, { den: 900, nghiToiTu: null, nghiToiDen: null }).hetCa, 990);
+  t.bang('tắt nghỉ tối → ngày tăng ca chỉ trừ nghỉ trưa (765 phút)',
+    khungKeHoachNgayCuaMay_(_lichTC_, true,
+      { den: 1230, nghiToiTu: null, nghiToiDen: null }).tongPhut, 810 - 45);
+
+  // ============================================================================
+  // TĂNG CA THEO MÁY — bước 2: lưu / đọc dòng TANG_CA trong Ke_Hoach_May
+  // ============================================================================
+  const _tc_ = chuanHoaTangCa_({ maMay: ' 4t-08 ', ngay: '2026-09-23' }, 'det', '2026-09-21');
+  t.bang('chuanHoaTangCa_ hợp lệ → ok, chuẩn hoá hoa/thường',
+    [_tc_.ok, _tc_.maMay, _tc_.ngay], [true, '4T-08', '2026-09-23']);
+  t.bang('chuanHoaTangCa_ dòng ghi ra: Trang_Thai TANG_CA, Ca N, Bo_Phan hoa, không lý do',
+    [
+      _tc_.dong[HEADER_KE_HOACH_MAY.indexOf('Trang_Thai')],
+      _tc_.dong[HEADER_KE_HOACH_MAY.indexOf('Ca')],
+      _tc_.dong[HEADER_KE_HOACH_MAY.indexOf('Bo_Phan')],
+      _tc_.dong[HEADER_KE_HOACH_MAY.indexOf('Ly_Do')],
+      _tc_.dong.length,
+    ],
+    ['TANG_CA', 'N', 'DET', '', HEADER_KE_HOACH_MAY.length]);
+  t.bang('chuanHoaTangCa_ thiếu mã máy → lỗi',
+    chuanHoaTangCa_({ ngay: '2026-09-23' }, 'DET', '2026-09-21').ok, false);
+  t.bang('chuanHoaTangCa_ ngày sai định dạng → lỗi',
+    chuanHoaTangCa_({ maMay: '4T-08', ngay: 'abc' }, 'DET', '2026-09-21').ok, false);
+  t.bang('chuanHoaTangCa_ ngày ngoài tuần → lỗi',
+    chuanHoaTangCa_({ maMay: '4T-08', ngay: '2026-09-28' }, 'DET', '2026-09-21').ok, false);
+  t.bang('chuanHoaTangCa_ Chủ nhật cuối tuần vẫn hợp lệ',
+    chuanHoaTangCa_({ maMay: '4T-08', ngay: '2026-09-27' }, 'DET', '2026-09-21').ok, true);
+
+  const _dongNgoaiLeTC_ = chuanHoaDanhSachNgoaiLe_([
+    { maMay: '4T-08', ngay: '2026-09-22', ca: 'N', lyDo: 'Thiếu thợ' },
+    { maMay: '4T-12', ngay: '2026-09-23', ca: 'D', lyDo: 'Thiếu thợ' },
+  ], 'DET', '2026-09-21', _dsMayHopLeGia_, _dsLyDoGia_).dsDong;
+
+  const _dsTcOk_ = chuanHoaDanhSachTangCa_([
+    { maMay: '4T-08', ngay: '2026-09-23' },
+    { maMay: '4T-12', ngay: '2026-09-23' },
+  ], 'DET', '2026-09-21', _dsMayHopLeGia_, _dongNgoaiLeTC_);
+  t.bang('chuanHoaDanhSachTangCa_ hợp lệ → ok, đủ số dòng',
+    [_dsTcOk_.ok, _dsTcOk_.dsDong.length], [true, 2]);
+  t.bang('chuanHoaDanhSachTangCa_ danh sách rỗng / không phải mảng → ok, 0 dòng',
+    [chuanHoaDanhSachTangCa_([], 'DET', '2026-09-21', _dsMayHopLeGia_, []).dsDong.length,
+     chuanHoaDanhSachTangCa_(undefined, 'DET', '2026-09-21', _dsMayHopLeGia_, []).ok],
+    [0, true]);
+  t.bang('chuanHoaDanhSachTangCa_ máy thuộc bộ phận khác → lỗi',
+    chuanHoaDanhSachTangCa_([{ maMay: 'S-01', ngay: '2026-09-23' }],
+      'DET', '2026-09-21', _dsMayHopLeGia_, []).ok, false);
+  t.bang('chuanHoaDanhSachTangCa_ khai trùng (máy, ngày) → lỗi',
+    chuanHoaDanhSachTangCa_([
+      { maMay: '4T-08', ngay: '2026-09-23' }, { maMay: '4t-08', ngay: '2026-09-23' },
+    ], 'DET', '2026-09-21', _dsMayHopLeGia_, []).ok, false);
+  t.bang('chuanHoaDanhSachTangCa_ máy đang ĐÓNG ca ngày của đúng ngày đó → lỗi (một máy-ngày một trạng thái)',
+    chuanHoaDanhSachTangCa_([{ maMay: '4T-08', ngay: '2026-09-22' }],
+      'DET', '2026-09-21', _dsMayHopLeGia_, _dongNgoaiLeTC_).ok, false);
+  t.bang('chuanHoaDanhSachTangCa_ máy đóng ngày KHÁC vẫn tăng ca được',
+    chuanHoaDanhSachTangCa_([{ maMay: '4T-08', ngay: '2026-09-23' }],
+      'DET', '2026-09-21', _dsMayHopLeGia_, _dongNgoaiLeTC_).ok, true);
+  t.bang('chuanHoaDanhSachTangCa_ máy đóng CA ĐÊM cùng ngày không cản tăng ca ca ngày',
+    chuanHoaDanhSachTangCa_([{ maMay: '4T-12', ngay: '2026-09-23' }],
+      'DET', '2026-09-21', _dsMayHopLeGia_, _dongNgoaiLeTC_).ok, true);
+
+  // tach: dòng TANG_CA của đúng tuần bị bỏ khỏi giuLai và được trả riêng ở tangCaCu
+  const _iTt_ = HEADER_KE_HOACH_MAY.indexOf('Trang_Thai');
+  const _vungTC_ = [
+    _dongKeHoach_('DET', '2026-09-14', '4T-01', 'TANG_CA', ''),   // tuần trước — giữ
+    _dongKeHoach_('DET', '2026-09-21', '4T-08', 'TANG_CA', 'req-cu'),
+    _dongKeHoach_('DET', '2026-09-21', '', 'DA_KHAI', 'req-cu'),
+    _dongKeHoach_('SOI', '2026-09-21', 'S-01', 'TANG_CA', ''),    // tổ khác — giữ
+  ];
+  const _tachTC_ = tachDuLieuKeHoachTuan_(_vungTC_, 'DET', '2026-09-21');
+  t.bang('tachDuLieuKeHoachTuan_ TANG_CA của đúng tuần/tổ vào tangCaCu, tuần khác + tổ khác giữ nguyên',
+    [_tachTC_.giuLai.length, _tachTC_.tangCaCu.length, _tachTC_.tangCaCu[0][_iTt_]],
+    [2, 1, 'TANG_CA']);
+
+  // lay: TANG_CA phải ra riêng, KHÔNG lẫn vào ngoaiLe (client vẽ "Đóng máy" từ ngoaiLe)
+  function _objKeHoach_(bp, tuan, maMay, trangThai, ngay, ca, lyDo) {
+    return { Bo_Phan: bp, Tuan_Bat_Dau: tuan, Ma_May: maMay, Trang_Thai: trangThai,
+      Ngay: ngay, Ca: ca, Ly_Do: lyDo || '', Ghi_Chu: '' };
+  }
+  const _plTC_ = phanLoaiDongKeHoach_([
+    _objKeHoach_('DET', '2026-09-21', '4T-08', 'DONG', '2026-09-22', 'N', 'Thiếu thợ'),
+    _objKeHoach_('DET', '2026-09-21', '4T-08', 'TANG_CA', '2026-09-23', 'N'),
+    _objKeHoach_('DET', '2026-09-21', '', 'DA_KHAI', '', ''),
+    _objKeHoach_('DET', '2026-09-14', '4T-01', 'TANG_CA', '2026-09-16', 'N'),   // tuần khác
+    _objKeHoach_('SOI', '2026-09-21', 'S-01', 'TANG_CA', '2026-09-23', 'N'),    // tổ khác
+  ], 'DET', '2026-09-21');
+  t.bang('phanLoaiDongKeHoach_ TANG_CA ra riêng, không lẫn vào ngoaiLe, lọc đúng tổ + tuần',
+    [_plTC_.daKhai, _plTC_.ngoaiLe.length, _plTC_.tangCa],
+    [true, 1, [{ maMay: '4T-08', ngay: '2026-09-23' }]]);
+  t.bang('phanLoaiDongKeHoach_ tuần chưa khai → daKhai false, không có tăng ca',
+    phanLoaiDongKeHoach_([], 'DET', '2026-09-21'),
+    { daKhai: false, ngoaiLe: [], tangCa: [] });
+
   // --- Kết quả ---------------------------------------------------------------
   const tong = kq.dat + kq.loi.length;
   const bao = kq.loi.length

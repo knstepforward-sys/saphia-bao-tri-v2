@@ -3,6 +3,7 @@
      Bước 7b/8: thao tác HÀNG LOẠT — chọn nhiều máy, bố trí/đóng tất cả máy cả
      tuần, sao chép kế hoạch giữa các ngày, tìm máy, lọc "chỉ xem máy đang
      đóng". Xem TASK_KE_HOACH_TO_TRUONG.md mục 9.
+     Đợt 2 bước 3: TĂNG CA THEO MÁY-NGÀY (chỉ ca ngày, tổ không có ca đêm).
      ========================================================================== -->
 <?!= include('Style') ?>
 
@@ -56,6 +57,7 @@ select.chon {
   width: 100%; border: 1.5px solid var(--vien); border-radius: 10px;
   padding: 10px 12px; font: inherit; background: #fff;
 }
+.may-tt-tangca { color: #b45309; font-weight: 600; font-size: 13.5px; margin-top: 6px; }
 </style>
 
 <body>
@@ -134,6 +136,13 @@ select.chon {
     <button class="nut phu" id="nutDongTatCa" type="button" style="flex:1;padding:11px;font-size:13.5px">🔴 Đóng tất cả máy</button>
   </div>
 
+  <div id="khoiTangCaTatCa">
+    <div class="modal-nhan">Tăng ca (áp cho tất cả máy)</div>
+    <div style="display:flex;gap:8px;margin-bottom:14px">
+      <button class="nut phu" id="nutTangCaTatCa" type="button" style="flex:1;padding:11px;font-size:13.5px">⏱ Tăng ca tất cả máy…</button>
+    </div>
+  </div>
+
   <div class="modal-nhan">Sao chép kế hoạch</div>
   <select class="chon" id="saoChepTu" style="margin-bottom:8px"></select>
   <div class="nho" style="margin-bottom:6px">Sang các ngày (bấm được nhiều ngày):</div>
@@ -152,6 +161,7 @@ select.chon {
   <div class="bao xanh an" id="cThanhChon" style="display:flex;gap:8px;align-items:center">
     <div class="nho" id="cSoDaChon" style="flex:1"></div>
     <button class="nut phu" id="nutBoTriDaChon" type="button" style="width:auto;padding:8px 12px;font-size:13px">Bố trí chạy</button>
+    <button class="nut phu" id="nutTangCaDaChon" type="button" style="width:auto;padding:8px 12px;font-size:13px">Tăng ca…</button>
     <button class="nut do" id="nutDongDaChon" type="button" style="width:auto;padding:8px 12px;font-size:13px">Đóng máy…</button>
   </div>
 
@@ -234,9 +244,38 @@ select.chon {
   </div>
 </div>
 
+<!-- ======================= MODAL TĂNG CA ================================== -->
+<div class="modal-nen an" id="modalTangCa">
+  <div class="modal-hop">
+    <div class="the-tieu-de" id="tcTieuDe" style="margin-top:0">Tăng ca</div>
+    <div class="bao xanh" id="tcMoTa" style="margin-bottom:0"></div>
+
+    <div class="modal-nhan">Thao tác</div>
+    <div class="chips" id="tcThaoTac" style="grid-template-columns:1fr 1fr">
+      <div class="chip" data-gt="BAT" aria-pressed="true">Bật tăng ca</div>
+      <div class="chip" data-gt="TAT">Bỏ tăng ca</div>
+    </div>
+
+    <div class="modal-nhan">Chọn ngày (bấm được nhiều ngày)</div>
+    <div class="chips chips-ngay" id="tcDsNgay"></div>
+    <button class="nut phu" id="tcChonCaTuan" type="button" style="margin-top:8px;padding:8px;font-size:13px">Chọn cả tuần</button>
+
+    <div style="font-size:12.5px;color:var(--chu-nhat);margin-top:10px">
+      Máy đang đóng ca ngày của ngày nào thì ngày đó không tăng ca được — bấm
+      "Bố trí lại" cho máy đó trước. Đóng máy vào ngày đang tăng ca thì tăng ca
+      của ngày đó tự bỏ.
+    </div>
+
+    <div style="display:flex;gap:10px;margin-top:16px">
+      <button class="nut phu" id="tcHuy" type="button" style="flex:1">Huỷ</button>
+      <button class="nut" id="tcXacNhan" type="button" style="flex:1">Áp dụng</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ===========================================================================
-var G = document.getElementById('goc');
+var G =document.getElementById('goc');
 var BO_PHAN = (G.dataset.boPhan || '').trim();
 var TOKEN = (G.dataset.token || '').trim();
 var TEN_TO = (G.dataset.tenTo || '').trim() || BO_PHAN;
@@ -395,6 +434,33 @@ $('nutLuuLich').addEventListener('click', function () {
 // Màn hình chính — chọn tuần + danh sách máy
 // ===========================================================================
 var NGOAI_LE = {};       // { MA_MAY: [{maMay,ngay,ca,lyDo,ghiChu}, ...] } — trạng thái ĐANG CHỈNH ở client
+var TANG_CA = {};        // { MA_MAY: { 'yyyy-MM-dd': true } } — tăng ca ca ngày, cùng vòng đời với NGOAI_LE
+
+/** Tổ có ca đêm thì không có khái niệm tăng ca (chỉ bộ phận chạy ca ngày mới tăng ca). */
+function toCoTangCa_() { return !(DATA && DATA.lich && DATA.lich.Co_Ca_Dem); }
+
+/** Máy có đang bị đóng CA NGÀY của ngày này không. */
+function dangDongCaNgay_(maMay, ymd) {
+  return (NGOAI_LE[maMay] || []).some(function (nl) { return nl.ngay === ymd && nl.ca === 'N'; });
+}
+
+/**
+ * Một máy-ngày chỉ có MỘT trạng thái: đóng ca ngày của ngày nào thì tăng ca của
+ * đúng ngày đó bị bỏ. Gọi ở đầu mỗi lần vẽ lại — mọi đường đóng máy (modal, Chủ
+ * nhật, đóng tất cả, sao chép) đều đi qua veLaiDanhSachMay_ nên không sót đường nào.
+ */
+function damBaoDongVaTangCaKhongChong_() {
+  Object.keys(TANG_CA).forEach(function (ma) {
+    Object.keys(TANG_CA[ma]).forEach(function (ymd) {
+      if (dangDongCaNgay_(ma, ymd)) delete TANG_CA[ma][ymd];
+    });
+    if (!Object.keys(TANG_CA[ma]).length) delete TANG_CA[ma];
+  });
+}
+
+function phutSangGio_(p) {
+  return ('0' + Math.floor(p / 60)).slice(-2) + ':' + ('0' + (p % 60)).slice(-2);
+}
 var DA_KHAI_TUAN = false;
 var DA_THAY_DOI = false; // có thay đổi chưa lưu lên server không
 
@@ -460,6 +526,10 @@ function veDsMay_(kq) {
   kq.ngoaiLe.forEach(function (nl) {
     (NGOAI_LE[nl.maMay] = NGOAI_LE[nl.maMay] || []).push(nl);
   });
+  TANG_CA = {};
+  (kq.tangCa || []).forEach(function (tc) {
+    (TANG_CA[tc.maMay] = TANG_CA[tc.maMay] || {})[tc.ngay] = true;
+  });
   DA_KHAI_TUAN = kq.daKhai;
   DA_THAY_DOI = false;
 
@@ -476,16 +546,25 @@ function chuanHoaTimKiem_(s) {
 }
 
 function veLaiDanhSachMay_() {
+  damBaoDongVaTangCaKhongChong_();
+  var coTangCa = toCoTangCa_();
+  (coTangCa ? hien : an)('khoiTangCaTatCa');
+  (coTangCa ? hien : an)('nutTangCaDaChon');
+
   var dsMayGoc = (DATA.may || []).slice().sort(function (a, b) {
     return a.maMay.localeCompare(b.maMay);
   });
 
   // Thống kê luôn tính trên TOÀN BỘ máy của tổ, không theo bộ lọc hiển thị.
   var soDongGoc = dsMayGoc.filter(function (m) { return (NGOAI_LE[m.maMay] || []).length > 0; }).length;
+  var soTangCaGoc = dsMayGoc.filter(function (m) { return Object.keys(TANG_CA[m.maMay] || {}).length > 0; }).length;
   $('cThongKe').innerHTML =
     '<div class="o"><div class="so">' + dsMayGoc.length + '</div><div class="nhan-nho">máy</div></div>' +
     '<div class="o"><div class="so" style="color:var(--luc)">' + (dsMayGoc.length - soDongGoc) + '</div><div class="nhan-nho">bố trí chạy</div></div>' +
-    '<div class="o"><div class="so" style="color:var(--do)">' + soDongGoc + '</div><div class="nhan-nho">có đóng máy</div></div>';
+    '<div class="o"><div class="so" style="color:var(--do)">' + soDongGoc + '</div><div class="nhan-nho">có đóng máy</div></div>' +
+    (coTangCa
+      ? '<div class="o"><div class="so" style="color:#b45309">' + soTangCaGoc + '</div><div class="nhan-nho">có tăng ca</div></div>'
+      : '');
 
   $('cBaoChuaKhai').innerHTML = DA_KHAI_TUAN ? '' :
     '<div class="bao vang">Tuần này chưa được xác nhận — mọi máy tạm hiện Bố trí chạy theo mặc định.</div>';
@@ -500,6 +579,15 @@ function veLaiDanhSachMay_() {
 
   var h = dsMay.map(function (m) {
     var ngoaiLeMay = NGOAI_LE[m.maMay] || [];
+    var dsNgayTangCa = Object.keys(TANG_CA[m.maMay] || {}).sort();
+    var dongTangCa = dsNgayTangCa.length
+      ? '<div class="may-tt-tangca">⏱ Tăng ca: ' + dsNgayTangCa.map(function (ymd) {
+          return tenThu_(ymd) + ' (' + fmtDDMM_(ymd) + ')';
+        }).join(', ') + '</div>'
+      : '';
+    var nutTangCa = coTangCa
+      ? '<button class="nut phu" style="flex:1" onclick="moModalTangCa(\'' + m.maMay + '\')">Tăng ca…</button>'
+      : '';
 
     var than = ngoaiLeMay.length
       ? '<div class="may-tt-dong">🔴 Đóng máy (' + ngoaiLeMay.length + ' lượt)</div>' +
@@ -511,9 +599,12 @@ function veLaiDanhSachMay_() {
         '<div class="may-nut-hang">' +
           '<button class="nut phu" style="flex:1" onclick="moModalDong(\'' + m.maMay + '\')">Sửa</button>' +
           '<button class="nut phu" style="flex:1" onclick="boTriLai(\'' + m.maMay + '\')">Bố trí lại</button>' +
+          nutTangCa +
         '</div>'
       : '<div class="may-tt-chay">🟢 Bố trí chạy cả tuần</div>' +
-        '<div class="may-nut-hang"><button class="nut phu" style="flex:1" onclick="moModalDong(\'' + m.maMay + '\')">Đóng máy</button></div>';
+        '<div class="may-nut-hang"><button class="nut phu" style="flex:1" onclick="moModalDong(\'' + m.maMay + '\')">Đóng máy</button>' +
+        nutTangCa + '</div>';
+    than = than.replace('<div class="may-nut-hang">', dongTangCa + '<div class="may-nut-hang">');
 
     return '<div class="may-dong"><div class="may-dau">' +
       '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;flex:1">' +
@@ -854,10 +945,121 @@ $('nutSaoChep').addEventListener('click', function () {
     });
     var ketQua = conLai.concat(moiChepSang);
     if (ketQua.length) NGOAI_LE[m.maMay] = ketQua; else delete NGOAI_LE[m.maMay];
+
+    // Tăng ca đi theo ngày nguồn: ngày đích lấy đúng trạng thái tăng ca của ngày nguồn.
+    // Ngày đích nào máy bị đóng ca ngày (vừa chép sang) thì bị dọn ở lần vẽ lại kế tiếp.
+    var nguonCoTangCa = !!(TANG_CA[m.maMay] && TANG_CA[m.maMay][ngayNguon]);
+    dsNgayDich.forEach(function (ngayDich) {
+      if (nguonCoTangCa) (TANG_CA[m.maMay] = TANG_CA[m.maMay] || {})[ngayDich] = true;
+      else if (TANG_CA[m.maMay]) delete TANG_CA[m.maMay][ngayDich];
+    });
   });
 
   DA_THAY_DOI = true;
   veLaiDanhSachMay_();
+});
+
+// ===========================================================================
+// Tăng ca theo máy-ngày — áp cho MỘT máy, nhóm máy ĐÃ CHỌN, hoặc TẤT CẢ máy.
+// Chỉ ca ngày. Máy đang đóng ca ngày của ngày nào thì ngày đó bị BỎ QUA và báo lại.
+// ===========================================================================
+var DS_MAY_TANG_CA = [];
+var TC_THAO_TAC = 'BAT';
+var TC_NGAY_CHON = {};
+
+function moModalTangCa(maMayHoacDs) {
+  DS_MAY_TANG_CA = Array.isArray(maMayHoacDs) ? maMayHoacDs.slice() : [maMayHoacDs];
+
+  if (DS_MAY_TANG_CA.length === 1) {
+    var may = (DATA.may || []).filter(function (m) { return m.maMay === DS_MAY_TANG_CA[0]; })[0];
+    $('tcTieuDe').textContent = 'Tăng ca máy ' + DS_MAY_TANG_CA[0] + (may ? ' — ' + may.tenMay : '');
+  } else if (DS_MAY_TANG_CA.length === (DATA.may || []).length) {
+    $('tcTieuDe').textContent = 'Tăng ca tất cả ' + DS_MAY_TANG_CA.length + ' máy';
+  } else {
+    $('tcTieuDe').textContent = 'Tăng ca ' + DS_MAY_TANG_CA.length + ' máy đã chọn';
+  }
+
+  var g = DATA.gioTangCa || {};
+  var tu = DATA.lich && DATA.lich.Ca_Ngay_Tu ? DATA.lich.Ca_Ngay_Tu : '';
+  $('tcMoTa').textContent = 'Ngày tăng ca, ca ngày kéo dài từ ' + tu + ' đến ' +
+    (g.den ? phutSangGio_(g.den) : '—') +
+    (g.nghiToiTu !== null && g.nghiToiTu !== undefined
+      ? ' (nghỉ tối ' + phutSangGio_(g.nghiToiTu) + '–' + phutSangGio_(g.nghiToiDen) + ')' : '') + '.';
+
+  TC_THAO_TAC = 'BAT';
+  chonChip_('tcThaoTac', TC_THAO_TAC);
+
+  var h = '';
+  for (var i = 0; i < 7; i++) {
+    var ymd = ymdCongNgay_(TUAN_BAT_DAU, i);
+    h += '<div class="chip" data-gt="' + ymd + '">' + tenThu_(ymd) +
+      '<span class="ngay-so">' + fmtDDMM_(ymd) + '</span></div>';
+  }
+  $('tcDsNgay').innerHTML = h;
+  TC_NGAY_CHON = {};
+  veChonNgayTangCa_();
+
+  hien('modalTangCa');
+}
+
+function veChonNgayTangCa_() {
+  Array.prototype.forEach.call($('tcDsNgay').querySelectorAll('.chip'), function (c) {
+    c.setAttribute('aria-pressed', String(!!TC_NGAY_CHON[c.dataset.gt]));
+  });
+}
+
+$('tcThaoTac').addEventListener('click', function (ev) {
+  var nut = ev.target.closest('.chip');
+  if (!nut) return;
+  TC_THAO_TAC = nut.dataset.gt;
+  chonChip_('tcThaoTac', TC_THAO_TAC);
+});
+$('tcDsNgay').addEventListener('click', function (ev) {
+  var nut = ev.target.closest('.chip');
+  if (!nut) return;
+  TC_NGAY_CHON[nut.dataset.gt] = !TC_NGAY_CHON[nut.dataset.gt];
+  veChonNgayTangCa_();
+});
+$('tcChonCaTuan').addEventListener('click', function () {
+  for (var i = 0; i < 7; i++) TC_NGAY_CHON[ymdCongNgay_(TUAN_BAT_DAU, i)] = true;
+  veChonNgayTangCa_();
+});
+$('tcHuy').addEventListener('click', function () { an('modalTangCa'); });
+
+$('tcXacNhan').addEventListener('click', function () {
+  var dsNgay = Object.keys(TC_NGAY_CHON).filter(function (k) { return TC_NGAY_CHON[k]; });
+  if (!dsNgay.length) return alert('Vui lòng chọn ít nhất 1 ngày.');
+
+  var boQua = 0;
+  DS_MAY_TANG_CA.forEach(function (ma) {
+    dsNgay.forEach(function (ymd) {
+      if (TC_THAO_TAC === 'BAT') {
+        if (dangDongCaNgay_(ma, ymd)) { boQua++; return; }
+        (TANG_CA[ma] = TANG_CA[ma] || {})[ymd] = true;
+      } else if (TANG_CA[ma]) {
+        delete TANG_CA[ma][ymd];
+        if (!Object.keys(TANG_CA[ma]).length) delete TANG_CA[ma];
+      }
+    });
+  });
+  DA_THAY_DOI = true;
+
+  if (DS_MAY_TANG_CA.length > 1) MAY_DA_CHON = {};
+  an('modalTangCa');
+  veLaiDanhSachMay_();
+  if (boQua) {
+    alert('Đã bỏ qua ' + boQua + ' lượt (máy-ngày) vì máy đang đóng ca ngày đó. ' +
+      'Muốn tăng ca thì bấm "Bố trí lại" cho máy đó trước.');
+  }
+});
+
+$('nutTangCaTatCa').addEventListener('click', function () {
+  moModalTangCa((DATA.may || []).map(function (m) { return m.maMay; }));
+});
+$('nutTangCaDaChon').addEventListener('click', function () {
+  var dsChon = Object.keys(MAY_DA_CHON).filter(function (ma) { return MAY_DA_CHON[ma]; });
+  if (!dsChon.length) return alert('Chưa chọn máy nào.');
+  moModalTangCa(dsChon);
 });
 
 // ===========================================================================
@@ -867,6 +1069,11 @@ $('nutLuuKeHoach').addEventListener('click', function () {
   var dsGui = [];
   Object.keys(NGOAI_LE).forEach(function (ma) {
     NGOAI_LE[ma].forEach(function (nl) { dsGui.push(nl); });
+  });
+  damBaoDongVaTangCaKhongChong_();
+  var dsTangCaGui = [];
+  Object.keys(TANG_CA).forEach(function (ma) {
+    Object.keys(TANG_CA[ma]).forEach(function (ymd) { dsTangCaGui.push({ maMay: ma, ngay: ymd }); });
   });
 
   var nut = this;
@@ -893,6 +1100,7 @@ $('nutLuuKeHoach').addEventListener('click', function () {
       tuanBatDau: TUAN_BAT_DAU,
       requestId: layRq(khoaRq),
       ngoaiLe: dsGui,
+      tangCa: dsTangCaGui,
     });
 });
 </script>

@@ -122,7 +122,13 @@ trống — ghi thêm theo `getLastRow()+1` bị lạc dòng. Vá bằng `soDong
 trong `Code.gs`, đếm dòng thật theo một cột neo cụ thể. Nghi ngờ cùng lỗi tồn tại từ trước ở
 `themMayMoi()` (`DanhMuc.gs`) — **chưa xác nhận, chưa sửa**, cần chủ dự án kiểm tra riêng.
 
-**Đợt 2 (chưa code):** 2 chỉ số **tỷ lệ huy động máy** và **hiệu suất máy được bố trí
+**Tăng ca theo máy-ngày (Đợt 2(a), 19/09/2026, chờ `clasp push` + test tay):** dòng `Ke_Hoach_May`
+với `Trang_Thai='TANG_CA'` (`Ca='N'`, có `Ma_May`) — không thêm cột. Giờ ở `Cau_Hinh`:
+`TANG_CA_DEN`, `NGHI_TOI_TU`, `NGHI_TOI_DEN`. Hàm chính: `khungKeHoachNgayCuaMay_` (phút kế hoạch
+một máy-ngày), `chuanHoaDanhSachTangCa_` (một máy-ngày một trạng thái với đóng máy),
+`phanLoaiDongKeHoach_` (tách `TANG_CA` khỏi ngoại lệ khi đọc). Chi tiết: `TASK_KE_HOACH_TO_TRUONG.md` mục 9c.
+
+**Đợt 3 (chưa code, trước đây gọi là Đợt 2):** 2 chỉ số **tỷ lệ huy động máy** và **hiệu suất máy được bố trí
 chạy**, tính từ 3 sheet trên + `Su_Co` — không cần schema mới, không đụng `HieuDung.gs`.
 Công thức đầy đủ ở `TASK_KE_HOACH_TO_TRUONG.md` mục 8.
 

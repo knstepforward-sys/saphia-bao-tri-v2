@@ -154,6 +154,34 @@ function dsLyDoDongMayKeHoach_(cauHinh) {
   return s.split(',').map(function (x) { return x.trim(); }).filter(Boolean);
 }
 
+/**
+ * Giờ tăng ca đọc từ Cau_Hinh, trả về số PHÚT từ 00:00:
+ * { den, nghiToiTu, nghiToiDen }. Khoá thiếu hoặc sai định dạng thì rơi về mặc định
+ * 20:30 / 17:00–18:00 (đúng giá trị seed). Riêng nghỉ tối: khoá có mặt nhưng để
+ * TRỐNG CẢ HAI ô là chủ ý tắt (nghiToiTu = nghiToiDen = null). Hàm THUẦN khi
+ * truyền `cauHinh`.
+ */
+function gioTangCa_(cauHinh) {
+  const ch = cauHinh || docCauHinh_();
+  const den = gioSangPhut_(ch.TANG_CA_DEN);
+
+  const tuRaw = String(ch.NGHI_TOI_TU === undefined || ch.NGHI_TOI_TU === null ? '' : ch.NGHI_TOI_TU).trim();
+  const denRaw = String(ch.NGHI_TOI_DEN === undefined || ch.NGHI_TOI_DEN === null ? '' : ch.NGHI_TOI_DEN).trim();
+  const coKhoa = ('NGHI_TOI_TU' in ch) && ('NGHI_TOI_DEN' in ch);
+  if (coKhoa && tuRaw === '' && denRaw === '') {
+    return { den: den === null ? 20 * 60 + 30 : den, nghiToiTu: null, nghiToiDen: null };
+  }
+
+  const tu = gioSangPhut_(tuRaw);
+  const dn = gioSangPhut_(denRaw);
+  const hopLe = tu !== null && dn !== null && dn > tu;
+  return {
+    den: den === null ? 20 * 60 + 30 : den,
+    nghiToiTu: hopLe ? tu : 17 * 60,
+    nghiToiDen: hopLe ? dn : 18 * 60,
+  };
+}
+
 function layUrlCongKhai_() {
   return PropertiesService.getScriptProperties().getProperty('URL_CONG_KHAI') || '';
 }
@@ -277,7 +305,7 @@ const HEADER_KE_HOACH_MAY = [
   'Ghi_Chu', 'Nguoi_Cap_Nhat', 'Cap_Nhat_Luc', 'Request_ID',
 ];
 
-const TRANG_THAI_KE_HOACH_MAY = { DONG: 'DONG', DA_KHAI: 'DA_KHAI' };
+const TRANG_THAI_KE_HOACH_MAY = { DONG: 'DONG', DA_KHAI: 'DA_KHAI', TANG_CA: 'TANG_CA' };
 
 const HEADER_CAU_HINH = ['Khoa', 'Gia_Tri', 'Ghi_Chu'];
 
@@ -339,6 +367,16 @@ const CAU_HINH_MAC_DINH = [
     'tổ trưởng chọn khi đóng máy. Cách nhau bằng dấu phẩy. Sửa ở đây là đổi ngay trên app, ' +
     'không cần deploy lại. KHÁC với LY_DO_DUNG_MAY (đó là lý do công nhân báo dừng máy tức ' +
     'thời qua QR). Chọn "Khác" thì bắt buộc nhập ghi chú.'],
+  ['TANG_CA_DEN', '20:30',
+    'TĂNG CA CỦA TỔ TRƯỞNG — giờ HẾT CA của ngày có tăng ca (giờ bắt đầu vẫn là ' +
+    'Ca_Ngay_Tu trong lịch của tổ). Định dạng HH:mm, VD 20:30. Sửa ở đây là đổi ngay, ' +
+    'không cần deploy lại.'],
+  ['NGHI_TOI_TU', '17:00',
+    'TĂNG CA CỦA TỔ TRƯỞNG — giờ bắt đầu nghỉ ăn tối, chỉ trừ khỏi khung kế hoạch của ' +
+    'ngày có tăng ca. Nghỉ trưa vẫn lấy theo lịch của tổ. Để trống cả hai ô NGHI_TOI ' +
+    'là không trừ nghỉ tối.'],
+  ['NGHI_TOI_DEN', '18:00',
+    'TĂNG CA CỦA TỔ TRƯỞNG — giờ kết thúc nghỉ ăn tối. Xem NGHI_TOI_TU.'],
   ['HUONG_DAN_KHOA_LINK_THO', '',
     'KHOÁ LINK KHI THỢ NGHỈ VIỆC: xoá trắng ô Token của người đó trong sheet ' +
     'Danh_Muc_Tho, bỏ tick Hoat_Dong, rồi chạy menu 🔧 Bảo trì → "4. Sinh lại ' +
@@ -1012,7 +1050,7 @@ function setupSystem() {
   shKHMay.setColumnWidth(HEADER_KE_HOACH_MAY.indexOf('Ly_Do') + 1, 200);
   shKHMay.setColumnWidth(HEADER_KE_HOACH_MAY.indexOf('Ghi_Chu') + 1, 260);
   datDropdown_(shKHMay, HEADER_KE_HOACH_MAY.indexOf('Trang_Thai') + 1,
-    [TRANG_THAI_KE_HOACH_MAY.DONG, TRANG_THAI_KE_HOACH_MAY.DA_KHAI]);
+    [TRANG_THAI_KE_HOACH_MAY.DONG, TRANG_THAI_KE_HOACH_MAY.DA_KHAI, TRANG_THAI_KE_HOACH_MAY.TANG_CA]);
   // Tuan_Bat_Dau + Ngay là 2 cột liền nhau, cả hai đều lưu chuỗi 'yyyy-MM-dd'.
   shKHMay.getRange(2, HEADER_KE_HOACH_MAY.indexOf('Tuan_Bat_Dau') + 1,
     shKHMay.getMaxRows() - 1, 2).setNumberFormat('@');

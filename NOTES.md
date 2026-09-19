@@ -1,3 +1,14 @@
+## [2026-09-19] Tổ trưởng — Đợt 2(a): tăng ca theo máy-ngày (bước 1-4) + đổi thứ tự các đợt
+- **Đổi thứ tự (chủ dự án chốt):** Đợt 2 = hoàn thiện khai báo (tăng ca, rồi nút "Về giữa ca"); Đợt 3 = hai chỉ số huy động/hiệu suất. Ghi trong `TASK_KE_HOACH_TO_TRUONG.md` (mục 9c mới, mục 8 đổi tên Đợt 3).
+- **Thay đổi:**
+  - `Code.gs` — 3 khoá `Cau_Hinh` mới (`TANG_CA_DEN`=20:30, `NGHI_TOI_TU`=17:00, `NGHI_TOI_DEN`=18:00), `gioTangCa_()`, thêm `TANG_CA` vào `TRANG_THAI_KE_HOACH_MAY` + dropdown cột `Trang_Thai`. Không đổi cấu trúc cột sheet.
+  - `KeHoachTo.gs` — `truKhoangNghi_`, `khungKeHoachNgayCuaMay_` (705 phút cho ngày tăng ca), `chuanHoaTangCa_`, `chuanHoaDanhSachTangCa_`, `phanLoaiDongKeHoach_`; `luuKeHoachTuan` nhận `tangCa` (không gửi → giữ nguyên tăng ca cũ), `layKeHoachTuan` trả `tangCa` riêng khỏi `ngoaiLe`, `getToTruongBootstrap` trả `gioTangCa`.
+  - `ToTruong.html` — nút tăng ca từng máy / máy đã chọn / tất cả máy; máy đang đóng ca ngày thì bỏ qua và báo; đóng máy ngày đang tăng ca thì tăng ca tự bỏ; sao chép ngày mang theo tăng ca; ẩn hẳn với tổ có ca đêm.
+  - `Test.gs` — thêm 30 test (13 khung giờ + 17 lưu/đọc). Dự kiến tổng 432, **chưa chạy trong Sheet**.
+- **Đã kiểm tại máy:** `kiem-tra.ps1` sạch cả 5 lớp; giao diện thử trong trình duyệt với dữ liệu giả (bỏ qua máy đang đóng, tự bỏ tăng ca khi đóng, payload lưu đúng). **Chưa thử trên Sheet/link thật.**
+- **Trạng thái:** đã push GitHub (commit ngay sau dòng này) / **CHƯA `clasp push`** / **CHƯA deploy**.
+- **Việc cần làm tiếp theo:** chủ dự án xác nhận `clasp push` (rồi deploy sau, đúng thứ tự push→deploy) → chạy menu 🧪 xem số test → test tay trên link thật. Sau đó mới đến Đợt 2(b) "Về giữa ca" (cần phương án + duyệt riêng). Giả định chưa xác nhận: nghỉ trưa ngày tăng ca theo lịch từng tổ (11:30–12:15).
+
 ## [2026-09-18] Tổ trưởng khai kế hoạch máy — Đính chính: URL test suốt bước 2-7b thật ra là `/exec` thật
 - **Phát hiện quan trọng:** URL được gọi là "Triển khai thử nghiệm" dùng để test từ bước 2 tới giờ (`.../exec`) thật ra **chính là URL `/exec` production** — không phải một bản test riêng tự động cập nhật theo mã HEAD như đã hiểu nhầm. Lý do mọi thay đổi "có tác dụng" khi test là vì **chủ dự án đã tự deploy lại (đúng quy trình an toàn) sau mỗi lần `clasp push`**: Apps Script Editor → Triển khai → Quản lý bản triển khai → chọn bản đang có → bút chì → Phiên bản mới → Triển khai — giữ nguyên deployment ID.
 - **Không gây hại:** deployment ID giữ nguyên xuyên suốt (đúng quy trình `bao-tri-v2/CLAUDE.md` đã ghi), URL `/exec` không đổi, 175 QR đã in không bị ảnh hưởng. Mã mới chỉ thêm route/file riêng (`KeHoachTo.gs`, `ToTruong.html`, nhánh `page=kehoach`), không đụng luồng công nhân/thợ đang chạy thật.
