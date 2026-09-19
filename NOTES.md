@@ -1,3 +1,14 @@
+## [2026-09-19] Tổ trưởng — viết lại giao diện (từng bước, nút lớn) + "Chạy ca đêm" (mô hình ca đêm mới)
+- **Yêu cầu (chủ dự án):** trang tổ trưởng quá rối, khó nhìn, khó thao tác trên điện thoại; tổ trưởng không rành công nghệ. Đồng ý bản phác (màn hình chính nút lớn, từng bước, Xem kế hoạch gom theo ngày) và chốt phương án B cho ca đêm: ca đêm không cố định nên MẶC ĐỊNH KHÔNG chạy, chọn "Chạy ca đêm" cho ngày cần; không tổ nào chạy ca đêm thường xuyên.
+- **Thay đổi:**
+  - `ToTruong.html` — viết lại toàn bộ: màn hình chính (tóm tắt + 5 nút lớn + "Việc khác…"), wizard từng bước (Đóng máy 4 bước, Tăng ca 3, Chạy ca đêm 3, Có người xin về 5/4, Sao chép ngày 3), Xem kế hoạch tuần gom theo ngày với ✕ xoá từng mục, bấm Xác nhận là lưu ngay (không còn nút "Lưu kế hoạch tuần"; lưu lỗi thì khôi phục trạng thái trước), khai giờ làm việc lần đầu và hộp thoại quay lại giữ nguyên chức năng. Đã bỏ: danh sách thẻ máy, thao tác hàng loạt cũ, tìm/lọc trên trang chính.
+  - `Code.gs` — thêm `CHAY_DEM` vào `TRANG_THAI_KE_HOACH_MAY` + dropdown.
+  - `KeHoachTo.gs` — `chuanHoaChayDem_`, `chuanHoaDanhSachChayDem_`, `xungDotTangCaChayDem_`, `boVeGiuaCaDemKhongChayDem_`; `layKeHoachTuan` trả `chayDem`; `luuKeHoachTuan` nhận `chayDem`; về giữa ca ĐÊM chỉ ghi được khi máy đã "Chạy ca đêm" ngày đó. Không thêm cột.
+  - `Test.gs` — 17 test mới + cập nhật vài test cũ theo luật mới. Dự kiến tổng **520** (503 + 17), **chưa chạy trong Sheet**.
+- **Đã kiểm tại máy:** `kiem-tra.ps1` sạch cả 5 lớp; test tăng ca + về giữa ca + nghỉ đêm + chạy ca đêm chạy bằng node 88/88; giao diện thử trong trình duyệt với dữ liệu giả (đóng máy nhiều ngày-máy, tăng ca bỏ qua máy đang đóng/chạy đêm, chạy ca đêm bỏ qua máy đang tăng ca, về giữa ca đêm khoá máy không chạy đêm, ✕ xoá, lưu lỗi khôi phục, Đóng Chủ nhật, Sao chép, Bỏ hết đóng máy, quay lại/huỷ; tổ không có ca đêm ẩn nút ca đêm) và chụp màn hình khổ điện thoại. **Chưa thử trên link thật / điện thoại thật.**
+- **Trạng thái:** chưa push GitHub / chưa `clasp push` / chưa deploy.
+- **Việc cần làm tiếp theo:** `clasp push` → menu 🧪 (dự kiến 520) → deploy → chủ dự án thử trên điện thoại thật và phản hồi chỗ còn khó dùng. **Đợt 3 phải nhớ:** ca đêm chỉ tính cho máy-ngày có dòng `CHAY_DEM`; tăng ca thay ca đêm.
+
 ## [2026-09-19] Đã `clasp push`, test 503/503 (tăng ca luôn hiện + tăng ca thay ca đêm)
 - **Xác nhận từ chủ dự án:** đã `clasp push` xong, menu 🧪 **Chạy test logic** ra **503/503**, không đỏ (496 cũ + 7 test mới, đúng dự kiến). Cập nhật số test trong `bao-tri-v2/CLAUDE.md` (496 → 503).
 - **Trạng thái:** đã push GitHub (`d6b6240`; commit tài liệu này chưa đẩy lúc viết dòng này) / **ĐÃ `clasp push`** / **CHƯA xác nhận deploy** — trang tổ trưởng chạy bản đã deploy nên tổ TRANG chưa thấy mục Tăng ca hiện lại cho tới khi deploy.

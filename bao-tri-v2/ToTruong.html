@@ -1,70 +1,98 @@
 <!-- ==========================================================================
-     TRANG TỔ TRƯỞNG — khai kế hoạch máy theo tuần (?page=kehoach&to=&token=).
-     Bước 7b/8: thao tác HÀNG LOẠT — chọn nhiều máy, bố trí/đóng tất cả máy cả
-     tuần, sao chép kế hoạch giữa các ngày, tìm máy, lọc "chỉ xem máy đang
-     đóng". Xem TASK_KE_HOACH_TO_TRUONG.md mục 9.
-     Đợt 2 bước 3: TĂNG CA THEO MÁY-NGÀY (chỉ ca ngày, tổ không có ca đêm).
-     Đợt 2b bước 3: VỀ GIỮA CA (tổ trưởng ghi, ghi thẳng lên server, tách khỏi nút Lưu tuần).
+     TRANG TỔ TRƯỞNG — kế hoạch máy theo tuần (?page=kehoach&to=&token=).
+     GIAO DIỆN MỚI (19/09/2026) — thiết kế cho người dùng điện thoại, không rành công nghệ:
+       * Màn hình chính chỉ có vài nút LỚN theo việc cần làm (Đóng máy / Tăng ca / Chạy ca đêm /
+         Có người xin về / Xem kế hoạch tuần), không còn danh sách 48 thẻ máy.
+       * Mỗi việc là vài BƯỚC, mỗi bước một câu hỏi; bước cuối bấm Xác nhận là LƯU LUÔN
+         (không còn nút "Lưu kế hoạch tuần").
+       * "Xem kế hoạch tuần" gom theo NGÀY, mỗi mục có nút ✕ để xoá.
+       * Việc ít dùng (đóng Chủ nhật, bỏ hết đóng máy, sao chép ngày) nằm trong "Việc khác…".
+     Server và dữ liệu KHÔNG đổi so với bản trước (chỉ thêm loại dòng CHAY_DEM).
+     Ca đêm KHÔNG cố định: mặc định máy không chạy ca đêm; ngày nào chạy thì chọn "Chạy ca đêm".
+     Tăng ca ngày và chạy ca đêm loại trừ nhau trên cùng máy-ngày. Xem TASK_KE_HOACH_TO_TRUONG.md.
      ========================================================================== -->
 <?!= include('Style') ?>
 
 <style>
-.tuan-nut {
-  display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px;
+.tuan-hang { display: flex; align-items: center; gap: 8px; margin: 10px 0 2px; }
+.tuan-hang .nut { width: 52px; padding: 10px 0; font-size: 20px; flex: none; }
+.tuan-hang .nhan-tuan { flex: 1; text-align: center; font-weight: 700; font-size: 16px; }
+.lien-ket {
+  display: block; margin: 4px auto 12px; background: none; border: none;
+  color: var(--xanh); font-size: 14px; font-weight: 600; padding: 6px 10px; cursor: pointer;
 }
-.thong-ke {
-  display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px;
+.tom-tat { display: grid; grid-template-columns: repeat(auto-fit, minmax(72px, 1fr)); gap: 8px; margin: 8px 0 14px; }
+.tom-tat .o { background: #fff; border: 1px solid var(--vien); border-radius: 10px; padding: 8px 4px; text-align: center; }
+.tom-tat .so { font-size: 22px; font-weight: 800; }
+.tom-tat .nhan-nho { font-size: 12px; color: var(--chu-nhat); }
+.viec {
+  display: flex; align-items: center; gap: 14px; width: 100%; text-align: left;
+  padding: 16px 14px; border-radius: 14px; border: 1.5px solid var(--vien);
+  background: #fff; color: var(--chu); margin-bottom: 10px; cursor: pointer; font: inherit;
 }
-.thong-ke .o {
-  flex: 1; min-width: 90px; background: #fff; border: 1px solid var(--vien);
-  border-radius: 10px; padding: 10px 12px; text-align: center;
+.viec .bieu-tuong { font-size: 30px; flex: none; }
+.viec .ten { font-size: 18px; font-weight: 700; line-height: 1.2; }
+.viec .mo-ta { font-size: 13.5px; color: var(--chu-nhat); margin-top: 2px; font-weight: 400; }
+.viec.do { background: #fce8e6; border-color: #f4b6b1; }
+.viec.cam { background: #fef7e0; border-color: #f0cf7a; }
+.viec.tim { background: #ede7f6; border-color: #c9b8ea; }
+.viec.xanh { background: #e8f0fe; border-color: #aecbfa; }
+.dau-buoc { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+.dau-buoc .huy { background: none; border: none; color: var(--chu-nhat); font-size: 15px; font-weight: 600; padding: 6px 0; cursor: pointer; }
+.dau-buoc .so-buoc { font-size: 13.5px; color: var(--chu-nhat); }
+.cau-hoi { font-size: 22px; font-weight: 800; margin: 6px 0 4px; line-height: 1.25; }
+.goi-y { font-size: 14px; color: var(--chu-nhat); margin-bottom: 14px; }
+.luoi-ngay { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.o-ngay {
+  border: 1.5px solid var(--vien); border-radius: 12px; background: #fff; padding: 12px 2px;
+  text-align: center; font-size: 17px; font-weight: 700; cursor: pointer; font-family: inherit; color: var(--chu);
 }
-.thong-ke .o .so { font-size: 20px; font-weight: 800; }
-.thong-ke .o .nhan-nho { font-size: 12px; color: var(--chu-nhat); margin-top: 2px; }
-.may-dong { border: 1px solid var(--vien); border-radius: 10px; padding: 12px; margin-bottom: 8px; background: #fff; }
-.may-dau { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
-.may-ma { font-weight: 700; font-size: 15px; }
-.may-tt-chay { color: var(--luc); font-weight: 600; font-size: 13.5px; }
-.may-tt-dong { color: var(--do); font-weight: 600; font-size: 13.5px; }
-.ngoai-le-dong { margin-top: 6px; font-size: 13px; color: var(--chu-nhat); }
-.ngoai-le-dong .dong { padding: 2px 0; }
+.o-ngay small { display: block; font-size: 12px; font-weight: 400; color: var(--chu-nhat); margin-top: 2px; }
+.o-ngay[aria-pressed="true"] { border-color: var(--xanh); background: #e8f0fe; color: var(--xanh-dam); }
+.o-ngay:disabled { opacity: .4; cursor: default; }
+.lua-chon {
+  display: block; width: 100%; text-align: left; border: 1.5px solid var(--vien); border-radius: 12px;
+  background: #fff; padding: 15px 14px; margin-bottom: 8px; font-size: 17px; font-weight: 600;
+  cursor: pointer; font-family: inherit; color: var(--chu);
+}
+.lua-chon[aria-pressed="true"] { border-color: var(--xanh); background: #e8f0fe; color: var(--xanh-dam); }
+.o-tim {
+  width: 100%; border: 1.5px solid var(--vien); border-radius: 12px; padding: 13px 12px;
+  font: inherit; font-size: 16px; margin-bottom: 8px;
+}
+.dong-may {
+  display: flex; align-items: center; gap: 12px; padding: 12px 6px; border-bottom: 1px solid var(--vien);
+  font-size: 16px; cursor: pointer;
+}
+.dong-may input { width: 24px; height: 24px; flex: none; }
+.dong-may.khoa { opacity: .45; }
+.dong-may .ghi-chu { font-size: 12.5px; color: var(--chu-nhat); }
+.hang-tt { display: flex; justify-content: space-between; align-items: center; margin: 4px 0 8px; font-size: 14px; }
+.hang-tt button { background: none; border: none; color: var(--xanh); font-weight: 700; font-size: 14px; padding: 6px 0; cursor: pointer; }
+.tom-tat-xn { background: #fff; border: 1.5px solid var(--vien); border-radius: 14px; padding: 16px; font-size: 17px; line-height: 1.55; }
+.tom-tat-xn b { font-weight: 800; }
+.hang-nut { display: flex; gap: 10px; }
+.hang-nut .nut { flex: 1; }
+.hang-nut .nut.hep { flex: 0 0 34%; }
+.ngay-kh { background: #fff; border: 1px solid var(--vien); border-radius: 12px; padding: 12px 14px; margin-bottom: 10px; }
+.ngay-kh .tieu-de { font-size: 16px; font-weight: 800; margin-bottom: 8px; }
+.muc-kh { margin: 8px 0 2px; font-size: 14.5px; font-weight: 700; }
+.muc-kh.do { color: var(--do); } .muc-kh.cam { color: #b45309; } .muc-kh.tim { color: #5e35b1; } .muc-kh.xanh { color: var(--xanh-dam); }
+.muc-kh .ly-do { font-weight: 400; color: var(--chu-nhat); }
+.chip-may { display: inline-flex; align-items: center; gap: 6px; background: #f1f3f4; border-radius: 999px; padding: 6px 6px 6px 12px; margin: 5px 6px 0 0; font-size: 14.5px; }
+.chip-may button { border: none; background: #dadce0; border-radius: 50%; width: 26px; height: 26px; font-size: 14px; cursor: pointer; color: var(--chu); }
+.dong-ve { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 6px; font-size: 14.5px; }
+.dong-ve .nut-nho { flex: none; border: 1px solid var(--vien); background: #fff; color: var(--xanh); border-radius: 8px; padding: 6px 10px; font-size: 13px; font-weight: 700; cursor: pointer; margin-left: 4px; }
 .gio-hang { display: flex; gap: 10px; margin-top: 10px; }
 .gio-hang > div { flex: 1; }
 .gio-hang label { display: block; font-size: 13px; color: var(--chu-nhat); margin-bottom: 4px; }
-.gio-hang input[type="time"] {
-  width: 100%; border: 1.5px solid var(--vien); border-radius: 10px;
-  padding: 10px; font: inherit;
-}
-.tick-hang {
-  display: flex; align-items: center; gap: 10px; padding: 4px 0;
-  font-weight: 600; cursor: pointer;
-}
+.gio-hang input[type="time"], input.o-gio { width: 100%; border: 1.5px solid var(--vien); border-radius: 10px; padding: 12px 10px; font: inherit; font-size: 17px; }
+.tick-hang { display: flex; align-items: center; gap: 10px; padding: 4px 0; font-weight: 600; cursor: pointer; }
 .tick-hang input { width: 20px; height: 20px; }
-.may-nut-hang { display: flex; gap: 8px; margin-top: 9px; }
-.may-nut-hang .nut { padding: 9px; font-size: 13.5px; }
-.modal-nen {
-  position: fixed; inset: 0; z-index: 60; background: rgba(32,33,36,.5);
-  display: flex; align-items: flex-end; justify-content: center;
-}
-.modal-hop {
-  background: #fff; border-radius: 16px 16px 0 0; padding: 18px 16px calc(18px + env(safe-area-inset-bottom));
-  width: 100%; max-width: 480px; max-height: 88vh; overflow-y: auto;
-}
+.modal-nen { position: fixed; inset: 0; z-index: 60; background: rgba(32,33,36,.5); display: flex; align-items: flex-end; justify-content: center; }
+.modal-hop { background: #fff; border-radius: 16px 16px 0 0; padding: 18px 16px calc(18px + env(safe-area-inset-bottom)); width: 100%; max-width: 480px; max-height: 88vh; overflow-y: auto; }
 .modal-nhan { font-size: 13px; color: var(--chu-nhat); margin: 12px 0 6px; font-weight: 600; }
-.chips-ngay { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
-.chips-ngay .chip { padding: 8px 2px; font-size: 12px; }
-.chips-ngay .chip .ngay-so { display: block; font-weight: 400; font-size: 10.5px; margin-top: 1px; }
-select.chon {
-  width: 100%; border: 1.5px solid var(--vien); border-radius: 10px;
-  padding: 10px 12px; font: inherit; background: #fff;
-}
-.may-tt-tangca { color: #b45309; font-weight: 600; font-size: 13.5px; margin-top: 6px; }
-.ngoai-le-dong .dong { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-.tang-ca-ngay { display: inline-flex; align-items: center; gap: 6px; margin: 4px 6px 0 0; }
-.xoa-dong {
-  flex: none; border: 1px solid var(--vien); background: #fff; color: var(--do);
-  border-radius: 8px; padding: 3px 9px; font-size: 12.5px; font-weight: 600; cursor: pointer;
-}
+#toast { position: fixed; left: 50%; bottom: 96px; transform: translateX(-50%); background: #202124; color: #fff; padding: 12px 18px; border-radius: 12px; font-size: 15px; z-index: 70; max-width: 90%; text-align: center; }
 </style>
 
 <body>
@@ -76,10 +104,17 @@ select.chon {
   <div>Đang tải…</div>
 </div>
 
+<div class="phu-kin an" id="manLuu" style="z-index:80;background:rgba(248,249,250,.92)">
+  <div class="quay"></div>
+  <div>Đang lưu…</div>
+</div>
+
 <div class="phu-kin an" id="manLoi">
   <div style="font-size:42px">🔒</div>
   <div id="loiND" class="giua" style="padding:0 24px"></div>
 </div>
+
+<div id="toast" class="an"></div>
 
 <!-- ======================= KHAI GIỜ LÀM VIỆC LẦN ĐẦU ====================== -->
 <div class="boc an" id="manKhaiLich">
@@ -117,69 +152,56 @@ select.chon {
 </div>
 
 <!-- ======================= MÀN HÌNH CHÍNH ================================= -->
-<div class="boc an" id="manChinh">
-  <div class="may-ten" id="cTenTo">Tổ</div>
-  <div style="height:10px"></div>
+<div class="boc an" id="manHome">
+  <div class="may-ten" id="hTenTo">Tổ</div>
 
-  <div class="tuan-nut">
-    <button class="nut phu" id="nutTuanTruoc" type="button" style="padding:11px;font-size:14px">‹ Tuần trước</button>
-    <button class="nut phu" id="nutTuanNay" type="button" style="padding:11px;font-size:14px">Tuần này</button>
-    <button class="nut phu" id="nutTuanSau" type="button" style="padding:11px;font-size:14px">Tuần sau ›</button>
+  <div class="tuan-hang">
+    <button class="nut phu" type="button" data-act="tuan-truoc" aria-label="Tuần trước">‹</button>
+    <div class="nhan-tuan" id="hNhanTuan"></div>
+    <button class="nut phu" type="button" data-act="tuan-sau" aria-label="Tuần sau">›</button>
   </div>
-  <div class="giua nho" id="cNhanTuan" style="margin-bottom:12px"></div>
+  <button class="lien-ket" type="button" data-act="tuan-nay">Về tuần này</button>
 
-  <div class="thong-ke" id="cThongKe"></div>
-  <div id="cBaoChuaKhai"></div>
+  <div class="tom-tat" id="hTomTat"></div>
+  <div id="hBao"></div>
 
-  <div class="modal-nhan" style="margin-top:0">Về giữa ca (công nhân xin về)</div>
-  <button class="nut phu" id="nutVeGiuaCa" type="button" style="padding:11px;font-size:13.5px">🏠 Ghi công nhân về giữa ca…</button>
-  <div id="cDsVeGiuaCa" style="margin:10px 0 14px"></div>
+  <button class="viec do" type="button" data-act="viec-dong">
+    <span class="bieu-tuong">🔴</span>
+    <span><div class="ten">Đóng máy</div><div class="mo-ta">Máy nghỉ, không chạy</div></span>
+  </button>
+  <button class="viec cam" type="button" data-act="viec-tang">
+    <span class="bieu-tuong">⏱</span>
+    <span><div class="ten">Tăng ca</div><div class="mo-ta" id="hMoTaTang">Máy chạy ca ngày lâu hơn</div></span>
+  </button>
+  <button class="viec tim an" type="button" data-act="viec-dem" id="nutViecDem">
+    <span class="bieu-tuong">🌙</span>
+    <span><div class="ten">Chạy ca đêm</div><div class="mo-ta">Máy chạy thêm ca đêm</div></span>
+  </button>
+  <button class="viec xanh" type="button" data-act="viec-ve">
+    <span class="bieu-tuong">🏠</span>
+    <span><div class="ten">Có người xin về</div><div class="mo-ta">Công nhân về giữa ca</div></span>
+  </button>
+  <button class="viec" type="button" data-act="ke-hoach">
+    <span class="bieu-tuong">📋</span>
+    <span><div class="ten">Xem kế hoạch tuần</div><div class="mo-ta">Xem và xoá từng mục</div></span>
+  </button>
+  <button class="lien-ket" type="button" data-act="khac">Việc khác…</button>
+</div>
 
-  <div class="modal-nhan" style="margin-top:0">Thao tác nhanh Chủ nhật (áp cho tất cả máy)</div>
-  <div style="display:flex;gap:8px;margin-bottom:14px">
-    <button class="nut phu" id="nutDongCN" type="button" style="flex:1;padding:11px;font-size:13.5px">🌙 Đóng Chủ nhật</button>
-    <button class="nut phu" id="nutMoCN" type="button" style="flex:1;padding:11px;font-size:13.5px">☀️ Bố trí chạy Chủ nhật</button>
+<!-- ======================= TỪNG BƯỚC ====================================== -->
+<div class="boc an" id="manBuoc">
+  <div class="dau-buoc">
+    <button class="huy" type="button" data-act="wz-huy">✕ Huỷ</button>
+    <div class="so-buoc" id="bSoBuoc"></div>
   </div>
+  <div id="bNoiDung"></div>
+</div>
 
-  <div class="modal-nhan">Thao tác cả tuần (áp cho tất cả máy)</div>
-  <div style="display:flex;gap:8px;margin-bottom:14px">
-    <button class="nut phu" id="nutBoTriTatCa" type="button" style="flex:1;padding:11px;font-size:13.5px">🟢 Bố trí tất cả máy chạy</button>
-    <button class="nut phu" id="nutDongTatCa" type="button" style="flex:1;padding:11px;font-size:13.5px">🔴 Đóng tất cả máy</button>
+<div class="thanh-duoi an" id="thanhDuoiBuoc">
+  <div class="boc-nut hang-nut">
+    <button class="nut phu hep" type="button" id="bNutLui" data-act="wz-lui">‹ Quay lại</button>
+    <button class="nut" type="button" id="bNutTiep" data-act="wz-tiep">Tiếp</button>
   </div>
-
-  <div id="khoiTangCaTatCa">
-    <div class="modal-nhan">Tăng ca (áp cho tất cả máy)</div>
-    <div style="display:flex;gap:8px;margin-bottom:14px">
-      <button class="nut phu" id="nutTangCaTatCa" type="button" style="flex:1;padding:11px;font-size:13.5px">⏱ Tăng ca tất cả máy…</button>
-    </div>
-  </div>
-
-  <div class="modal-nhan">Sao chép kế hoạch</div>
-  <select class="chon" id="saoChepTu" style="margin-bottom:8px"></select>
-  <div class="nho" style="margin-bottom:6px">Sang các ngày (bấm được nhiều ngày):</div>
-  <div class="chips chips-ngay" id="saoChepSang" style="margin-bottom:10px"></div>
-  <button class="nut phu" id="nutSaoChep" type="button" style="margin-bottom:16px;padding:11px;font-size:13.5px">📋 Sao chép kế hoạch</button>
-
-  <input type="text" id="timMay" placeholder="Tìm máy theo mã hoặc tên…"
-    style="width:100%;border:1.5px solid var(--vien);border-radius:10px;padding:10px 12px;font:inherit;margin-bottom:8px">
-  <label class="tick-hang" style="margin-bottom:10px"><input type="checkbox" id="chiXemDong"> Chỉ xem máy đang đóng</label>
-
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-    <div class="the-tieu-de" style="margin:0">Danh sách máy</div>
-    <button class="nut phu" id="nutChonTatCa" type="button" style="width:auto;padding:7px 12px;font-size:12.5px">Chọn tất cả</button>
-  </div>
-
-  <div class="bao xanh an" id="cThanhChon" style="display:flex;gap:8px;align-items:center">
-    <div class="nho" id="cSoDaChon" style="flex:1"></div>
-    <button class="nut phu" id="nutBoTriDaChon" type="button" style="width:auto;padding:8px 12px;font-size:13px">Bố trí chạy</button>
-    <button class="nut phu" id="nutVeGiuaCaDaChon" type="button" style="width:auto;padding:8px 12px;font-size:13px">Về giữa ca…</button>
-    <button class="nut phu" id="nutTangCaDaChon" type="button" style="width:auto;padding:8px 12px;font-size:13px">Tăng ca…</button>
-    <button class="nut do" id="nutDongDaChon" type="button" style="width:auto;padding:8px 12px;font-size:13px">Đóng máy…</button>
-  </div>
-
-  <div id="cDsMay"></div>
-
-  <div style="height:8px"></div>
 </div>
 
 <div class="thanh-duoi an" id="thanhDuoiKhai">
@@ -188,210 +210,103 @@ select.chon {
   </div>
 </div>
 
-<div class="thanh-duoi an" id="thanhDuoiChinh">
-  <div class="boc-nut">
-    <button class="nut" id="nutLuuKeHoach" type="button">Lưu kế hoạch tuần</button>
+<!-- ======================= XEM KẾ HOẠCH TUẦN ============================== -->
+<div class="boc an" id="manKeHoach">
+  <div class="dau-buoc">
+    <button class="huy" type="button" data-act="home">‹ Trang chính</button>
   </div>
+  <div class="cau-hoi" id="kTieuDe">Kế hoạch tuần</div>
+  <div class="goi-y">Bấm ✕ để xoá một mục. Ngày không có gì thì tất cả máy chạy ca ngày bình thường.</div>
+  <div id="kNoiDung"></div>
 </div>
 
-<!-- ======================= MODAL ĐÓNG MÁY ================================= -->
-<div class="modal-nen an" id="modalDong">
-  <div class="modal-hop">
-    <div class="the-tieu-de" id="modalTieuDe" style="margin-top:0">Đóng máy</div>
-
-    <div class="modal-nhan">Áp dụng</div>
-    <div class="chips" id="modalApDung" style="grid-template-columns:1fr 1fr">
-      <div class="chip" data-gt="TUAN" aria-pressed="true">Cả tuần</div>
-      <div class="chip" data-gt="NGAY">Chọn ngày cụ thể</div>
-    </div>
-    <div style="font-size:12.5px;color:var(--chu-nhat);margin-top:6px">
-      "Cả tuần" khai lại từ đầu cho máy này. "Chọn ngày cụ thể" chỉ thêm/sửa
-      đúng những ngày vừa chọn — có thể bấm "Sửa" nhiều lần để khai thêm ngày
-      khác mà không mất phần đã khai trước.
-    </div>
-
-    <div id="modalChonNgay" class="an">
-      <div class="modal-nhan">Chọn ngày (bấm được nhiều ngày)</div>
-      <div class="chips chips-ngay" id="modalDsNgay"></div>
-
-      <div class="modal-nhan">Áp dụng ca nào của những ngày đã chọn</div>
-      <div class="chips" id="modalDsCa" style="grid-template-columns:repeat(3,1fr)"></div>
-    </div>
-
-    <div class="modal-nhan">Lý do đóng máy</div>
-    <select class="chon" id="modalLyDo"></select>
-
-    <div class="modal-nhan">Ghi chú <span style="font-weight:400">(bắt buộc nếu chọn "Khác")</span></div>
-    <textarea id="modalGhiChu" placeholder="Ví dụ: Thợ vận hành nghỉ phép" style="min-height:56px"></textarea>
-
-    <div style="display:flex;gap:10px;margin-top:16px">
-      <button class="nut phu" id="modalHuy" type="button" style="flex:1">Huỷ</button>
-      <button class="nut do" id="modalXacNhan" type="button" style="flex:1">Xác nhận đóng máy</button>
-    </div>
+<!-- ======================= VIỆC KHÁC ====================================== -->
+<div class="boc an" id="manKhac">
+  <div class="dau-buoc">
+    <button class="huy" type="button" data-act="home">‹ Trang chính</button>
   </div>
-</div>
-
-<!-- =============== MODAL CHỦ NHẬT — ÁP CHO TẤT CẢ MÁY ===================== -->
-<div class="modal-nen an" id="modalCN">
-  <div class="modal-hop">
-    <div class="the-tieu-de" style="margin-top:0">Đóng Chủ nhật cho tất cả máy</div>
-    <div style="font-size:12.5px;color:var(--chu-nhat)">
-      Chỉ áp dụng Chủ nhật tuần đang xem. Không đụng tới các ngày khác đã khai
-      cho từng máy.
-    </div>
-
-    <div class="modal-nhan">Áp dụng ca</div>
-    <div class="chips" id="modalCNDsCa" style="grid-template-columns:repeat(3,1fr)"></div>
-
-    <div class="modal-nhan">Lý do đóng máy</div>
-    <select class="chon" id="modalCNLyDo"></select>
-
-    <div class="modal-nhan">Ghi chú <span style="font-weight:400">(bắt buộc nếu chọn "Khác")</span></div>
-    <textarea id="modalCNGhiChu" placeholder="Ví dụ: Chủ nhật nghỉ theo lịch thường" style="min-height:56px"></textarea>
-
-    <div style="display:flex;gap:10px;margin-top:16px">
-      <button class="nut phu" id="modalCNHuy" type="button" style="flex:1">Huỷ</button>
-      <button class="nut do" id="modalCNXacNhan" type="button" style="flex:1">Xác nhận đóng Chủ nhật</button>
-    </div>
-  </div>
-</div>
-
-<!-- ======================= MODAL VỀ GIỮA CA =============================== -->
-<div class="modal-nen an" id="modalVeGiuaCa">
-  <div class="modal-hop">
-    <div class="the-tieu-de" style="margin-top:0">Ghi công nhân về giữa ca</div>
-    <div class="bao xanh" style="margin-bottom:0">
-      Máy tính là dừng từ giờ về đến hết ca. Ghi ngay khi bấm, không cần bấm "Lưu kế hoạch tuần".
-    </div>
-
-    <div class="modal-nhan">Ngày</div>
-    <select class="chon" id="vgcNgay"></select>
-
-    <div id="vgcKhoiCa">
-      <div class="modal-nhan">Ca</div>
-      <div class="chips" id="vgcCa" style="grid-template-columns:1fr 1fr">
-        <div class="chip" data-gt="N" aria-pressed="true">Ca ngày</div>
-        <div class="chip" data-gt="D">Ca đêm</div>
-      </div>
-    </div>
-
-    <div class="modal-nhan">Lý do</div>
-    <div class="chips" id="vgcLyDo" style="grid-template-columns:1fr 1fr"></div>
-
-    <div class="modal-nhan">Giờ về</div>
-    <input type="time" id="vgcGioVe" class="chon">
-
-    <div class="modal-nhan">Máy công nhân đang trông (chọn được nhiều máy)</div>
-    <input type="text" id="vgcTim" placeholder="Tìm máy…"
-      style="width:100%;border:1.5px solid var(--vien);border-radius:10px;padding:10px 12px;font:inherit;margin-bottom:8px">
-    <div id="vgcDsMay" style="max-height:220px;overflow-y:auto;border:1px solid var(--vien);border-radius:10px;padding:6px 10px"></div>
-    <div class="nho" id="vgcDemChon" style="margin-top:6px"></div>
-
-    <div style="display:flex;gap:10px;margin-top:16px">
-      <button class="nut phu" id="vgcHuy" type="button" style="flex:1">Huỷ</button>
-      <button class="nut" id="vgcXacNhan" type="button" style="flex:1">Ghi về giữa ca</button>
-    </div>
-  </div>
+  <div class="cau-hoi">Việc khác</div>
+  <div class="goi-y">Những việc ít dùng.</div>
+  <button class="viec" type="button" data-act="khac-cn">
+    <span class="bieu-tuong">🌙</span>
+    <span><div class="ten">Đóng Chủ nhật</div><div class="mo-ta">Cho tất cả máy</div></span>
+  </button>
+  <button class="viec" type="button" data-act="khac-saochep">
+    <span class="bieu-tuong">📄</span>
+    <span><div class="ten">Sao chép ngày</div><div class="mo-ta">Chép kế hoạch một ngày sang ngày khác</div></span>
+  </button>
+  <button class="viec" type="button" data-act="khac-botri">
+    <span class="bieu-tuong">🟢</span>
+    <span><div class="ten">Bỏ hết đóng máy</div><div class="mo-ta">Tất cả máy chạy lại cả tuần</div></span>
+  </button>
 </div>
 
 <!-- =================== MODAL GIỜ QUAY LẠI (VỀ GIỮA CA) ==================== -->
 <div class="modal-nen an" id="modalQuayLai">
   <div class="modal-hop">
-    <div class="the-tieu-de" id="qlTieuDe" style="margin-top:0">Giờ quay lại</div>
-    <div style="font-size:12.5px;color:var(--chu-nhat)">
-      Nhập giờ công nhân quay lại làm tiếp. Bỏ trống rồi bấm Lưu là nghỉ tới hết ca.
+    <div class="cau-hoi" id="qlTieuDe" style="margin-top:0">Giờ quay lại</div>
+    <div class="goi-y">
+      Công nhân quay lại làm tiếp lúc mấy giờ? Bỏ trống rồi bấm Lưu là nghỉ tới hết ca.
     </div>
-    <div class="modal-nhan">Giờ quay lại</div>
-    <input type="time" id="qlGio" class="chon">
-    <div style="display:flex;gap:10px;margin-top:16px">
-      <button class="nut phu" id="qlHuy" type="button" style="flex:1">Đóng</button>
-      <button class="nut" id="qlXacNhan" type="button" style="flex:1">Lưu</button>
-    </div>
-  </div>
-</div>
-
-<!-- ======================= MODAL TĂNG CA ================================== -->
-<div class="modal-nen an" id="modalTangCa">
-  <div class="modal-hop">
-    <div class="the-tieu-de" id="tcTieuDe" style="margin-top:0">Tăng ca</div>
-    <div class="bao xanh" id="tcMoTa" style="margin-bottom:0"></div>
-
-    <div class="modal-nhan">Thao tác</div>
-    <div class="chips" id="tcThaoTac" style="grid-template-columns:1fr 1fr">
-      <div class="chip" data-gt="BAT" aria-pressed="true">Bật tăng ca</div>
-      <div class="chip" data-gt="TAT">Bỏ tăng ca</div>
-    </div>
-
-    <div class="modal-nhan">Chọn ngày (bấm được nhiều ngày)</div>
-    <div class="chips chips-ngay" id="tcDsNgay"></div>
-    <button class="nut phu" id="tcChonCaTuan" type="button" style="margin-top:8px;padding:8px;font-size:13px">Chọn cả tuần</button>
-
-    <div style="font-size:12.5px;color:var(--chu-nhat);margin-top:10px">
-      Tăng ca ngày nào thì máy đó <b>không chạy ca đêm</b> ngày đó (tăng ca thay cho ca đêm).
-      Máy đang đóng ca ngày của ngày nào thì ngày đó không tăng ca được — bấm
-      "Bố trí lại" cho máy đó trước. Đóng máy vào ngày đang tăng ca thì tăng ca
-      của ngày đó tự bỏ.
-    </div>
-
-    <div style="display:flex;gap:10px;margin-top:16px">
-      <button class="nut phu" id="tcHuy" type="button" style="flex:1">Huỷ</button>
-      <button class="nut" id="tcXacNhan" type="button" style="flex:1">Áp dụng</button>
+    <input type="time" id="qlGio" class="o-gio">
+    <div class="hang-nut" style="margin-top:16px">
+      <button class="nut phu" id="qlHuy" type="button">Đóng</button>
+      <button class="nut" id="qlXacNhan" type="button">Lưu</button>
     </div>
   </div>
 </div>
 
 <script>
 // ===========================================================================
-var G =document.getElementById('goc');
+var G = document.getElementById('goc');
 var BO_PHAN = (G.dataset.boPhan || '').trim();
 var TOKEN = (G.dataset.token || '').trim();
 var TEN_TO = (G.dataset.tenTo || '').trim() || BO_PHAN;
-var DATA = null;         // kết quả getToTruongBootstrap, giữ lại để đổi tuần không tải lại máy
+var DATA = null;         // kết quả getToTruongBootstrap
 var TUAN_BAT_DAU = '';   // 'yyyy-MM-dd' của thứ Hai đang xem
-var rq = {};
 
 function $(id) { return document.getElementById(id); }
 function hien(id) { $(id).classList.remove('an'); }
 function an(id) { $(id).classList.add('an'); }
-function layRq(khoa) {
-  if (!rq[khoa]) rq[khoa] = 'RQ-' + Date.now() + '-' + Math.random().toString(36).slice(2, 10);
-  return rq[khoa];
-}
-function xoaRq(khoa) { delete rq[khoa]; }
 function thoat(s) {
   return String(s === null || s === undefined ? '' : s)
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+function chuanHoaTimKiem_(s) {
+  return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 }
 
-// ===========================================================================
-// Tuần — thứ Hai làm mốc, đúng quy ước "Kế hoạch tuần Thứ 2 → Chủ nhật"
-// ===========================================================================
+// ---------------------------------------------------------------------------
+// Ngày tháng — thứ Hai làm mốc tuần
+// ---------------------------------------------------------------------------
 function thuHaiCuaTuan_(d) {
   var ngay = new Date(d.getTime());
-  var thu = ngay.getDay(); // 0=CN,1=T2,...,6=T7
-  var lui = thu === 0 ? 6 : thu - 1;
-  ngay.setDate(ngay.getDate() - lui);
+  var thu = ngay.getDay();
+  ngay.setDate(ngay.getDate() - (thu === 0 ? 6 : thu - 1));
   ngay.setHours(0, 0, 0, 0);
   return ngay;
 }
 function fmtYMD_(d) {
-  var y = d.getFullYear(), m = ('0' + (d.getMonth() + 1)).slice(-2), dd = ('0' + d.getDate()).slice(-2);
-  return y + '-' + m + '-' + dd;
+  return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
 }
 function ymdCongNgay_(ymd, soNgay) {
   var d = new Date(ymd + 'T00:00:00');
   d.setDate(d.getDate() + soNgay);
   return fmtYMD_(d);
 }
-function fmtDDMM_(ymd) {
-  var p = ymd.split('-');
-  return p[2] + '/' + p[1];
-}
+function fmtDDMM_(ymd) { var p = ymd.split('-'); return p[2] + '/' + p[1]; }
 var TEN_THU = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
-function tenThu_(ymd) {
-  return TEN_THU[new Date(ymd + 'T00:00:00').getDay()];
+function tenThu_(ymd) { return TEN_THU[new Date(ymd + 'T00:00:00').getDay()]; }
+function nhanNgay_(ymd) { return tenThu_(ymd) + ' (' + fmtDDMM_(ymd) + ')'; }
+function homNay_() { return fmtYMD_(new Date()); }
+function gioHienTai_() { var d = new Date(); return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2); }
+function phutSangGio_(p) { return ('0' + Math.floor(p / 60)).slice(-2) + ':' + ('0' + (p % 60)).slice(-2); }
+function bayNgayCuaTuan_() { var ds = []; for (var i = 0; i < 7; i++) ds.push(ymdCongNgay_(TUAN_BAT_DAU, i)); return ds; }
+
+function toast_(msg) {
+  var t = $('toast'); t.textContent = msg; hien('toast');
+  clearTimeout(toast_.h); toast_.h = setTimeout(function () { an('toast'); }, 2600);
 }
-var TEN_CA = { N: 'ca ngày', D: 'ca đêm' };
 
 // ===========================================================================
 // Nạp dữ liệu
@@ -410,976 +325,637 @@ function nhanBootstrap(kq) {
   if (!kq || !kq.ok) return baoLoi((kq && kq.error) || 'Không tải được dữ liệu.');
   DATA = kq;
   TEN_TO = kq.to.tenTo || kq.to.boPhan;
-
   an('manCho');
 
-  if (!kq.lich) {
-    veManKhaiLich();
-    return;
-  }
+  if (!kq.lich) { veManKhaiLich(); return; }
   TUAN_BAT_DAU = fmtYMD_(thuHaiCuaTuan_(new Date()));
-  // Gọi RPC thứ hai (layKeHoachTuan) NGAY trong callback của RPC thứ nhất đôi
-  // khi bị google.script.run báo lỗi thoáng qua "không tìm thấy hàm tập lệnh"
-  // vì cầu nối iframe chưa kịp sẵn sàng — lùi một nhịp cho chắc.
-  setTimeout(veManChinh, 100);
+  // Lùi một nhịp: gọi RPC thứ hai ngay trong callback của RPC đầu đôi khi bị google.script.run
+  // báo lỗi thoáng qua do cầu nối iframe chưa sẵn sàng.
+  setTimeout(vaoTuan_, 100);
 }
 
-function baoLoi(td) {
-  $('loiND').textContent = td;
-  an('manCho');
-  hien('manLoi');
-}
+function baoLoi(td) { $('loiND').textContent = td; an('manCho'); hien('manLoi'); }
 
 // ===========================================================================
-// Màn hình khai giờ làm việc lần đầu
+// Khai giờ làm việc lần đầu (giữ nguyên bản trước)
 // ===========================================================================
 function veManKhaiLich() {
   $('khTenTo').textContent = TEN_TO;
-  hien('manKhaiLich');
-  hien('thanhDuoiKhai');
-  an('thanhDuoiChinh');
+  hien('manKhaiLich'); hien('thanhDuoiKhai');
 }
-
-$('khCoNghiTrua').addEventListener('change', function () {
-  this.checked ? hien('khKhoiNghiTrua') : an('khKhoiNghiTrua');
-});
-$('khCoCaDem').addEventListener('change', function () {
-  this.checked ? hien('khKhoiCaDem') : an('khKhoiCaDem');
-});
+$('khCoNghiTrua').addEventListener('change', function () { this.checked ? hien('khKhoiNghiTrua') : an('khKhoiNghiTrua'); });
+$('khCoCaDem').addEventListener('change', function () { this.checked ? hien('khKhoiCaDem') : an('khKhoiCaDem'); });
 
 $('nutLuuLich').addEventListener('click', function () {
   var coNghiTrua = $('khCoNghiTrua').checked;
   var coCaDem = $('khCoCaDem').checked;
-
-  if (!$('khCaNgayTu').value || !$('khCaNgayDen').value) {
-    return alert('Vui lòng nhập đủ giờ ca ngày.');
-  }
+  if (!$('khCaNgayTu').value || !$('khCaNgayDen').value) return alert('Vui lòng nhập đủ giờ ca ngày.');
   if (coNghiTrua && (!$('khNghiTruaTu').value || !$('khNghiTruaDen').value)) {
     return alert('Đã chọn có nghỉ trưa thì phải nhập đủ giờ bắt đầu/kết thúc.');
   }
   if (coCaDem && (!$('khCaDemTu').value || !$('khCaDemDen').value)) {
     return alert('Đã chọn có ca đêm thì phải nhập đủ giờ bắt đầu/kết thúc.');
   }
-
   var payload = {
     apDungTu: fmtYMD_(new Date()),
-    caNgayTu: $('khCaNgayTu').value,
-    caNgayDen: $('khCaNgayDen').value,
+    caNgayTu: $('khCaNgayTu').value, caNgayDen: $('khCaNgayDen').value,
     coNghiTrua: coNghiTrua,
-    nghiTruaTu: coNghiTrua ? $('khNghiTruaTu').value : '',
-    nghiTruaDen: coNghiTrua ? $('khNghiTruaDen').value : '',
+    nghiTruaTu: coNghiTrua ? $('khNghiTruaTu').value : '', nghiTruaDen: coNghiTrua ? $('khNghiTruaDen').value : '',
     coCaDem: coCaDem,
-    caDemTu: coCaDem ? $('khCaDemTu').value : '',
-    caDemDen: coCaDem ? $('khCaDemDen').value : '',
+    caDemTu: coCaDem ? $('khCaDemTu').value : '', caDemDen: coCaDem ? $('khCaDemDen').value : '',
   };
-
   var nut = this;
-  nut.disabled = true;
-  nut.textContent = 'Đang lưu…';
-
+  nut.disabled = true; nut.textContent = 'Đang lưu…';
   google.script.run
     .withSuccessHandler(function (kq) {
       if (!kq || !kq.ok) {
-        nut.disabled = false;
-        nut.textContent = 'Lưu giờ làm việc';
+        nut.disabled = false; nut.textContent = 'Lưu giờ làm việc';
         return alert('Lỗi: ' + ((kq && kq.error) || 'không lưu được.'));
       }
-      an('manKhaiLich');
-      an('thanhDuoiKhai');
-      hien('manCho');
-      nap(); // tải lại bootstrap để lấy lịch vừa lưu, chuyển sang màn hình chính
+      an('manKhaiLich'); an('thanhDuoiKhai'); hien('manCho');
+      nap();
     })
     .withFailureHandler(function (e) {
-      nut.disabled = false;
-      nut.textContent = 'Lưu giờ làm việc';
+      nut.disabled = false; nut.textContent = 'Lưu giờ làm việc';
       alert('Lỗi: ' + e.message);
     })
     .luuLichLamViec(BO_PHAN, TOKEN, payload);
 });
 
 // ===========================================================================
-// Màn hình chính — chọn tuần + danh sách máy
+// Trạng thái kế hoạch của tuần đang xem — nguồn thật là server, client giữ bản sao để hiển thị
 // ===========================================================================
-var NGOAI_LE = {};       // { MA_MAY: [{maMay,ngay,ca,lyDo,ghiChu}, ...] } — trạng thái ĐANG CHỈNH ở client
-var TANG_CA = {};        // { MA_MAY: { 'yyyy-MM-dd': true } } — tăng ca ca ngày, cùng vòng đời với NGOAI_LE
-var VE_GIUA_CA = [];     // [{maMay,ngay,ca,lyDo,gioVe,gioQuayLai}] — ghi thẳng lên server, KHÔNG thuộc "Lưu kế hoạch tuần"
+var NGOAI_LE = {};     // { MA: [{maMay,ngay,ca,lyDo,ghiChu}] }   đóng máy
+var TANG_CA = {};      // { MA: { 'yyyy-MM-dd': true } }         tăng ca ngày
+var CHAY_DEM = {};     // { MA: { 'yyyy-MM-dd': true } }         chạy ca đêm (mặc định KHÔNG chạy)
+var VE_GIUA_CA = [];   // [{maMay,ngay,ca,lyDo,gioVe,gioQuayLai}] ghi thẳng lên server
+var DA_KHAI_TUAN = false;
 
-/**
- * Tăng ca luôn dùng được, kể cả tổ có ca đêm: ca đêm không cố định, tổ trưởng chọn tăng ca ngày
- * nếu đủ người, chỉ khi không đủ mới chạy ca đêm. Máy tăng ca ngày nào thì không chạy ca đêm ngày đó.
- */
-function toCoTangCa_() { return true; }
-
-/** Máy có đang bị đóng CA NGÀY của ngày này không. */
-function dangDongCaNgay_(maMay, ymd) {
-  return (NGOAI_LE[maMay] || []).some(function (nl) { return nl.ngay === ymd && nl.ca === 'N'; });
+function coCaDem_() { return !!(DATA && DATA.lich && DATA.lich.Co_Ca_Dem); }
+function dsMay_() { return (DATA.may || []).slice().sort(function (a, b) { return a.maMay.localeCompare(b.maMay); }); }
+function dangDongN_(ma, ymd) {
+  return (NGOAI_LE[ma] || []).some(function (nl) { return nl.ngay === ymd && nl.ca === 'N'; });
 }
+function coTang_(ma, ymd) { return !!(TANG_CA[ma] && TANG_CA[ma][ymd]); }
+function coDem_(ma, ymd) { return !!(CHAY_DEM[ma] && CHAY_DEM[ma][ymd]); }
 
-/**
- * Một máy-ngày chỉ có MỘT trạng thái: đóng ca ngày của ngày nào thì tăng ca của
- * đúng ngày đó bị bỏ. Gọi ở đầu mỗi lần vẽ lại — mọi đường đóng máy (modal, Chủ
- * nhật, đóng tất cả, sao chép) đều đi qua veLaiDanhSachMay_ nên không sót đường nào.
- */
-function damBaoDongVaTangCaKhongChong_() {
+/** Đóng ca ngày / chạy ca đêm ngày nào thì tăng ca ngày đó bị bỏ (một máy-ngày một trạng thái). */
+function damBaoKhongChong_() {
   Object.keys(TANG_CA).forEach(function (ma) {
     Object.keys(TANG_CA[ma]).forEach(function (ymd) {
-      if (dangDongCaNgay_(ma, ymd)) delete TANG_CA[ma][ymd];
+      if (dangDongN_(ma, ymd) || coDem_(ma, ymd)) delete TANG_CA[ma][ymd];
     });
     if (!Object.keys(TANG_CA[ma]).length) delete TANG_CA[ma];
   });
 }
 
-function phutSangGio_(p) {
-  return ('0' + Math.floor(p / 60)).slice(-2) + ':' + ('0' + (p % 60)).slice(-2);
-}
-var DA_KHAI_TUAN = false;
-var DA_THAY_DOI = false; // có thay đổi chưa lưu lên server không
-
-function xacNhanBoQuaThayDoi_() {
-  if (!DA_THAY_DOI) return true;
-  return confirm('Tuần này có thay đổi chưa lưu. Rời khỏi tuần sẽ bỏ các thay đổi đó. Tiếp tục?');
+function nhanKeHoach_(kq) {
+  NGOAI_LE = {}; TANG_CA = {}; CHAY_DEM = {};
+  (kq.ngoaiLe || []).forEach(function (nl) { (NGOAI_LE[nl.maMay] = NGOAI_LE[nl.maMay] || []).push(nl); });
+  (kq.tangCa || []).forEach(function (x) { (TANG_CA[x.maMay] = TANG_CA[x.maMay] || {})[x.ngay] = true; });
+  (kq.chayDem || []).forEach(function (x) { (CHAY_DEM[x.maMay] = CHAY_DEM[x.maMay] || {})[x.ngay] = true; });
+  VE_GIUA_CA = kq.veGiuaCa || [];
+  DA_KHAI_TUAN = !!kq.daKhai;
 }
 
-$('nutTuanTruoc').addEventListener('click', function () { doiTuan_(-7); });
-$('nutTuanNay').addEventListener('click', function () {
-  if (!xacNhanBoQuaThayDoi_()) return;
-  TUAN_BAT_DAU = fmtYMD_(thuHaiCuaTuan_(new Date()));
-  veManChinh();
-});
-$('nutTuanSau').addEventListener('click', function () { doiTuan_(7); });
-function doiTuan_(soNgay) {
-  if (!xacNhanBoQuaThayDoi_()) return;
-  TUAN_BAT_DAU = ymdCongNgay_(TUAN_BAT_DAU, soNgay);
-  veManChinh();
-}
-
-function veManChinh() {
-  $('cTenTo').textContent = 'TỔ ' + TEN_TO.toUpperCase();
-  $('cNhanTuan').textContent = 'Tuần ' + fmtDDMM_(TUAN_BAT_DAU) + ' – ' + fmtDDMM_(ymdCongNgay_(TUAN_BAT_DAU, 6));
-
-  hien('manChinh');
-  hien('thanhDuoiChinh');
-  an('thanhDuoiKhai');
-  MAY_DA_CHON = {}; // đổi tuần thì bỏ chọn cũ, tránh áp nhầm sang tuần khác
-  veChonSaoChep_();
-  $('cDsMay').innerHTML = '<div class="giua nho">Đang tải kế hoạch tuần…</div>';
-  taiKeHoachTuan_(TUAN_BAT_DAU, true);
-}
-
-/**
- * Gọi layKeHoachTuan, tự thử lại đúng 1 lần nếu lỗi — google.script.run đôi
- * khi báo lỗi thoáng qua "không tìm thấy hàm tập lệnh" do cầu nối iframe chưa
- * sẵn sàng, nhất là ngay sau khi trang vừa tải. Người dùng không cần biết để
- * tự bấm lại.
- */
-function taiKeHoachTuan_(tuan, choThuLai) {
+/** Gọi layKeHoachTuan, thử lại đúng 1 lần nếu lỗi thoáng qua. khiXong chạy sau khi nạp xong. */
+function taiKeHoachTuan_(tuan, choThuLai, khiXong) {
   google.script.run
     .withSuccessHandler(function (kq) {
-      if (tuan === TUAN_BAT_DAU) veDsMay_(kq); // bỏ kết quả nếu người dùng đã đổi tuần khác trong lúc chờ
+      if (tuan !== TUAN_BAT_DAU) return;
+      if (!kq || !kq.ok) return baoLoiTai_((kq && kq.error) || 'Không tải được kế hoạch tuần.');
+      nhanKeHoach_(kq);
+      if (khiXong) khiXong();
     })
     .withFailureHandler(function (e) {
       if (tuan !== TUAN_BAT_DAU) return;
-      if (choThuLai) { setTimeout(function () { taiKeHoachTuan_(tuan, false); }, 400); return; }
-      $('cDsMay').innerHTML = '<div class="bao do">Không tải được kế hoạch tuần: ' + thoat(e.message) + '</div>';
+      if (choThuLai) { setTimeout(function () { taiKeHoachTuan_(tuan, false, khiXong); }, 400); return; }
+      baoLoiTai_(e.message);
     })
     .layKeHoachTuan(BO_PHAN, TOKEN, tuan);
 }
-
-function veDsMay_(kq) {
-  if (!kq || !kq.ok) {
-    $('cDsMay').innerHTML = '<div class="bao do">' + thoat((kq && kq.error) || 'Không tải được kế hoạch tuần.') + '</div>';
-    return;
-  }
-
-  // Ngoại lệ đọc từ server trở thành trạng thái GỐC ở client — mọi thao tác
-  // đóng/mở máy sau đó chỉ sửa NGOAI_LE trong bộ nhớ, không gọi RPC ngay.
-  NGOAI_LE = {};
-  kq.ngoaiLe.forEach(function (nl) {
-    (NGOAI_LE[nl.maMay] = NGOAI_LE[nl.maMay] || []).push(nl);
-  });
-  TANG_CA = {};
-  (kq.tangCa || []).forEach(function (tc) {
-    (TANG_CA[tc.maMay] = TANG_CA[tc.maMay] || {})[tc.ngay] = true;
-  });
-  VE_GIUA_CA = kq.veGiuaCa || [];
-  DA_KHAI_TUAN = kq.daKhai;
-  DA_THAY_DOI = false;
-
-  veLaiDanhSachMay_();
+function baoLoiTai_(msg) {
+  $('hTomTat').innerHTML = '<div class="bao do" style="grid-column:1/-1">Không tải được kế hoạch tuần: ' + thoat(msg) +
+    '<br><button class="lien-ket" type="button" onclick="vaoTuan_()">Thử lại</button></div>';
 }
 
-var MAY_DA_CHON = {};      // { MA_MAY: true, ... } — chọn nhiều máy để thao tác hàng loạt
-var DS_MAY_HIEN_THI = [];  // danh sách máy đang hiện SAU khi lọc/tìm — dùng cho "Chọn tất cả"
-var TU_KHOA_TIM = '';
-var CHI_XEM_DONG = false;
-
-function chuanHoaTimKiem_(s) {
-  return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
-}
-
-function veLaiDanhSachMay_() {
-  damBaoDongVaTangCaKhongChong_();
-  veDsVeGiuaCa_();
-  var coTangCa = toCoTangCa_();
-  (coTangCa ? hien : an)('khoiTangCaTatCa');
-  (coTangCa ? hien : an)('nutTangCaDaChon');
-
-  var dsMayGoc = (DATA.may || []).slice().sort(function (a, b) {
-    return a.maMay.localeCompare(b.maMay);
-  });
-
-  // Thống kê luôn tính trên TOÀN BỘ máy của tổ, không theo bộ lọc hiển thị.
-  var soDongGoc = dsMayGoc.filter(function (m) { return (NGOAI_LE[m.maMay] || []).length > 0; }).length;
-  var soTangCaGoc = dsMayGoc.filter(function (m) { return Object.keys(TANG_CA[m.maMay] || {}).length > 0; }).length;
-  $('cThongKe').innerHTML =
-    '<div class="o"><div class="so">' + dsMayGoc.length + '</div><div class="nhan-nho">máy</div></div>' +
-    '<div class="o"><div class="so" style="color:var(--luc)">' + (dsMayGoc.length - soDongGoc) + '</div><div class="nhan-nho">bố trí chạy</div></div>' +
-    '<div class="o"><div class="so" style="color:var(--do)">' + soDongGoc + '</div><div class="nhan-nho">có đóng máy</div></div>' +
-    (coTangCa
-      ? '<div class="o"><div class="so" style="color:#b45309">' + soTangCaGoc + '</div><div class="nhan-nho">có tăng ca</div></div>'
-      : '');
-
-  $('cBaoChuaKhai').innerHTML = DA_KHAI_TUAN ? '' :
-    '<div class="bao vang">Tuần này chưa được xác nhận — mọi máy tạm hiện Bố trí chạy theo mặc định.</div>';
-
-  var tk = chuanHoaTimKiem_(TU_KHOA_TIM);
-  var dsMay = dsMayGoc.filter(function (m) {
-    if (tk && chuanHoaTimKiem_(m.maMay).indexOf(tk) === -1 && chuanHoaTimKiem_(m.tenMay).indexOf(tk) === -1) return false;
-    if (CHI_XEM_DONG && !(NGOAI_LE[m.maMay] || []).length) return false;
-    return true;
-  });
-  DS_MAY_HIEN_THI = dsMay;
-
-  var h = dsMay.map(function (m) {
-    var ngoaiLeMay = NGOAI_LE[m.maMay] || [];
-    var dsNgayTangCa = Object.keys(TANG_CA[m.maMay] || {}).sort();
-    var dongTangCa = dsNgayTangCa.length
-      ? '<div class="may-tt-tangca">⏱ Tăng ca: ' + dsNgayTangCa.map(function (ymd) {
-          return '<span class="tang-ca-ngay">' + tenThu_(ymd) + ' (' + fmtDDMM_(ymd) + ')' +
-            '<button class="xoa-dong" type="button" onclick="xoaNgayTangCa(\'' + m.maMay + '\',\'' + ymd + '\')">✕</button></span>';
-        }).join('') + '</div>'
-      : '';
-    // Về giữa ca của máy này trong tuần đang xem — hiện ngay trên thẻ máy, không chỉ ở danh sách riêng.
-    var dongVeGiuaCa = VE_GIUA_CA.filter(function (v) { return v.maMay === m.maMay; })
-      .sort(function (a, b) { return (a.ngay + a.gioVe).localeCompare(b.ngay + b.gioVe); })
-      .map(function (v) {
-        return '<div class="may-tt-tangca">🏠 Về giữa ca: ' + tenThu_(v.ngay) + ' (' + fmtDDMM_(v.ngay) + '), ' +
-          (TEN_CA[v.ca] || v.ca) + ', ' + thoat(v.gioVe) + ' → ' +
-          (v.gioQuayLai ? thoat(v.gioQuayLai) : 'hết ca') + ' — ' + thoat(v.lyDo) + '</div>';
-      }).join('');
-    dongTangCa += dongVeGiuaCa;
-    var nutTangCa = coTangCa
-      ? '<button class="nut phu" style="flex:1" onclick="moModalTangCa(\'' + m.maMay + '\')">Tăng ca…</button>'
-      : '';
-
-    var than = ngoaiLeMay.length
-      ? '<div class="may-tt-dong">🔴 Đóng máy (' + ngoaiLeMay.length + ' lượt)</div>' +
-        '<div class="ngoai-le-dong">' + ngoaiLeMay.map(function (nl) {
-          return '<div class="dong"><span>' + tenThu_(nl.ngay) + ' (' + fmtDDMM_(nl.ngay) + '), ' +
-            (TEN_CA[nl.ca] || nl.ca) + ' — ' + thoat(nl.lyDo) +
-            (nl.ghiChu ? ': ' + thoat(nl.ghiChu) : '') + '</span>' +
-            '<button class="xoa-dong" type="button" onclick="xoaDongNgoaiLe(\'' + m.maMay + '\',\'' + nl.ngay + '\',\'' + nl.ca + '\')">✕ Xoá</button></div>';
-        }).join('') + '</div>' +
-        '<div class="may-nut-hang">' +
-          '<button class="nut phu" style="flex:1" onclick="moModalDong(\'' + m.maMay + '\')">Sửa</button>' +
-          '<button class="nut phu" style="flex:1" onclick="boTriLai(\'' + m.maMay + '\')">Bố trí lại</button>' +
-          nutTangCa +
-        '</div>'
-      : '<div class="may-tt-chay">🟢 Bố trí chạy cả tuần</div>' +
-        '<div class="may-nut-hang"><button class="nut phu" style="flex:1" onclick="moModalDong(\'' + m.maMay + '\')">Đóng máy</button>' +
-        nutTangCa + '</div>';
-    than = than.replace('<div class="may-nut-hang">', dongTangCa + '<div class="may-nut-hang">');
-
-    return '<div class="may-dong"><div class="may-dau">' +
-      '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;flex:1">' +
-        '<input type="checkbox" class="chon-may" data-ma="' + m.maMay + '"' + (MAY_DA_CHON[m.maMay] ? ' checked' : '') + '>' +
-        '<span class="may-ma">' + thoat(m.maMay) + ' — ' + thoat(m.tenMay) + '</span>' +
-      '</label>' +
-      '</div>' + than + '</div>';
-  }).join('');
-
-  $('cDsMay').innerHTML = h || '<div class="bao vang">Không có máy nào khớp tìm kiếm/bộ lọc.</div>';
-
-  veThanhChon_();
-}
-
-/** Cập nhật thanh "Đã chọn N máy" + chữ trên nút "Chọn tất cả". */
-function veThanhChon_() {
-  var dsChon = Object.keys(MAY_DA_CHON).filter(function (ma) { return MAY_DA_CHON[ma]; });
-  if (dsChon.length) {
-    $('cSoDaChon').textContent = 'Đã chọn ' + dsChon.length + ' máy';
-    hien('cThanhChon');
-  } else {
-    an('cThanhChon');
-  }
-  var dangChonHetHienThi = DS_MAY_HIEN_THI.length > 0 &&
-    DS_MAY_HIEN_THI.every(function (m) { return MAY_DA_CHON[m.maMay]; });
-  $('nutChonTatCa').textContent = dangChonHetHienThi ? 'Bỏ chọn tất cả' : 'Chọn tất cả';
-}
-
-$('cDsMay').addEventListener('change', function (ev) {
-  var cb = ev.target.closest('.chon-may');
-  if (!cb) return;
-  if (cb.checked) MAY_DA_CHON[cb.dataset.ma] = true; else delete MAY_DA_CHON[cb.dataset.ma];
-  veThanhChon_();
-});
-
-$('nutChonTatCa').addEventListener('click', function () {
-  var dangChonHetHienThi = DS_MAY_HIEN_THI.length > 0 &&
-    DS_MAY_HIEN_THI.every(function (m) { return MAY_DA_CHON[m.maMay]; });
-  DS_MAY_HIEN_THI.forEach(function (m) {
-    if (dangChonHetHienThi) delete MAY_DA_CHON[m.maMay]; else MAY_DA_CHON[m.maMay] = true;
-  });
-  veLaiDanhSachMay_();
-});
-
-$('timMay').addEventListener('input', function () {
-  TU_KHOA_TIM = this.value;
-  veLaiDanhSachMay_();
-});
-$('chiXemDong').addEventListener('change', function () {
-  CHI_XEM_DONG = this.checked;
-  veLaiDanhSachMay_();
-});
-
-// ===========================================================================
-// Modal đóng máy — áp cho MỘT hoặc NHIỀU máy cùng lúc: cả tuần, hoặc chọn
-// NHIỀU ngày cụ thể + một kiểu ca áp dụng chung cho các ngày đã chọn.
-// ===========================================================================
-var DS_MAY_DANG_MO = [];   // luôn là mảng, kể cả khi mở cho 1 máy
-var MODAL_AP_DUNG = 'TUAN';
-var MODAL_NGAY_CHON = {};  // { 'yyyy-MM-dd': true, ... } — chọn được nhiều ngày
-var MODAL_CA_CHON = 'CA';  // 'N' | 'D' | 'CA' (cả 2 ca)
-
-/** maMayHoacDs: 1 mã máy (string) hoặc mảng nhiều mã máy. */
-function moModalDong(maMayHoacDs) {
-  DS_MAY_DANG_MO = Array.isArray(maMayHoacDs) ? maMayHoacDs.slice() : [maMayHoacDs];
-
-  if (DS_MAY_DANG_MO.length === 1) {
-    var may = (DATA.may || []).filter(function (m) { return m.maMay === DS_MAY_DANG_MO[0]; })[0];
-    $('modalTieuDe').textContent = 'Đóng máy ' + DS_MAY_DANG_MO[0] + (may ? ' — ' + may.tenMay : '');
-  } else {
-    $('modalTieuDe').textContent = 'Đóng ' + DS_MAY_DANG_MO.length + ' máy đã chọn';
-  }
-
-  MODAL_AP_DUNG = 'TUAN';
-  chonChip_('modalApDung', MODAL_AP_DUNG);
-  an('modalChonNgay');
-
-  var coCaDem = !!(DATA.lich && DATA.lich.Co_Ca_Dem);
-  var hNgay = '';
-  for (var i = 0; i < 7; i++) {
-    var ymd = ymdCongNgay_(TUAN_BAT_DAU, i);
-    hNgay += '<div class="chip" data-gt="' + ymd + '">' + tenThu_(ymd) +
-      '<span class="ngay-so">' + fmtDDMM_(ymd) + '</span></div>';
-  }
-  $('modalDsNgay').innerHTML = hNgay;
-  MODAL_NGAY_CHON = {};
-  veChonNhieuNgay_();
-
-  var hCa = '<div class="chip" data-gt="CA" aria-pressed="true">Cả 2 ca</div><div class="chip" data-gt="N">Ca ngày</div>';
-  if (coCaDem) hCa += '<div class="chip" data-gt="D">Ca đêm</div>';
-  else hCa = '<div class="chip" data-gt="N" aria-pressed="true">Ca ngày</div>'; // tổ không có ca đêm thì khỏi hỏi
-  $('modalDsCa').innerHTML = hCa;
-  MODAL_CA_CHON = coCaDem ? 'CA' : 'N';
-
-  var dsLyDo = DATA.lyDoDongMay || [];
-  $('modalLyDo').innerHTML = dsLyDo.map(function (l) {
-    return '<option value="' + thoat(l) + '">' + thoat(l) + '</option>';
-  }).join('');
-  $('modalGhiChu').value = '';
-
-  hien('modalDong');
-}
-
-function chonChip_(idNhom, giaTri) {
-  Array.prototype.forEach.call($(idNhom).querySelectorAll('.chip'), function (c) {
-    c.setAttribute('aria-pressed', String(c.dataset.gt === giaTri));
-  });
-}
-
-/** Vẽ lại trạng thái nhấn của các chip ngày theo MODAL_NGAY_CHON (chọn được nhiều). */
-function veChonNhieuNgay_() {
-  Array.prototype.forEach.call($('modalDsNgay').querySelectorAll('.chip'), function (c) {
-    c.setAttribute('aria-pressed', String(!!MODAL_NGAY_CHON[c.dataset.gt]));
-  });
-}
-
-$('modalApDung').addEventListener('click', function (ev) {
-  var nut = ev.target.closest('.chip');
-  if (!nut) return;
-  MODAL_AP_DUNG = nut.dataset.gt;
-  chonChip_('modalApDung', MODAL_AP_DUNG);
-  MODAL_AP_DUNG === 'TUAN' ? an('modalChonNgay') : hien('modalChonNgay');
-});
-$('modalDsNgay').addEventListener('click', function (ev) {
-  var nut = ev.target.closest('.chip');
-  if (!nut) return;
-  var ymd = nut.dataset.gt;
-  MODAL_NGAY_CHON[ymd] = !MODAL_NGAY_CHON[ymd]; // bấm lần nữa để bỏ chọn
-  veChonNhieuNgay_();
-});
-$('modalDsCa').addEventListener('click', function (ev) {
-  var nut = ev.target.closest('.chip');
-  if (!nut) return;
-  MODAL_CA_CHON = nut.dataset.gt;
-  chonChip_('modalDsCa', MODAL_CA_CHON);
-});
-$('modalHuy').addEventListener('click', function () { an('modalDong'); });
-
-$('modalXacNhan').addEventListener('click', function () {
-  var lyDo = $('modalLyDo').value;
-  var ghiChu = $('modalGhiChu').value.trim();
-  if (!lyDo) return alert('Vui lòng chọn lý do.');
-  if (lyDo === 'Khác' && !ghiChu) return alert('Chọn lý do "Khác" thì phải nhập ghi chú.');
-
-  var coCaDem = !!(DATA.lich && DATA.lich.Co_Ca_Dem);
-  var dsNgayApDung;
-
-  if (MODAL_AP_DUNG === 'TUAN') {
-    dsNgayApDung = [];
-    for (var i = 0; i < 7; i++) dsNgayApDung.push(ymdCongNgay_(TUAN_BAT_DAU, i));
-  } else {
-    dsNgayApDung = Object.keys(MODAL_NGAY_CHON).filter(function (k) { return MODAL_NGAY_CHON[k]; });
-    if (!dsNgayApDung.length) return alert('Vui lòng chọn ít nhất 1 ngày.');
-  }
-
-  var dsSlot = [];
-  dsNgayApDung.forEach(function (ymd) {
-    var caCuaNgay = MODAL_AP_DUNG === 'TUAN' ? 'CA' : MODAL_CA_CHON;
-    if (caCuaNgay === 'N' || caCuaNgay === 'CA') dsSlot.push({ ngay: ymd, ca: 'N' });
-    if (coCaDem && (caCuaNgay === 'D' || caCuaNgay === 'CA')) dsSlot.push({ ngay: ymd, ca: 'D' });
-  });
-
-  // "Cả tuần" THAY HẲN toàn bộ ngoại lệ của (các) máy (khai lại từ đầu cho cả
-  // tuần). "Chọn ngày cụ thể" chỉ GHI ĐÈ đúng những (ngày, ca) vừa chọn, GIỮ
-  // NGUYÊN các ngày/ca khác đã khai từ lượt "Sửa" trước đó — nhờ vậy khai được
-  // kiểu "T2-T6 chỉ ca ngày, lý do A" rồi "Sửa" thêm "Chủ nhật cả 2 ca, lý do
-  // B" qua 2 lượt riêng mà không mất lượt đầu. Áp GIỐNG HỆT logic này cho từng
-  // máy trong DS_MAY_DANG_MO khi mở modal cho nhiều máy cùng lúc (bước 7b).
-  DS_MAY_DANG_MO.forEach(function (maMay) {
-    var hienCo = MODAL_AP_DUNG === 'TUAN' ? [] : (NGOAI_LE[maMay] || []);
-    var theoKhoa = {};
-    hienCo.forEach(function (nl) { theoKhoa[nl.ngay + '|' + nl.ca] = nl; });
-    dsSlot.forEach(function (s) {
-      theoKhoa[s.ngay + '|' + s.ca] = { maMay: maMay, ngay: s.ngay, ca: s.ca, lyDo: lyDo, ghiChu: ghiChu };
-    });
-    NGOAI_LE[maMay] = Object.keys(theoKhoa).map(function (k) { return theoKhoa[k]; });
-  });
-  DA_THAY_DOI = true;
-
-  // Đóng hàng loạt xong thì bỏ chọn, tránh nhầm sang thao tác kế tiếp.
-  if (DS_MAY_DANG_MO.length > 1) MAY_DA_CHON = {};
-
-  an('modalDong');
-  veLaiDanhSachMay_();
-});
-
-/** Xoá ĐÚNG MỘT dòng đóng máy (máy, ngày, ca) — các dòng khác của máy giữ nguyên. Chưa ghi lên server. */
-function xoaDongNgoaiLe(maMay, ngay, ca) {
-  var conLai = (NGOAI_LE[maMay] || []).filter(function (nl) { return !(nl.ngay === ngay && nl.ca === ca); });
-  if (conLai.length) NGOAI_LE[maMay] = conLai; else delete NGOAI_LE[maMay];
-  DA_THAY_DOI = true;
-  veLaiDanhSachMay_();
-}
-
-/** Bỏ tăng ca của MỘT ngày cho một máy. Chưa ghi lên server. */
-function xoaNgayTangCa(maMay, ymd) {
-  if (!TANG_CA[maMay]) return;
-  delete TANG_CA[maMay][ymd];
-  if (!Object.keys(TANG_CA[maMay]).length) delete TANG_CA[maMay];
-  DA_THAY_DOI = true;
-  veLaiDanhSachMay_();
-}
-
-function boTriLai(maMay) {
-  if (!NGOAI_LE[maMay] || !NGOAI_LE[maMay].length) return;
-  delete NGOAI_LE[maMay];
-  DA_THAY_DOI = true;
-  veLaiDanhSachMay_();
-}
-
-// ===========================================================================
-// Thao tác nhanh CHỦ NHẬT — áp cho TẤT CẢ máy cùng lúc. Chủ nhật thường nghỉ
-// (mục 7 kế hoạch: không hard-code Chủ nhật = nghỉ), nhưng trễ đơn hàng thì
-// cần bật lại nhanh cả ngày lẫn đêm cho toàn bộ máy, không phải bấm từng máy.
-// ===========================================================================
-var MODAL_CN_CA = 'CA';
-
-$('nutDongCN').addEventListener('click', function () {
-  var coCaDem = !!(DATA.lich && DATA.lich.Co_Ca_Dem);
-  var hCa = '<div class="chip" data-gt="CA" aria-pressed="true">Cả 2 ca</div><div class="chip" data-gt="N">Ca ngày</div>';
-  if (coCaDem) hCa += '<div class="chip" data-gt="D">Ca đêm</div>';
-  else hCa = '<div class="chip" data-gt="N" aria-pressed="true">Ca ngày</div>';
-  $('modalCNDsCa').innerHTML = hCa;
-  MODAL_CN_CA = coCaDem ? 'CA' : 'N';
-
-  var dsLyDo = DATA.lyDoDongMay || [];
-  $('modalCNLyDo').innerHTML = dsLyDo.map(function (l) {
-    return '<option value="' + thoat(l) + '">' + thoat(l) + '</option>';
-  }).join('');
-  $('modalCNGhiChu').value = '';
-
-  hien('modalCN');
-});
-$('modalCNDsCa').addEventListener('click', function (ev) {
-  var nut = ev.target.closest('.chip');
-  if (!nut) return;
-  MODAL_CN_CA = nut.dataset.gt;
-  chonChip_('modalCNDsCa', MODAL_CN_CA);
-});
-$('modalCNHuy').addEventListener('click', function () { an('modalCN'); });
-
-$('modalCNXacNhan').addEventListener('click', function () {
-  var lyDo = $('modalCNLyDo').value;
-  var ghiChu = $('modalCNGhiChu').value.trim();
-  if (!lyDo) return alert('Vui lòng chọn lý do.');
-  if (lyDo === 'Khác' && !ghiChu) return alert('Chọn lý do "Khác" thì phải nhập ghi chú.');
-
-  var coCaDem = !!(DATA.lich && DATA.lich.Co_Ca_Dem);
-  var ngayCN = ymdCongNgay_(TUAN_BAT_DAU, 6);
-  var caApDung = [];
-  if (MODAL_CN_CA === 'N' || MODAL_CN_CA === 'CA') caApDung.push('N');
-  if (coCaDem && (MODAL_CN_CA === 'D' || MODAL_CN_CA === 'CA')) caApDung.push('D');
-
-  // Ghi đè đúng (Chủ nhật, ca đã chọn) cho MỌI máy — giữ nguyên các ngày khác
-  // đã khai riêng cho từng máy, đúng lối cộng dồn của modal đóng 1 máy.
-  (DATA.may || []).forEach(function (m) {
-    var theoKhoa = {};
-    (NGOAI_LE[m.maMay] || []).forEach(function (nl) { theoKhoa[nl.ngay + '|' + nl.ca] = nl; });
-    caApDung.forEach(function (ca) {
-      theoKhoa[ngayCN + '|' + ca] = { maMay: m.maMay, ngay: ngayCN, ca: ca, lyDo: lyDo, ghiChu: ghiChu };
-    });
-    NGOAI_LE[m.maMay] = Object.keys(theoKhoa).map(function (k) { return theoKhoa[k]; });
-  });
-
-  DA_THAY_DOI = true;
-  an('modalCN');
-  veLaiDanhSachMay_();
-});
-
-$('nutMoCN').addEventListener('click', function () {
-  if (!confirm('Bố trí chạy Chủ nhật cho TẤT CẢ máy trong tuần này? Các ngày khác không bị ảnh hưởng.')) return;
-
-  var ngayCN = ymdCongNgay_(TUAN_BAT_DAU, 6);
-  (DATA.may || []).forEach(function (m) {
-    var conLai = (NGOAI_LE[m.maMay] || []).filter(function (nl) { return nl.ngay !== ngayCN; });
-    if (conLai.length) NGOAI_LE[m.maMay] = conLai; else delete NGOAI_LE[m.maMay];
-  });
-
-  DA_THAY_DOI = true;
-  veLaiDanhSachMay_();
-});
-
-// ===========================================================================
-// Thao tác hàng loạt — bước 7b: cả tuần cho TOÀN BỘ máy, và cho nhóm ĐÃ CHỌN
-// ===========================================================================
-$('nutBoTriTatCa').addEventListener('click', function () {
-  if (!confirm('Bố trí chạy cả tuần cho TẤT CẢ máy của tổ? Xoá hết mọi ngoại lệ đã khai trong tuần này.')) return;
-  NGOAI_LE = {};
-  DA_THAY_DOI = true;
-  veLaiDanhSachMay_();
-});
-
-$('nutDongTatCa').addEventListener('click', function () {
-  moModalDong((DATA.may || []).map(function (m) { return m.maMay; }));
-});
-
-$('nutBoTriDaChon').addEventListener('click', function () {
-  var dsChon = Object.keys(MAY_DA_CHON).filter(function (ma) { return MAY_DA_CHON[ma]; });
-  if (!dsChon.length) return;
-  if (!confirm('Bố trí chạy cả tuần cho ' + dsChon.length + ' máy đã chọn? Xoá hết ngoại lệ đã khai trong tuần này của các máy đó.')) return;
-  dsChon.forEach(function (ma) { delete NGOAI_LE[ma]; });
-  MAY_DA_CHON = {};
-  DA_THAY_DOI = true;
-  veLaiDanhSachMay_();
-});
-
-$('nutDongDaChon').addEventListener('click', function () {
-  var dsChon = Object.keys(MAY_DA_CHON).filter(function (ma) { return MAY_DA_CHON[ma]; });
-  if (!dsChon.length) return alert('Chưa chọn máy nào.');
-  moModalDong(dsChon);
-});
-
-// ===========================================================================
-// Sao chép kế hoạch — copy nguyên trạng thái TỪNG MÁY của 1 ngày sang các
-// ngày đích khác (ghi đè đúng ngày đích, không đụng ngày khác).
-// ===========================================================================
-var SAO_CHEP_SANG_CHON = {}; // { 'yyyy-MM-dd': true, ... }
-
-function veChonSaoChep_() {
-  var hTu = '', hSang = '';
-  for (var i = 0; i < 7; i++) {
-    var ymd = ymdCongNgay_(TUAN_BAT_DAU, i);
-    hTu += '<option value="' + ymd + '">' + tenThu_(ymd) + ' (' + fmtDDMM_(ymd) + ')</option>';
-    hSang += '<div class="chip" data-gt="' + ymd + '">' + tenThu_(ymd) +
-      '<span class="ngay-so">' + fmtDDMM_(ymd) + '</span></div>';
-  }
-  $('saoChepTu').innerHTML = hTu;
-  $('saoChepSang').innerHTML = hSang;
-  SAO_CHEP_SANG_CHON = {};
-}
-
-$('saoChepSang').addEventListener('click', function (ev) {
-  var nut = ev.target.closest('.chip');
-  if (!nut) return;
-  var ymd = nut.dataset.gt;
-  SAO_CHEP_SANG_CHON[ymd] = !SAO_CHEP_SANG_CHON[ymd];
-  nut.setAttribute('aria-pressed', String(!!SAO_CHEP_SANG_CHON[ymd]));
-});
-
-$('nutSaoChep').addEventListener('click', function () {
-  var ngayNguon = $('saoChepTu').value;
-  var dsNgayDich = Object.keys(SAO_CHEP_SANG_CHON).filter(function (k) { return SAO_CHEP_SANG_CHON[k]; });
-  if (!dsNgayDich.length) return alert('Vui lòng chọn ít nhất 1 ngày đích.');
-  if (!confirm('Sao chép kế hoạch ngày ' + tenThu_(ngayNguon) + ' (' + fmtDDMM_(ngayNguon) +
-    ') sang ' + dsNgayDich.length + ' ngày đã chọn? Kế hoạch cũ của (các) ngày đích sẽ bị thay thế.')) return;
-
-  (DATA.may || []).forEach(function (m) {
-    var slotsNguon = (NGOAI_LE[m.maMay] || []).filter(function (nl) { return nl.ngay === ngayNguon; });
-    var conLai = (NGOAI_LE[m.maMay] || []).filter(function (nl) { return dsNgayDich.indexOf(nl.ngay) === -1; });
-    var moiChepSang = [];
-    dsNgayDich.forEach(function (ngayDich) {
-      slotsNguon.forEach(function (nl) {
-        moiChepSang.push({ maMay: m.maMay, ngay: ngayDich, ca: nl.ca, lyDo: nl.lyDo, ghiChu: nl.ghiChu });
-      });
-    });
-    var ketQua = conLai.concat(moiChepSang);
-    if (ketQua.length) NGOAI_LE[m.maMay] = ketQua; else delete NGOAI_LE[m.maMay];
-
-    // Tăng ca đi theo ngày nguồn: ngày đích lấy đúng trạng thái tăng ca của ngày nguồn.
-    // Ngày đích nào máy bị đóng ca ngày (vừa chép sang) thì bị dọn ở lần vẽ lại kế tiếp.
-    var nguonCoTangCa = !!(TANG_CA[m.maMay] && TANG_CA[m.maMay][ngayNguon]);
-    dsNgayDich.forEach(function (ngayDich) {
-      if (nguonCoTangCa) (TANG_CA[m.maMay] = TANG_CA[m.maMay] || {})[ngayDich] = true;
-      else if (TANG_CA[m.maMay]) delete TANG_CA[m.maMay][ngayDich];
-    });
-  });
-
-  DA_THAY_DOI = true;
-  veLaiDanhSachMay_();
-});
-
-// ===========================================================================
-// Tăng ca theo máy-ngày — áp cho MỘT máy, nhóm máy ĐÃ CHỌN, hoặc TẤT CẢ máy.
-// Chỉ ca ngày. Máy đang đóng ca ngày của ngày nào thì ngày đó bị BỎ QUA và báo lại.
-// ===========================================================================
-var DS_MAY_TANG_CA = [];
-var TC_THAO_TAC = 'BAT';
-var TC_NGAY_CHON = {};
-
-function moModalTangCa(maMayHoacDs) {
-  DS_MAY_TANG_CA = Array.isArray(maMayHoacDs) ? maMayHoacDs.slice() : [maMayHoacDs];
-
-  if (DS_MAY_TANG_CA.length === 1) {
-    var may = (DATA.may || []).filter(function (m) { return m.maMay === DS_MAY_TANG_CA[0]; })[0];
-    $('tcTieuDe').textContent = 'Tăng ca máy ' + DS_MAY_TANG_CA[0] + (may ? ' — ' + may.tenMay : '');
-  } else if (DS_MAY_TANG_CA.length === (DATA.may || []).length) {
-    $('tcTieuDe').textContent = 'Tăng ca tất cả ' + DS_MAY_TANG_CA.length + ' máy';
-  } else {
-    $('tcTieuDe').textContent = 'Tăng ca ' + DS_MAY_TANG_CA.length + ' máy đã chọn';
-  }
-
-  var g = DATA.gioTangCa || {};
-  var tu = DATA.lich && DATA.lich.Ca_Ngay_Tu ? DATA.lich.Ca_Ngay_Tu : '';
-  $('tcMoTa').textContent = 'Ngày tăng ca, ca ngày kéo dài từ ' + tu + ' đến ' +
-    (g.den ? phutSangGio_(g.den) : '—') +
-    (g.nghiToiTu !== null && g.nghiToiTu !== undefined
-      ? ' (nghỉ tối ' + phutSangGio_(g.nghiToiTu) + '–' + phutSangGio_(g.nghiToiDen) + ')' : '') + '.';
-
-  TC_THAO_TAC = 'BAT';
-  chonChip_('tcThaoTac', TC_THAO_TAC);
-
-  var h = '';
-  for (var i = 0; i < 7; i++) {
-    var ymd = ymdCongNgay_(TUAN_BAT_DAU, i);
-    h += '<div class="chip" data-gt="' + ymd + '">' + tenThu_(ymd) +
-      '<span class="ngay-so">' + fmtDDMM_(ymd) + '</span></div>';
-  }
-  $('tcDsNgay').innerHTML = h;
-  TC_NGAY_CHON = {};
-  veChonNgayTangCa_();
-
-  hien('modalTangCa');
-}
-
-function veChonNgayTangCa_() {
-  Array.prototype.forEach.call($('tcDsNgay').querySelectorAll('.chip'), function (c) {
-    c.setAttribute('aria-pressed', String(!!TC_NGAY_CHON[c.dataset.gt]));
-  });
-}
-
-$('tcThaoTac').addEventListener('click', function (ev) {
-  var nut = ev.target.closest('.chip');
-  if (!nut) return;
-  TC_THAO_TAC = nut.dataset.gt;
-  chonChip_('tcThaoTac', TC_THAO_TAC);
-});
-$('tcDsNgay').addEventListener('click', function (ev) {
-  var nut = ev.target.closest('.chip');
-  if (!nut) return;
-  TC_NGAY_CHON[nut.dataset.gt] = !TC_NGAY_CHON[nut.dataset.gt];
-  veChonNgayTangCa_();
-});
-$('tcChonCaTuan').addEventListener('click', function () {
-  for (var i = 0; i < 7; i++) TC_NGAY_CHON[ymdCongNgay_(TUAN_BAT_DAU, i)] = true;
-  veChonNgayTangCa_();
-});
-$('tcHuy').addEventListener('click', function () { an('modalTangCa'); });
-
-$('tcXacNhan').addEventListener('click', function () {
-  var dsNgay = Object.keys(TC_NGAY_CHON).filter(function (k) { return TC_NGAY_CHON[k]; });
-  if (!dsNgay.length) return alert('Vui lòng chọn ít nhất 1 ngày.');
-
-  var boQua = 0;
-  DS_MAY_TANG_CA.forEach(function (ma) {
-    dsNgay.forEach(function (ymd) {
-      if (TC_THAO_TAC === 'BAT') {
-        if (dangDongCaNgay_(ma, ymd)) { boQua++; return; }
-        (TANG_CA[ma] = TANG_CA[ma] || {})[ymd] = true;
-      } else if (TANG_CA[ma]) {
-        delete TANG_CA[ma][ymd];
-        if (!Object.keys(TANG_CA[ma]).length) delete TANG_CA[ma];
-      }
-    });
-  });
-  DA_THAY_DOI = true;
-
-  if (DS_MAY_TANG_CA.length > 1) MAY_DA_CHON = {};
-  an('modalTangCa');
-  veLaiDanhSachMay_();
-  if (boQua) {
-    alert('Đã bỏ qua ' + boQua + ' lượt (máy-ngày) vì máy đang đóng ca ngày đó. ' +
-      'Muốn tăng ca thì bấm "Bố trí lại" cho máy đó trước.');
-  }
-});
-
-$('nutTangCaTatCa').addEventListener('click', function () {
-  moModalTangCa((DATA.may || []).map(function (m) { return m.maMay; }));
-});
-$('nutTangCaDaChon').addEventListener('click', function () {
-  var dsChon = Object.keys(MAY_DA_CHON).filter(function (ma) { return MAY_DA_CHON[ma]; });
-  if (!dsChon.length) return alert('Chưa chọn máy nào.');
-  moModalTangCa(dsChon);
-});
-
-// ===========================================================================
-// Về giữa ca — tổ trưởng ghi công nhân xin về. Ghi THẲNG lên server (RPC riêng),
-// không đi qua "Lưu kế hoạch tuần", nên sau khi ghi chỉ nạp lại danh sách này,
-// KHÔNG nạp lại NGOAI_LE/TANG_CA (đang chỉnh dở, chưa lưu).
-// ===========================================================================
-var VGC_MAY = {};        // { MA_MAY: true } máy đang chọn trong modal
-var VGC_CA = 'N';
-var VGC_LYDO = '';
-var VGC_KHOA_RQ = '';    // requestId của lần mở modal hiện tại — bấm đúp không ghi hai lần
-
-function homNayYMD_() { return fmtYMD_(new Date()); }
-function gioHienTai_() {
-  var d = new Date();
-  return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
-}
-
-/** Các ngày của tuần đang xem mà đã tới (<= hôm nay) — không ghi về giữa ca cho ngày chưa tới. */
-function dsNgayVeGiuaCa_() {
-  var homNay = homNayYMD_(), ds = [];
-  for (var i = 0; i < 7; i++) {
-    var ymd = ymdCongNgay_(TUAN_BAT_DAU, i);
-    if (ymd <= homNay) ds.push(ymd);
-  }
-  return ds;
-}
-
-function veDsVeGiuaCa_() {
-  var h = VE_GIUA_CA.slice().sort(function (a, b) {
-    return (a.ngay + a.gioVe).localeCompare(b.ngay + b.gioVe);
-  }).map(function (v) {
-    var may = (DATA.may || []).filter(function (m) { return m.maMay === v.maMay; })[0];
-    return '<div class="may-dong" style="padding:10px 12px">' +
-      '<div class="may-ma">' + thoat(v.maMay) + (may ? ' — ' + thoat(may.tenMay) : '') + '</div>' +
-      '<div class="ngoai-le-dong">' + tenThu_(v.ngay) + ' (' + fmtDDMM_(v.ngay) + '), ' +
-        (TEN_CA[v.ca] || v.ca) + ' — về ' + thoat(v.gioVe) +
-        (v.gioQuayLai ? ', quay lại ' + thoat(v.gioQuayLai) : ' đến hết ca') +
-        ' — ' + thoat(v.lyDo) + '</div>' +
-      '<div class="may-nut-hang">' +
-        '<button class="nut phu" style="flex:1" onclick="moQuayLai(\'' + v.maMay + '\',\'' + v.ngay + '\',\'' + v.ca + '\')">Quay lại…</button>' +
-        '<button class="nut phu" style="flex:1" onclick="huyVeGiuaCa_(\'' + v.maMay + '\',\'' + v.ngay + '\',\'' + v.ca + '\')">Huỷ</button>' +
-      '</div></div>';
-  }).join('');
-  $('cDsVeGiuaCa').innerHTML = h;
-}
-
-/** Nạp lại RIÊNG danh sách về giữa ca từ server, không đụng NGOAI_LE / TANG_CA. */
-function napLaiVeGiuaCa_() {
+/**
+ * Lưu TOÀN BỘ trạng thái tuần lên server rồi nạp lại từ server (nguồn thật). Mỗi lần lưu dùng
+ * requestId MỚI. Thất bại thì khôi phục bản chụp trước khi sửa, để màn hình không lệch với server.
+ */
+function luuTuan_(banChup, khiXong) {
+  damBaoKhongChong_();
+  var dsGui = [], dsTang = [], dsDem = [];
+  Object.keys(NGOAI_LE).forEach(function (ma) { NGOAI_LE[ma].forEach(function (nl) { dsGui.push(nl); }); });
+  Object.keys(TANG_CA).forEach(function (ma) { Object.keys(TANG_CA[ma]).forEach(function (ymd) { dsTang.push({ maMay: ma, ngay: ymd }); }); });
+  Object.keys(CHAY_DEM).forEach(function (ma) { Object.keys(CHAY_DEM[ma]).forEach(function (ymd) { dsDem.push({ maMay: ma, ngay: ymd }); }); });
+
+  hien('manLuu');
   var tuan = TUAN_BAT_DAU;
   google.script.run
     .withSuccessHandler(function (kq) {
-      if (tuan !== TUAN_BAT_DAU || !kq || !kq.ok) return;
-      VE_GIUA_CA = kq.veGiuaCa || [];
-      veLaiDanhSachMay_(); // vẽ lại danh sách lượt + thẻ máy từ trạng thái đang chỉnh (không mất thay đổi chưa lưu)
-      veLaiDsMayVgc_();
-    })
-    .layKeHoachTuan(BO_PHAN, TOKEN, tuan);
-}
-
-function moModalVeGiuaCa(dsMayChon) {
-  var dsNgay = dsNgayVeGiuaCa_();
-  if (!dsNgay.length) return alert('Tuần này chưa tới, chưa có ngày nào để ghi về giữa ca.');
-
-  var homNay = homNayYMD_();
-  $('vgcNgay').innerHTML = dsNgay.map(function (ymd) {
-    return '<option value="' + ymd + '">' + tenThu_(ymd) + ' (' + fmtDDMM_(ymd) + ')' +
-      (ymd === homNay ? ' — hôm nay' : '') + '</option>';
-  }).join('');
-  $('vgcNgay').value = dsNgay.indexOf(homNay) !== -1 ? homNay : dsNgay[dsNgay.length - 1];
-
-  var coCaDem = !!(DATA.lich && DATA.lich.Co_Ca_Dem);
-  (coCaDem ? hien : an)('vgcKhoiCa');
-  VGC_CA = 'N';
-  chonChip_('vgcCa', VGC_CA);
-
-  var dsLyDo = DATA.lyDoVeGiuaCa || [];
-  VGC_LYDO = dsLyDo[0] || '';
-  $('vgcLyDo').innerHTML = dsLyDo.map(function (l) {
-    return '<div class="chip" data-gt="' + thoat(l) + '" aria-pressed="' + (l === VGC_LYDO) + '">' + thoat(l) + '</div>';
-  }).join('');
-
-  $('vgcGioVe').value = $('vgcNgay').value === homNay ? gioHienTai_() : '';
-
-  VGC_MAY = {};
-  (dsMayChon || []).forEach(function (ma) { VGC_MAY[ma] = true; });
-  $('vgcTim').value = '';
-  VGC_KHOA_RQ = 'vgc-' + Date.now();
-  hien('modalVeGiuaCa'); // hiện TRƯỚC khi vẽ: veLaiDsMayVgc_ bỏ qua khi modal còn ẩn
-  veLaiDsMayVgc_();
-}
-
-/** Vẽ danh sách máy trong modal. Máy đang đóng đúng ngày+ca đang chọn thì khoá, kèm lý do. */
-function veLaiDsMayVgc_() {
-  if ($('modalVeGiuaCa').classList.contains('an')) return;
-  var ngay = $('vgcNgay').value;
-  var tk = chuanHoaTimKiem_($('vgcTim').value);
-  var dsMay = (DATA.may || []).slice().sort(function (a, b) { return a.maMay.localeCompare(b.maMay); })
-    .filter(function (m) {
-      return !tk || chuanHoaTimKiem_(m.maMay).indexOf(tk) !== -1 || chuanHoaTimKiem_(m.tenMay).indexOf(tk) !== -1;
-    });
-
-  $('vgcDsMay').innerHTML = dsMay.map(function (m) {
-    var dong = dangDongCaNgayCa_(m.maMay, ngay, VGC_CA);
-    var tangCaThayDem = VGC_CA === 'D' && !!(TANG_CA[m.maMay] && TANG_CA[m.maMay][ngay]);
-    var daGhi = VE_GIUA_CA.some(function (v) { return v.maMay === m.maMay && v.ngay === ngay && v.ca === VGC_CA; });
-    var khoa = dong || tangCaThayDem;
-    if (khoa) delete VGC_MAY[m.maMay];
-    return '<label style="display:flex;align-items:center;gap:8px;padding:7px 0;' + (khoa ? 'opacity:.5;' : '') + '">' +
-      '<input type="checkbox" class="vgc-may" data-ma="' + m.maMay + '"' +
-        (VGC_MAY[m.maMay] ? ' checked' : '') + (khoa ? ' disabled' : '') + '>' +
-      '<span>' + thoat(m.maMay) + ' — ' + thoat(m.tenMay) + '</span>' +
-      (dong ? '<span class="nho">(đang đóng — bố trí lại trước)</span>' : '') +
-      (tangCaThayDem ? '<span class="nho">(đang tăng ca ngày này — không chạy ca đêm)</span>' : '') +
-      (daGhi && !khoa ? '<span class="nho">(đã ghi — ghi lại sẽ cập nhật)</span>' : '') +
-      '</label>';
-  }).join('') || '<div class="nho" style="padding:8px 0">Không có máy nào khớp.</div>';
-
-  var n = Object.keys(VGC_MAY).filter(function (k) { return VGC_MAY[k]; }).length;
-  $('vgcDemChon').textContent = n ? 'Đã chọn ' + n + ' máy' : 'Chưa chọn máy nào';
-}
-
-/** Máy có đang đóng đúng (ngày, ca) này theo trạng thái đang chỉnh ở màn hình không. */
-function dangDongCaNgayCa_(maMay, ymd, ca) {
-  return (NGOAI_LE[maMay] || []).some(function (nl) { return nl.ngay === ymd && nl.ca === ca; });
-}
-
-$('nutVeGiuaCa').addEventListener('click', function () { moModalVeGiuaCa([]); });
-$('nutVeGiuaCaDaChon').addEventListener('click', function () {
-  var dsChon = Object.keys(MAY_DA_CHON).filter(function (ma) { return MAY_DA_CHON[ma]; });
-  if (!dsChon.length) return alert('Chưa chọn máy nào.');
-  moModalVeGiuaCa(dsChon);
-});
-$('vgcNgay').addEventListener('change', function () {
-  $('vgcGioVe').value = this.value === homNayYMD_() ? gioHienTai_() : '';
-  veLaiDsMayVgc_();
-});
-$('vgcCa').addEventListener('click', function (ev) {
-  var nut = ev.target.closest('.chip');
-  if (!nut) return;
-  VGC_CA = nut.dataset.gt;
-  chonChip_('vgcCa', VGC_CA);
-  veLaiDsMayVgc_();
-});
-$('vgcLyDo').addEventListener('click', function (ev) {
-  var nut = ev.target.closest('.chip');
-  if (!nut) return;
-  VGC_LYDO = nut.dataset.gt;
-  chonChip_('vgcLyDo', VGC_LYDO);
-});
-$('vgcTim').addEventListener('input', veLaiDsMayVgc_);
-$('vgcDsMay').addEventListener('change', function (ev) {
-  var cb = ev.target.closest('.vgc-may');
-  if (!cb) return;
-  if (cb.checked) VGC_MAY[cb.dataset.ma] = true; else delete VGC_MAY[cb.dataset.ma];
-  var n = Object.keys(VGC_MAY).filter(function (k) { return VGC_MAY[k]; }).length;
-  $('vgcDemChon').textContent = n ? 'Đã chọn ' + n + ' máy' : 'Chưa chọn máy nào';
-});
-$('vgcHuy').addEventListener('click', function () { an('modalVeGiuaCa'); });
-
-$('vgcXacNhan').addEventListener('click', function () {
-  var dsMay = Object.keys(VGC_MAY).filter(function (k) { return VGC_MAY[k]; });
-  if (!dsMay.length) return alert('Vui lòng chọn ít nhất 1 máy.');
-  if (!VGC_LYDO) return alert('Vui lòng chọn lý do.');
-  if (!$('vgcGioVe').value) return alert('Vui lòng nhập giờ về.');
-
-  var nut = this;
-  nut.disabled = true;
-  nut.textContent = 'Đang ghi…';
-  var khoaRq = VGC_KHOA_RQ;
-
-  google.script.run
-    .withSuccessHandler(function (kq) {
-      nut.disabled = false;
-      nut.textContent = 'Ghi về giữa ca';
-      if (!kq || !kq.ok) return alert('Lỗi: ' + ((kq && kq.error) || 'không ghi được.'));
-      an('modalVeGiuaCa');
-      napLaiVeGiuaCa_();
-      var tong = (kq.ketQua || []).reduce(function (s, r) { return s + r.phutMat; }, 0);
-      alert('Đã ghi ' + (kq.ketQua ? kq.ketQua.length : dsMay.length) + ' máy về giữa ca' +
-        (kq.ketQua ? ' — tổng ' + tong + ' phút máy không chạy.' : '.'));
+      an('manLuu');
+      if (!kq || !kq.ok) {
+        khoiPhuc_(banChup);
+        alert('Chưa lưu được: ' + ((kq && kq.error) || 'lỗi không rõ') + '\nThay đổi vừa rồi đã được huỷ, bạn thử lại nhé.');
+        return khiXong && khiXong(false);
+      }
+      taiKeHoachTuan_(tuan, true, function () { khiXong && khiXong(true); });
     })
     .withFailureHandler(function (e) {
-      nut.disabled = false;
-      nut.textContent = 'Ghi về giữa ca';
-      alert('Lỗi: ' + e.message);
+      an('manLuu');
+      khoiPhuc_(banChup);
+      alert('Chưa lưu được: ' + e.message + '\nThay đổi vừa rồi đã được huỷ, bạn thử lại nhé.');
+      khiXong && khiXong(false);
     })
-    .ghiVeGiuaCa(BO_PHAN, TOKEN, {
-      requestId: khoaRq,
-      ngay: $('vgcNgay').value,
-      ca: VGC_CA,
-      lyDo: VGC_LYDO,
-      gioVe: $('vgcGioVe').value,
-      dsMay: dsMay,
+    .luuKeHoachTuan(BO_PHAN, TOKEN, {
+      tuanBatDau: tuan, requestId: 'RQ-' + Date.now() + '-' + Math.random().toString(36).slice(2, 10),
+      ngoaiLe: dsGui, tangCa: dsTang, chayDem: dsDem,
     });
+}
+function chup_() { return JSON.stringify({ n: NGOAI_LE, t: TANG_CA, d: CHAY_DEM }); }
+function khoiPhuc_(s) { var o = JSON.parse(s); NGOAI_LE = o.n; TANG_CA = o.t; CHAY_DEM = o.d; }
+
+/** Sửa trạng thái rồi lưu ngay. sua() là hàm thay đổi NGOAI_LE / TANG_CA / CHAY_DEM. */
+function suaVaLuu_(sua, loiNhan, khiXong) {
+  var ban = chup_();
+  sua();
+  luuTuan_(ban, function (thanhCong) {
+    if (thanhCong && loiNhan) toast_(loiNhan);
+    if (khiXong) khiXong(thanhCong);
+  });
+}
+
+// ===========================================================================
+// Điều hướng giữa các màn hình
+// ===========================================================================
+var MAN = ['manHome', 'manBuoc', 'manKeHoach', 'manKhac'];
+function chuyenMan_(ten) {
+  MAN.forEach(an); an('thanhDuoiBuoc');
+  hien(ten);
+  if (ten === 'manBuoc') hien('thanhDuoiBuoc');
+  window.scrollTo(0, 0);
+}
+
+function vaoTuan_() {
+  $('hTenTo').textContent = 'TỔ ' + TEN_TO.toUpperCase();
+  $('hNhanTuan').textContent = 'Tuần ' + fmtDDMM_(TUAN_BAT_DAU) + ' – ' + fmtDDMM_(ymdCongNgay_(TUAN_BAT_DAU, 6));
+  $('hTomTat').innerHTML = '<div class="nho" style="grid-column:1/-1;text-align:center">Đang tải kế hoạch…</div>';
+  chuyenMan_('manHome');
+  taiKeHoachTuan_(TUAN_BAT_DAU, true, veHome_);
+}
+
+function veHome_() {
+  damBaoKhongChong_();
+  $('hTenTo').textContent = 'TỔ ' + TEN_TO.toUpperCase();
+  $('hNhanTuan').textContent = 'Tuần ' + fmtDDMM_(TUAN_BAT_DAU) + ' – ' + fmtDDMM_(ymdCongNgay_(TUAN_BAT_DAU, 6));
+
+  var g = DATA.gioTangCa || {};
+  $('hMoTaTang').textContent = g.den ? 'Máy chạy ca ngày đến ' + phutSangGio_(g.den) : 'Máy chạy ca ngày lâu hơn';
+  (coCaDem_() ? hien : an)('nutViecDem');
+
+  var soDong = Object.keys(NGOAI_LE).filter(function (ma) { return NGOAI_LE[ma].length; }).length;
+  var soTang = Object.keys(TANG_CA).length;
+  var soDem = Object.keys(CHAY_DEM).length;
+  var o = function (so, nhan, mau) {
+    return '<div class="o"><div class="so" style="color:' + mau + '">' + so + '</div><div class="nhan-nho">' + nhan + '</div></div>';
+  };
+  $('hTomTat').innerHTML =
+    o((DATA.may || []).length, 'máy', 'var(--chu)') +
+    o(soDong, 'máy đóng', 'var(--do)') +
+    o(soTang, 'tăng ca', '#b45309') +
+    (coCaDem_() ? o(soDem, 'ca đêm', '#5e35b1') : '') +
+    o(VE_GIUA_CA.length, 'xin về', 'var(--xanh)');
+
+  $('hBao').innerHTML = DA_KHAI_TUAN ? '' :
+    '<div class="bao vang">Tuần này chưa khai gì — mọi máy tạm chạy ca ngày bình thường.</div>';
+  chuyenMan_('manHome');
+}
+
+// ===========================================================================
+// XEM KẾ HOẠCH TUẦN — gom theo NGÀY
+// ===========================================================================
+function veKeHoach_() {
+  damBaoKhongChong_();
+  $('kTieuDe').textContent = 'Tuần ' + fmtDDMM_(TUAN_BAT_DAU) + ' – ' + fmtDDMM_(ymdCongNgay_(TUAN_BAT_DAU, 6));
+  var h = '';
+  bayNgayCuaTuan_().forEach(function (ymd) {
+    var muc = '';
+
+    // Đóng máy: nhóm theo (ca, lý do, ghi chú)
+    var nhom = {}, thuTu = [];
+    Object.keys(NGOAI_LE).forEach(function (ma) {
+      NGOAI_LE[ma].forEach(function (nl) {
+        if (nl.ngay !== ymd) return;
+        var k = nl.ca + '|' + nl.lyDo + '|' + (nl.ghiChu || '');
+        if (!nhom[k]) { nhom[k] = { ca: nl.ca, lyDo: nl.lyDo, ghiChu: nl.ghiChu, ds: [] }; thuTu.push(k); }
+        nhom[k].ds.push(ma);
+      });
+    });
+    thuTu.forEach(function (k) {
+      var n = nhom[k];
+      muc += '<div class="muc-kh do">🔴 Đóng máy' + (n.ca === 'D' ? ' (ca đêm)' : '') +
+        ' <span class="ly-do">— ' + thoat(n.lyDo) + (n.ghiChu ? ': ' + thoat(n.ghiChu) : '') + '</span></div>' +
+        n.ds.sort().map(function (ma) { return chipMay_('xoa-dong', ma, ymd, n.ca); }).join('');
+    });
+
+    var dsTang = Object.keys(TANG_CA).filter(function (ma) { return TANG_CA[ma][ymd]; }).sort();
+    if (dsTang.length) muc += '<div class="muc-kh cam">⏱ Tăng ca</div>' + dsTang.map(function (ma) { return chipMay_('xoa-tang', ma, ymd, ''); }).join('');
+
+    var dsDem = Object.keys(CHAY_DEM).filter(function (ma) { return CHAY_DEM[ma][ymd]; }).sort();
+    if (dsDem.length) muc += '<div class="muc-kh tim">🌙 Chạy ca đêm</div>' + dsDem.map(function (ma) { return chipMay_('xoa-dem', ma, ymd, ''); }).join('');
+
+    var ve = VE_GIUA_CA.filter(function (v) { return v.ngay === ymd; });
+    if (ve.length) {
+      muc += '<div class="muc-kh xanh">🏠 Có người xin về</div>' + ve.map(function (v) {
+        return '<div class="dong-ve"><span>' + thoat(v.maMay) + (v.ca === 'D' ? ' (ca đêm)' : '') + ' về ' + thoat(v.gioVe) +
+          (v.gioQuayLai ? ', quay lại ' + thoat(v.gioQuayLai) : '') + ' · ' + thoat(v.lyDo) + '</span><span>' +
+          '<button class="nut-nho" type="button" data-act="ql" data-ma="' + thoat(v.maMay) + '" data-ngay="' + ymd + '" data-ca="' + thoat(v.ca) + '">Quay lại</button>' +
+          '<button class="nut-nho" type="button" style="color:var(--do)" data-act="huy-ve" data-ma="' + thoat(v.maMay) + '" data-ngay="' + ymd + '" data-ca="' + thoat(v.ca) + '">Huỷ</button></span></div>';
+      }).join('');
+    }
+    if (muc) h += '<div class="ngay-kh"><div class="tieu-de">' + nhanNgay_(ymd) + '</div>' + muc + '</div>';
+  });
+  $('kNoiDung').innerHTML = h || '<div class="bao xanh">Chưa có gì thay đổi. Tất cả máy chạy ca ngày bình thường.</div>';
+  chuyenMan_('manKeHoach');
+}
+
+function chipMay_(act, ma, ymd, ca) {
+  return '<span class="chip-may">' + thoat(ma) + '<button type="button" aria-label="Xoá ' + thoat(ma) + '" data-act="' + act +
+    '" data-ma="' + thoat(ma) + '" data-ngay="' + ymd + '" data-ca="' + thoat(ca) + '">✕</button></span>';
+}
+
+function xoaMuc_(loai, ma, ymd, ca) {
+  suaVaLuu_(function () {
+    if (loai === 'dong') {
+      var conLai = (NGOAI_LE[ma] || []).filter(function (nl) { return !(nl.ngay === ymd && nl.ca === ca); });
+      if (conLai.length) NGOAI_LE[ma] = conLai; else delete NGOAI_LE[ma];
+    } else {
+      var kho = loai === 'tang' ? TANG_CA : CHAY_DEM;
+      if (kho[ma]) { delete kho[ma][ymd]; if (!Object.keys(kho[ma]).length) delete kho[ma]; }
+    }
+  }, 'Đã xoá', function () { veKeHoach_(); });
+}
+
+// ===========================================================================
+// TỪNG BƯỚC (wizard) — Đóng máy / Tăng ca / Chạy ca đêm / Có người xin về / Sao chép ngày
+// ===========================================================================
+var WZ = null;
+var CAC_BUOC = {
+  DONG: ['ngay', 'may', 'lydo', 'xacnhan'],
+  TANG: ['ngay', 'may', 'xacnhan'],
+  DEM: ['ngay', 'may', 'xacnhan'],
+  VE: ['ngay', 'ca', 'may', 'lydogio', 'xacnhan'],
+  CHEP: ['nguon', 'dich', 'xacnhan'],
+};
+var TEN_VIEC = { DONG: 'Đóng máy', TANG: 'Tăng ca', DEM: 'Chạy ca đêm', VE: 'Có người xin về', CHEP: 'Sao chép ngày' };
+
+function moWizard_(loai, preset) {
+  var dsBuoc = CAC_BUOC[loai].filter(function (b) { return b !== 'ca' || coCaDem_(); });
+  WZ = { loai: loai, dsBuoc: dsBuoc, i: 0, ngay: {}, may: {}, ca: 'N', lyDo: '', ghiChu: '', gioVe: '', nguon: '', tim: '', khoaRq: 'w-' + Date.now() };
+  if (loai === 'VE') {
+    var homNay = homNay_(), dsDaToi = bayNgayCuaTuan_().filter(function (y) { return y <= homNay; });
+    if (!dsDaToi.length) { WZ = null; return alert('Tuần này chưa tới, chưa có ngày nào để ghi.'); }
+    var mac = dsDaToi.indexOf(homNay) !== -1 ? homNay : dsDaToi[dsDaToi.length - 1];
+    WZ.ngay[mac] = true;
+    if (mac === homNay) WZ.gioVe = gioHienTai_();
+  }
+  if (loai === 'CHEP') WZ.nguon = bayNgayCuaTuan_()[0];
+  if (preset) {
+    if (preset.ngay) WZ.ngay = preset.ngay;
+    if (preset.may) WZ.may = preset.may;
+    if (preset.buoc) WZ.i = dsBuoc.indexOf(preset.buoc);
+  }
+  chuyenMan_('manBuoc');
+  veBuoc_();
+}
+
+function ngayDaChon_() { return bayNgayCuaTuan_().filter(function (y) { return WZ.ngay[y]; }); }
+function mayDaChon_() { return Object.keys(WZ.may).filter(function (k) { return WZ.may[k]; }).sort(); }
+
+/** Nhắc nhẹ: máy này khó áp dụng cho các ngày đã chọn (không chặn). */
+function ghiChuMay_(ma) {
+  var dsNgay = ngayDaChon_(), ly = [];
+  if (WZ.loai === 'TANG') {
+    if (dsNgay.some(function (y) { return dangDongN_(ma, y); })) ly.push('có ngày đang đóng');
+    if (dsNgay.some(function (y) { return coDem_(ma, y); })) ly.push('có ngày đang chạy ca đêm');
+  } else if (WZ.loai === 'DEM') {
+    if (dsNgay.some(function (y) { return coTang_(ma, y); })) ly.push('có ngày đang tăng ca');
+  }
+  return ly.join(', ');
+}
+/** Về giữa ca: máy nào KHÔNG chọn được (trả lý do, rỗng = chọn được). */
+function khoaMayVe_(ma) {
+  var y = ngayDaChon_()[0];
+  if (WZ.ca === 'D') return coDem_(ma, y) ? '' : 'không chạy ca đêm ngày này';
+  return dangDongN_(ma, y) ? 'đang đóng' : '';
+}
+
+function veBuoc_() {
+  var b = WZ.dsBuoc[WZ.i], tong = WZ.dsBuoc.length;
+  $('bSoBuoc').textContent = TEN_VIEC[WZ.loai] + ' · bước ' + (WZ.i + 1) + '/' + tong;
+  (WZ.i === 0 ? an : hien)('bNutLui');
+  var nutTiep = $('bNutTiep');
+  nutTiep.textContent = 'Tiếp ›'; nutTiep.classList.remove('do');
+  var h = '';
+
+  if (b === 'ngay' || b === 'nguon' || b === 'dich') {
+    var ds = bayNgayCuaTuan_(), homNay = homNay_(), don = WZ.loai === 'VE' || b === 'nguon';
+    var cauHoi = { DONG: 'Đóng ngày nào?', TANG: 'Tăng ca ngày nào?', DEM: 'Chạy ca đêm ngày nào?', VE: 'Về ngày nào?' }[WZ.loai];
+    if (b === 'nguon') cauHoi = 'Chép từ ngày nào?';
+    if (b === 'dich') cauHoi = 'Chép sang những ngày nào?';
+    h += '<div class="cau-hoi">' + cauHoi + '</div><div class="goi-y">' + (don ? 'Chọn một ngày.' : 'Bấm được nhiều ngày.') + '</div>';
+    h += '<div class="luoi-ngay">' + ds.map(function (y) {
+      var chon = b === 'nguon' ? WZ.nguon === y : !!WZ.ngay[y];
+      var khoa = WZ.loai === 'VE' && y > homNay;
+      return '<button type="button" class="o-ngay" data-act="ngay" data-ymd="' + y + '" aria-pressed="' + chon + '"' + (khoa ? ' disabled' : '') + '>' +
+        tenThu_(y) + '<small>' + fmtDDMM_(y) + '</small></button>';
+    }).join('') + (don ? '' : '<button type="button" class="o-ngay" data-act="ngay-ca-tuan">Cả tuần</button>') + '</div>';
+  } else if (b === 'ca') {
+    h += '<div class="cau-hoi">Ca nào?</div><div class="goi-y">Người xin về thuộc ca ngày hay ca đêm?</div>' +
+      '<button type="button" class="lua-chon" data-act="ca" data-ca="N" aria-pressed="' + (WZ.ca === 'N') + '">☀️ Ca ngày</button>' +
+      '<button type="button" class="lua-chon" data-act="ca" data-ca="D" aria-pressed="' + (WZ.ca === 'D') + '">🌙 Ca đêm</button>';
+  } else if (b === 'may') {
+    var goiY = { DONG: 'Chọn máy cần đóng.', TANG: 'Chọn máy tăng ca.', DEM: 'Chọn máy chạy ca đêm.', VE: 'Chọn máy công nhân đang trông.' }[WZ.loai];
+    h += '<div class="cau-hoi">Máy nào?</div><div class="goi-y">' + goiY + '</div>' +
+      '<input type="text" class="o-tim" id="bTim" placeholder="Tìm máy theo mã hoặc tên…" value="' + thoat(WZ.tim) + '">' +
+      '<div class="hang-tt"><span id="bDem"></span><button type="button" data-act="may-tat-ca" id="bNutTatCa">Chọn tất cả</button></div>' +
+      '<div class="the" style="padding:0 10px" id="bDsMay"></div>';
+  } else if (b === 'lydo') {
+    h += '<div class="cau-hoi">Vì sao đóng máy?</div><div class="goi-y">Chọn một lý do.</div>' +
+      (DATA.lyDoDongMay || []).map(function (l) {
+        return '<button type="button" class="lua-chon" data-act="ly-do" data-v="' + thoat(l) + '" aria-pressed="' + (WZ.lyDo === l) + '">' + thoat(l) + '</button>';
+      }).join('') +
+      '<div id="bKhoiGhiChu" class="' + (WZ.lyDo === 'Khác' ? '' : 'an') + '"><div class="modal-nhan">Ghi chú (bắt buộc khi chọn "Khác")</div>' +
+      '<textarea id="bGhiChu" placeholder="Ví dụ: thợ vận hành nghỉ phép" style="min-height:64px">' + thoat(WZ.ghiChu) + '</textarea></div>';
+  } else if (b === 'lydogio') {
+    h += '<div class="cau-hoi">Lý do và giờ về</div><div class="goi-y">Chọn lý do, nhập giờ công nhân về.</div>' +
+      (DATA.lyDoVeGiuaCa || []).map(function (l) {
+        return '<button type="button" class="lua-chon" data-act="ly-do" data-v="' + thoat(l) + '" aria-pressed="' + (WZ.lyDo === l) + '">' + thoat(l) + '</button>';
+      }).join('') +
+      '<div class="modal-nhan">Giờ về</div><input type="time" class="o-gio" id="bGioVe" value="' + thoat(WZ.gioVe) + '">';
+  } else if (b === 'xacnhan') {
+    h += '<div class="cau-hoi">Kiểm tra lại</div><div class="tom-tat-xn">' + tomTatXacNhan_() + '</div>';
+    nutTiep.textContent = { DONG: 'Xác nhận đóng máy', TANG: 'Xác nhận tăng ca', DEM: 'Xác nhận chạy ca đêm', VE: 'Xác nhận cho về', CHEP: 'Xác nhận sao chép' }[WZ.loai];
+    if (WZ.loai === 'DONG') nutTiep.classList.add('do');
+  }
+  $('bNoiDung').innerHTML = h;
+  if (b === 'may') veDsMayBuoc_();
+  window.scrollTo(0, 0);
+}
+
+function veDsMayBuoc_() {
+  var tk = chuanHoaTimKiem_(WZ.tim);
+  var ds = dsMay_().filter(function (m) {
+    return !tk || chuanHoaTimKiem_(m.maMay).indexOf(tk) !== -1 || chuanHoaTimKiem_(m.tenMay).indexOf(tk) !== -1;
+  });
+  dsMay_().forEach(function (m) { if (WZ.loai === 'VE' && khoaMayVe_(m.maMay)) delete WZ.may[m.maMay]; });
+  $('bDsMay').innerHTML = ds.map(function (m) {
+    var khoa = WZ.loai === 'VE' ? khoaMayVe_(m.maMay) : '';
+    var ghi = khoa || ghiChuMay_(m.maMay);
+    return '<label class="dong-may' + (khoa ? ' khoa' : '') + '"><input type="checkbox" data-ma="' + thoat(m.maMay) + '"' +
+      (WZ.may[m.maMay] ? ' checked' : '') + (khoa ? ' disabled' : '') + '><span>' + thoat(m.maMay) + ' — ' + thoat(m.tenMay) +
+      (ghi ? '<div class="ghi-chu">' + thoat(ghi) + '</div>' : '') + '</span></label>';
+  }).join('') || '<div class="nho" style="padding:14px 4px">Không có máy nào khớp.</div>';
+  var n = mayDaChon_().length;
+  $('bDem').textContent = n ? 'Đã chọn ' + n + ' máy' : 'Chưa chọn máy nào';
+  var hetHienThi = ds.length > 0 && ds.every(function (m) { return WZ.may[m.maMay] || (WZ.loai === 'VE' && khoaMayVe_(m.maMay)); });
+  $('bNutTatCa').textContent = hetHienThi ? 'Bỏ chọn tất cả' : 'Chọn tất cả';
+  WZ.dsHienThi = ds;
+}
+
+function tomTatXacNhan_() {
+  var ngay = ngayDaChon_().map(nhanNgay_).join(', '), may = mayDaChon_();
+  var soMay = may.length + ' máy';
+  if (WZ.loai === 'DONG') {
+    return '<b>Đóng ' + soMay + '</b><br>Ngày: ' + ngay + '<br>Lý do: ' + thoat(WZ.lyDo) + (WZ.ghiChu ? ' (' + thoat(WZ.ghiChu) + ')' : '');
+  }
+  if (WZ.loai === 'TANG' || WZ.loai === 'DEM') {
+    var bo = 0;
+    may.forEach(function (ma) {
+      ngayDaChon_().forEach(function (y) {
+        if (WZ.loai === 'TANG' && (dangDongN_(ma, y) || coDem_(ma, y))) bo++;
+        if (WZ.loai === 'DEM' && coTang_(ma, y)) bo++;
+      });
+    });
+    var g = DATA.gioTangCa || {};
+    return '<b>' + (WZ.loai === 'TANG' ? 'Tăng ca' : 'Chạy ca đêm') + ' ' + soMay + '</b><br>Ngày: ' + ngay +
+      (WZ.loai === 'TANG' && g.den ? '<br>Chạy ca ngày đến ' + phutSangGio_(g.den) : '') +
+      (WZ.loai === 'TANG' ? '<br><span class="nho">Máy tăng ca ngày nào thì không chạy ca đêm ngày đó.</span>'
+        : '<br><span class="nho">Máy chạy ca đêm ngày nào thì không tăng ca ngày đó.</span>') +
+      (bo ? '<br><span style="color:var(--do)">Bỏ qua ' + bo + ' lượt vì ' + (WZ.loai === 'TANG' ? 'máy đang đóng hoặc đang chạy ca đêm' : 'máy đang tăng ca') + '.</span>' : '');
+  }
+  if (WZ.loai === 'VE') {
+    return '<b>' + soMay + ' về giữa ca</b><br>' + ngay + ' · ' + (WZ.ca === 'D' ? 'ca đêm' : 'ca ngày') + '<br>Giờ về: ' + thoat(WZ.gioVe) +
+      '<br>Lý do: ' + thoat(WZ.lyDo) + '<br><span class="nho">Máy tính là không chạy từ giờ về đến hết ca.</span>';
+  }
+  if (WZ.loai === 'CHEP') {
+    return '<b>Sao chép ngày ' + nhanNgay_(WZ.nguon) + '</b><br>Sang: ' + ngay +
+      '<br><span class="nho">Chép đóng máy, tăng ca, chạy ca đêm. Kế hoạch cũ của các ngày đích sẽ bị thay.</span>';
+  }
+  return '';
+}
+
+function kiemTraBuoc_() {
+  var b = WZ.dsBuoc[WZ.i];
+  if (b === 'ngay' && !ngayDaChon_().length) return 'Chọn ít nhất 1 ngày.';
+  if (b === 'dich' && !ngayDaChon_().length) return 'Chọn ít nhất 1 ngày để chép sang.';
+  if (b === 'may' && !mayDaChon_().length) return 'Chọn ít nhất 1 máy.';
+  if (b === 'lydo') {
+    if (!WZ.lyDo) return 'Chọn một lý do.';
+    if (WZ.lyDo === 'Khác' && !WZ.ghiChu.trim()) return 'Chọn "Khác" thì phải ghi chú.';
+  }
+  if (b === 'lydogio') {
+    if (!WZ.lyDo) return 'Chọn một lý do.';
+    if (!WZ.gioVe) return 'Nhập giờ về.';
+  }
+  return '';
+}
+
+function xacNhanWizard_() {
+  var dsNgay = ngayDaChon_(), dsMay = mayDaChon_();
+
+  if (WZ.loai === 'DONG') {
+    return suaVaLuu_(function () {
+      dsMay.forEach(function (ma) {
+        var theoKhoa = {};
+        (NGOAI_LE[ma] || []).forEach(function (nl) { theoKhoa[nl.ngay + '|' + nl.ca] = nl; });
+        dsNgay.forEach(function (y) { theoKhoa[y + '|N'] = { maMay: ma, ngay: y, ca: 'N', lyDo: WZ.lyDo, ghiChu: WZ.ghiChu.trim() }; });
+        NGOAI_LE[ma] = Object.keys(theoKhoa).map(function (k) { return theoKhoa[k]; });
+      });
+    }, 'Đã đóng ' + dsMay.length + ' máy', veHomeSauLuu_);
+  }
+
+  if (WZ.loai === 'TANG' || WZ.loai === 'DEM') {
+    var dem = WZ.loai === 'DEM';
+    return suaVaLuu_(function () {
+      dsMay.forEach(function (ma) {
+        dsNgay.forEach(function (y) {
+          if (!dem && (dangDongN_(ma, y) || coDem_(ma, y))) return;
+          if (dem && coTang_(ma, y)) return;
+          var kho = dem ? CHAY_DEM : TANG_CA;
+          (kho[ma] = kho[ma] || {})[y] = true;
+        });
+      });
+    }, dem ? 'Đã lưu chạy ca đêm' : 'Đã lưu tăng ca', veHomeSauLuu_);
+  }
+
+  if (WZ.loai === 'CHEP') {
+    var nguon = WZ.nguon;
+    return suaVaLuu_(function () {
+      (DATA.may || []).forEach(function (m) {
+        var ma = m.maMay;
+        var slots = (NGOAI_LE[ma] || []).filter(function (nl) { return nl.ngay === nguon; });
+        var conLai = (NGOAI_LE[ma] || []).filter(function (nl) { return dsNgay.indexOf(nl.ngay) === -1; });
+        var moi = [];
+        dsNgay.forEach(function (y) { slots.forEach(function (nl) { moi.push({ maMay: ma, ngay: y, ca: nl.ca, lyDo: nl.lyDo, ghiChu: nl.ghiChu }); }); });
+        var kq = conLai.concat(moi);
+        if (kq.length) NGOAI_LE[ma] = kq; else delete NGOAI_LE[ma];
+        [TANG_CA, CHAY_DEM].forEach(function (kho) {
+          var co = !!(kho[ma] && kho[ma][nguon]);
+          dsNgay.forEach(function (y) {
+            if (co) (kho[ma] = kho[ma] || {})[y] = true; else if (kho[ma]) delete kho[ma][y];
+          });
+          if (kho[ma] && !Object.keys(kho[ma]).length) delete kho[ma];
+        });
+      });
+    }, 'Đã sao chép', veHomeSauLuu_);
+  }
+
+  if (WZ.loai === 'VE') {
+    hien('manLuu');
+    var w = WZ;
+    google.script.run
+      .withSuccessHandler(function (kq) {
+        an('manLuu');
+        if (!kq || !kq.ok) return alert('Chưa ghi được: ' + ((kq && kq.error) || 'lỗi không rõ'));
+        var tong = (kq.ketQua || []).reduce(function (s, r) { return s + r.phutMat; }, 0);
+        toast_('Đã ghi ' + dsMay.length + ' máy về giữa ca' + (kq.ketQua ? ' — mất ' + tong + ' phút' : ''));
+        WZ = null;
+        taiKeHoachTuan_(TUAN_BAT_DAU, true, veHome_);
+      })
+      .withFailureHandler(function (e) { an('manLuu'); alert('Chưa ghi được: ' + e.message); })
+      .ghiVeGiuaCa(BO_PHAN, TOKEN, { requestId: w.khoaRq, ngay: dsNgay[0], ca: w.ca, lyDo: w.lyDo, gioVe: w.gioVe, dsMay: dsMay });
+  }
+}
+function veHomeSauLuu_(thanhCong) { if (thanhCong) { WZ = null; veHome_(); } }
+
+// ===========================================================================
+// Xử lý bấm — uỷ quyền sự kiện cho toàn trang
+// ===========================================================================
+document.addEventListener('click', function (ev) {
+  var el = ev.target.closest('[data-act]');
+  if (!el) return;
+  var act = el.dataset.act;
+
+  switch (act) {
+    case 'home': WZ = null; veHome_(); break;
+    case 'tuan-truoc': TUAN_BAT_DAU = ymdCongNgay_(TUAN_BAT_DAU, -7); vaoTuan_(); break;
+    case 'tuan-sau': TUAN_BAT_DAU = ymdCongNgay_(TUAN_BAT_DAU, 7); vaoTuan_(); break;
+    case 'tuan-nay': TUAN_BAT_DAU = fmtYMD_(thuHaiCuaTuan_(new Date())); vaoTuan_(); break;
+    case 'viec-dong': moWizard_('DONG'); break;
+    case 'viec-tang': moWizard_('TANG'); break;
+    case 'viec-dem': moWizard_('DEM'); break;
+    case 'viec-ve': moWizard_('VE'); break;
+    case 'ke-hoach': veKeHoach_(); break;
+    case 'khac': chuyenMan_('manKhac'); break;
+
+    case 'khac-cn': {
+      var cn = ymdCongNgay_(TUAN_BAT_DAU, 6), hetMay = {}, ng = {};
+      (DATA.may || []).forEach(function (m) { hetMay[m.maMay] = true; });
+      ng[cn] = true;
+      moWizard_('DONG', { ngay: ng, may: hetMay, buoc: 'lydo' });
+      break;
+    }
+    case 'khac-saochep': moWizard_('CHEP'); break;
+    case 'khac-botri':
+      if (!confirm('Bỏ hết đóng máy trong tuần này? Tất cả máy sẽ chạy lại. Tăng ca và ca đêm không bị đổi.')) break;
+      suaVaLuu_(function () { NGOAI_LE = {}; }, 'Đã bỏ hết đóng máy', function (ok) { if (ok) veHome_(); });
+      break;
+
+    case 'wz-huy': WZ = null; veHome_(); break;
+    case 'wz-lui':
+      docTruongNhap_();
+      if (WZ.i > 0) { WZ.i--; veBuoc_(); }
+      break;
+    case 'wz-tiep': {
+      docTruongNhap_();
+      var loi = kiemTraBuoc_();
+      if (loi) return alert(loi);
+      if (WZ.i < WZ.dsBuoc.length - 1) { WZ.i++; veBuoc_(); } else xacNhanWizard_();
+      break;
+    }
+    case 'ngay': {
+      var y = el.dataset.ymd;
+      if (WZ.dsBuoc[WZ.i] === 'nguon') WZ.nguon = y;
+      else if (WZ.loai === 'VE') { WZ.ngay = {}; WZ.ngay[y] = true; if (y === homNay_() && !WZ.gioVe) WZ.gioVe = gioHienTai_(); }
+      else WZ.ngay[y] = !WZ.ngay[y];
+      veBuoc_();
+      break;
+    }
+    case 'ngay-ca-tuan': bayNgayCuaTuan_().forEach(function (y2) { WZ.ngay[y2] = true; }); veBuoc_(); break;
+    case 'ca': WZ.ca = el.dataset.ca; WZ.may = {}; veBuoc_(); break;
+    case 'ly-do': WZ.lyDo = el.dataset.v; veBuoc_(); break;
+    case 'may-tat-ca': {
+      var ds = WZ.dsHienThi || [];
+      var het = ds.length > 0 && ds.every(function (m) { return WZ.may[m.maMay] || (WZ.loai === 'VE' && khoaMayVe_(m.maMay)); });
+      ds.forEach(function (m) {
+        if (WZ.loai === 'VE' && khoaMayVe_(m.maMay)) return;
+        if (het) delete WZ.may[m.maMay]; else WZ.may[m.maMay] = true;
+      });
+      veDsMayBuoc_();
+      break;
+    }
+
+    case 'xoa-dong': xoaMuc_('dong', el.dataset.ma, el.dataset.ngay, el.dataset.ca); break;
+    case 'xoa-tang': xoaMuc_('tang', el.dataset.ma, el.dataset.ngay, ''); break;
+    case 'xoa-dem': xoaMuc_('dem', el.dataset.ma, el.dataset.ngay, ''); break;
+    case 'ql': moQuayLai(el.dataset.ma, el.dataset.ngay, el.dataset.ca); break;
+    case 'huy-ve': huyVe_(el.dataset.ma, el.dataset.ngay, el.dataset.ca); break;
+  }
 });
 
-// --- Giờ quay lại & huỷ -----------------------------------------------------
-var QL_DANG_SUA = null;
+/** Đọc các ô nhập chữ/giờ của bước hiện tại vào WZ trước khi chuyển bước. */
+function docTruongNhap_() {
+  if ($('bGhiChu')) WZ.ghiChu = $('bGhiChu').value;
+  if ($('bGioVe')) WZ.gioVe = $('bGioVe').value;
+}
 
+$('manBuoc').addEventListener('change', function (ev) {
+  var cb = ev.target.closest('input[type="checkbox"][data-ma]');
+  if (!cb) return;
+  if (cb.checked) WZ.may[cb.dataset.ma] = true; else delete WZ.may[cb.dataset.ma];
+  var n = mayDaChon_().length;
+  $('bDem').textContent = n ? 'Đã chọn ' + n + ' máy' : 'Chưa chọn máy nào';
+});
+$('manBuoc').addEventListener('input', function (ev) {
+  if (ev.target.id === 'bTim') { WZ.tim = ev.target.value; veDsMayBuoc_(); }
+  if (ev.target.id === 'bGhiChu') WZ.ghiChu = ev.target.value;
+  if (ev.target.id === 'bGioVe') WZ.gioVe = ev.target.value;
+});
+
+// ===========================================================================
+// Về giữa ca — quay lại / huỷ (ghi thẳng lên server, RPC riêng)
+// ===========================================================================
+var QL_DANG_SUA = null;
 function moQuayLai(maMay, ngay, ca) {
   var v = VE_GIUA_CA.filter(function (x) { return x.maMay === maMay && x.ngay === ngay && x.ca === ca; })[0];
   if (!v) return;
   QL_DANG_SUA = { maMay: maMay, ngay: ngay, ca: ca };
-  $('qlTieuDe').textContent = 'Giờ quay lại — ' + maMay + ' (về ' + v.gioVe + ')';
+  $('qlTieuDe').textContent = maMay + ' về ' + v.gioVe + ' — quay lại lúc?';
   $('qlGio').value = v.gioQuayLai || '';
   hien('modalQuayLai');
 }
 $('qlHuy').addEventListener('click', function () { an('modalQuayLai'); });
 $('qlXacNhan').addEventListener('click', function () {
   if (!QL_DANG_SUA) return;
-  var nut = this;
-  nut.disabled = true;
+  var nut = this; nut.disabled = true;
   google.script.run
     .withSuccessHandler(function (kq) {
       nut.disabled = false;
       if (!kq || !kq.ok) return alert('Lỗi: ' + ((kq && kq.error) || 'không lưu được.'));
       an('modalQuayLai');
-      napLaiVeGiuaCa_();
+      taiKeHoachTuan_(TUAN_BAT_DAU, true, function () { veKeHoach_(); });
     })
     .withFailureHandler(function (e) { nut.disabled = false; alert('Lỗi: ' + e.message); })
     .capNhatQuayLaiVeGiuaCa(BO_PHAN, TOKEN, {
@@ -1387,58 +963,19 @@ $('qlXacNhan').addEventListener('click', function () {
     });
 });
 
-function huyVeGiuaCa_(maMay, ngay, ca) {
+function huyVe_(maMay, ngay, ca) {
   if (!confirm('Huỷ lượt về giữa ca của máy ' + maMay + '?')) return;
+  hien('manLuu');
   google.script.run
     .withSuccessHandler(function (kq) {
+      an('manLuu');
       if (!kq || !kq.ok) return alert('Lỗi: ' + ((kq && kq.error) || 'không huỷ được.'));
-      napLaiVeGiuaCa_();
+      toast_('Đã huỷ');
+      taiKeHoachTuan_(TUAN_BAT_DAU, true, function () { veKeHoach_(); });
     })
-    .withFailureHandler(function (e) { alert('Lỗi: ' + e.message); })
+    .withFailureHandler(function (e) { an('manLuu'); alert('Lỗi: ' + e.message); })
     .huyVeGiuaCa(BO_PHAN, TOKEN, { maMay: maMay, ngay: ngay, ca: ca });
 }
-
-// ===========================================================================
-// Lưu kế hoạch tuần — gộp toàn bộ NGOAI_LE thành 1 lượt gọi luuKeHoachTuan
-// ===========================================================================
-$('nutLuuKeHoach').addEventListener('click', function () {
-  var dsGui = [];
-  Object.keys(NGOAI_LE).forEach(function (ma) {
-    NGOAI_LE[ma].forEach(function (nl) { dsGui.push(nl); });
-  });
-  damBaoDongVaTangCaKhongChong_();
-  var dsTangCaGui = [];
-  Object.keys(TANG_CA).forEach(function (ma) {
-    Object.keys(TANG_CA[ma]).forEach(function (ymd) { dsTangCaGui.push({ maMay: ma, ngay: ymd }); });
-  });
-
-  var nut = this;
-  nut.disabled = true;
-  nut.textContent = 'Đang lưu…';
-
-  var khoaRq = 'luuKeHoach-' + TUAN_BAT_DAU;
-  google.script.run
-    .withSuccessHandler(function (kq) {
-      nut.disabled = false;
-      nut.textContent = 'Lưu kế hoạch tuần';
-      if (!kq || !kq.ok) return alert('Lỗi: ' + ((kq && kq.error) || 'không lưu được.'));
-      xoaRq(khoaRq);
-      DA_THAY_DOI = false;
-      alert('Đã lưu kế hoạch tuần ' + fmtDDMM_(TUAN_BAT_DAU) + '.');
-      taiKeHoachTuan_(TUAN_BAT_DAU, false); // đọc lại từ server cho chắc khớp dữ liệu thật
-    })
-    .withFailureHandler(function (e) {
-      nut.disabled = false;
-      nut.textContent = 'Lưu kế hoạch tuần';
-      alert('Lỗi: ' + e.message);
-    })
-    .luuKeHoachTuan(BO_PHAN, TOKEN, {
-      tuanBatDau: TUAN_BAT_DAU,
-      requestId: layRq(khoaRq),
-      ngoaiLe: dsGui,
-      tangCa: dsTangCaGui,
-    });
-});
 </script>
 
 </body>

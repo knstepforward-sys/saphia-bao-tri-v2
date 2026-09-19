@@ -328,6 +328,9 @@ const HEADER_KE_HOACH_MAY = [
 
 const TRANG_THAI_KE_HOACH_MAY = {
   DONG: 'DONG', DA_KHAI: 'DA_KHAI', TANG_CA: 'TANG_CA', VE_GIUA_CA: 'VE_GIUA_CA',
+  // Ca đêm KHÔNG cố định: mặc định máy không chạy ca đêm, chỉ ngày nào tổ trưởng chọn
+  // "Chạy ca đêm" cho máy đó mới tính. Dòng có Ca='D'. Loại trừ với TANG_CA cùng máy-ngày.
+  CHAY_DEM: 'CHAY_DEM',
 };
 
 const HEADER_CAU_HINH = ['Khoa', 'Gia_Tri', 'Ghi_Chu'];
@@ -1086,7 +1089,7 @@ function setupSystem() {
   shKHMay.setColumnWidth(HEADER_KE_HOACH_MAY.indexOf('Ghi_Chu') + 1, 260);
   datDropdown_(shKHMay, HEADER_KE_HOACH_MAY.indexOf('Trang_Thai') + 1,
     [TRANG_THAI_KE_HOACH_MAY.DONG, TRANG_THAI_KE_HOACH_MAY.DA_KHAI, TRANG_THAI_KE_HOACH_MAY.TANG_CA,
-      TRANG_THAI_KE_HOACH_MAY.VE_GIUA_CA]);
+      TRANG_THAI_KE_HOACH_MAY.VE_GIUA_CA, TRANG_THAI_KE_HOACH_MAY.CHAY_DEM]);
   // Cột giờ để dạng text, nếu không Sheets tự đổi '17:10' thành số thập phân.
   shKHMay.getRange(2, HEADER_KE_HOACH_MAY.indexOf('Gio_Ve') + 1,
     shKHMay.getMaxRows() - 1, 2).setNumberFormat('@');

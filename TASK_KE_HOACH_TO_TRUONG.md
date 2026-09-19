@@ -325,6 +325,31 @@ không nghỉ. Quyết định: **không thêm cột, không sửa form** — ch
 (thêm 3 dòng cấu hình) + **deploy** (RPC `ghiVeGiuaCa` chạy bản đã deploy, không chạy bản HEAD) + chủ dự án chỉnh số
 phút nghỉ từng bộ phận trong `Cau_Hinh`.
 
+## 9f. Giao diện tổ trưởng viết lại + "Chạy ca đêm" (chủ dự án chốt 19/09/2026)
+
+Tổ trưởng chủ yếu dùng điện thoại, không rành công nghệ; trang cũ (danh sách 48 thẻ máy + 6 khối thao tác) quá
+rối. `ToTruong.html` được **viết lại toàn bộ** theo việc cần làm; server/dữ liệu không đổi ngoài loại dòng mới.
+
+**Giao diện mới:** màn hình chính chỉ có nút lớn — Đóng máy · Tăng ca · Chạy ca đêm (chỉ tổ có ca đêm) ·
+Có người xin về · Xem kế hoạch tuần · "Việc khác…" (Đóng Chủ nhật, Sao chép ngày, Bỏ hết đóng máy). Mỗi việc là
+vài BƯỚC, mỗi bước một câu hỏi; **bấm Xác nhận là LƯU LUÔN** (không còn nút "Lưu kế hoạch tuần"; lưu lỗi thì
+tự khôi phục về trạng thái trước). "Xem kế hoạch tuần" gom theo NGÀY, mỗi mục có nút ✕ xoá.
+
+**Mô hình ca đêm (đã đổi):** ca đêm KHÔNG cố định (chạy khi không đủ người tăng ca, lâu lâu mới có), nên với tổ
+có ca đêm **mặc định máy KHÔNG chạy ca đêm**; ngày nào chạy thì tổ trưởng chọn "Chạy ca đêm" cho máy đó —
+dòng `Ke_Hoach_May` `Trang_Thai='CHAY_DEM'`, `Ca='D'`, không thêm cột. **Tăng ca ngày và chạy ca đêm loại
+trừ nhau** trên cùng máy-ngày (server báo lỗi `xungDotTangCaChayDem_`; giao diện tự bỏ qua và báo). Đóng máy chỉ
+áp cho ca ngày (UI không còn tạo dòng đóng ca đêm; dòng cũ nếu có vẫn hiện ở Xem kế hoạch và xoá được).
+Về giữa ca ca đêm chỉ ghi được khi máy đã "Chạy ca đêm" ngày đó; bỏ "Chạy ca đêm" thì lượt về giữa ca đêm
+tự bị bỏ khi lưu. **Đợt 3:** ca đêm chỉ tính cho máy-ngày có dòng `CHAY_DEM`.
+
+**Hàm mới (KeHoachTo.gs):** `chuanHoaChayDem_`, `chuanHoaDanhSachChayDem_`, `xungDotTangCaChayDem_`,
+`boVeGiuaCaDemKhongChayDem_` (thay `boVeGiuaCaDemBiTangCaDe_`); `layKeHoachTuan` trả thêm `chayDem`;
+`luuKeHoachTuan` nhận `chayDem` (không gửi → giữ nguyên dòng đã lưu).
+
+**Trạng thái:** đã viết, 17 test mới (dự kiến **520**, chưa kiểm chứng trong Sheet), thử trong trình duyệt
+với dữ liệu giả cả tổ có / không có ca đêm. Chờ: `clasp push` + menu 🧪 + deploy + chủ dự án thử trên điện thoại.
+
 ## 9b. Việc làm thêm SAU khi Đợt 1 xong (không thuộc 8 bước gốc)
 
 - **Vá lỗi `getLastRow()` ở `themMayMoi()` (`DanhMuc.gs`)** — xác nhận thật trên Sheet (`Ctrl+End` nhảy dòng 1000 dù chỉ ~162 máy), vá bằng `soDongCoDuLieu_`. Không ảnh hưởng dữ liệu đã có (`CMTD02`/`CMTD03` vẫn đúng vị trí). Đã push + deploy.

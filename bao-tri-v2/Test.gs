@@ -1908,7 +1908,7 @@ function chayTest() {
     [true, 1, [{ maMay: '4T-08', ngay: '2026-09-23' }]]);
   t.bang('phanLoaiDongKeHoach_ tuần chưa khai → daKhai false, không có tăng ca',
     phanLoaiDongKeHoach_([], 'DET', '2026-09-21'),
-    { daKhai: false, ngoaiLe: [], tangCa: [], veGiuaCa: [] });
+    { daKhai: false, ngoaiLe: [], tangCa: [], veGiuaCa: [], chayDem: [] });
 
   // ============================================================================
   // VỀ GIỮA CA (tổ trưởng ghi) — bước 1: cột mới, cấu hình lý do, hàm tính phút mất
@@ -1999,6 +1999,7 @@ function chayTest() {
     homNay: '2026-09-19',
     lich: _lichVe_,
     tangCa: { '4T-03|2026-09-19': true },
+    chayDem: { '4T-01|2026-09-19': true, '4T-02|2026-09-19': true },
     dangDong: { '4T-02|2026-09-19|N': true },
     dsLyDo: ['Nghỉ có phép', 'Nghỉ không phép'],
     gioTangCa: _gioMacDinh_,
@@ -2065,7 +2066,7 @@ function chayTest() {
 
   t.bang('docNguCanhVeGiuaCa_ nhận đúng máy đang đóng + máy tăng ca của đúng tổ/ngày',
     docNguCanhVeGiuaCa_(_vungVe_, 'DET', '2026-09-19'),
-    { dangDong: { '4T-02|2026-09-19|N': true }, tangCa: { '4T-03|2026-09-19': true } });
+    { dangDong: { '4T-02|2026-09-19|N': true }, tangCa: { '4T-03|2026-09-19': true }, chayDem: {} });
   t.bang('timDongVeGiuaCa_ tìm đúng dòng của đúng tổ (bỏ qua tổ khác), -1 nếu không có',
     [timDongVeGiuaCa_(_vungVe_, 'DET', '4T-01', '2026-09-19', 'N'),
      timDongVeGiuaCa_(_vungVe_, 'DET', 'S-01', '2026-09-19', 'N'),
@@ -2138,16 +2139,16 @@ function chayTest() {
   // ============================================================================
   t.bang('máy đang tăng ca ngày đó → KHÔNG ghi được về giữa ca ĐÊM (không chạy ca đêm)',
     chuanHoaDanhSachVeGiuaCa_(_pVe_({ dsMay: ['4T-03'], ca: 'D', gioVe: '23:00' }), _ctxVe_).ok, false);
-  t.bang('thông báo lỗi nêu rõ máy đang tăng ca nên không chạy ca đêm',
+  t.bang('thông báo lỗi nêu rõ máy không chạy ca đêm, gợi ý chọn "Chạy ca đêm"',
     chuanHoaDanhSachVeGiuaCa_(_pVe_({ dsMay: ['4T-03'], ca: 'D', gioVe: '23:00' }), _ctxVe_).error,
-    'Máy 4T-03 đang tăng ca ngày 2026-09-19 nên không chạy ca đêm ngày đó.');
+    'Máy 4T-03 không chạy ca đêm ngày 2026-09-19. Chọn "Chạy ca đêm" cho máy này trước.');
   t.bang('máy đang tăng ca vẫn về giữa ca CA NGÀY được (tăng ca chỉ thay ca đêm)',
     chuanHoaDanhSachVeGiuaCa_(_pVe_({ dsMay: ['4T-03'], ca: 'N', gioVe: '16:00' }), _ctxVe_).ok, true);
   t.bang('máy KHÔNG tăng ca vẫn về giữa ca đêm bình thường',
     chuanHoaDanhSachVeGiuaCa_(_pVe_({ dsMay: ['4T-01'], ca: 'D', gioVe: '23:00' }), _ctxVe_).ok, true);
   t.bang('máy tăng ca ngày KHÁC vẫn về giữa ca đêm ngày này được',
     chuanHoaDanhSachVeGiuaCa_(_pVe_({ dsMay: ['4T-03'], ca: 'D', gioVe: '23:00' }),
-      Object.assign({}, _ctxVe_, { tangCa: { '4T-03|2026-09-18': true } })).ok, true);
+      Object.assign({}, _ctxVe_, { tangCa: { '4T-03|2026-09-18': true }, chayDem: { '4T-03|2026-09-19': true } })).ok, true);
 
   function _dongVeTC_(ma, ngay, ca, tt) {
     const r = new Array(HEADER_KE_HOACH_MAY.length).fill('');
@@ -2164,13 +2165,97 @@ function chayTest() {
     _dongVeTC_('4T-03', '2026-09-18', 'D', 'VE_GIUA_CA'),   // ngày khác → giữ
   ];
   const _tcRows_ = [_dongVeTC_('4T-03', '2026-09-19', 'N', 'TANG_CA')];
-  t.bang('boVeGiuaCaDemBiTangCaDe_ chỉ bỏ lượt ĐÊM của đúng máy-ngày đang tăng ca, giữ các lượt còn lại',
-    boVeGiuaCaDemBiTangCaDe_(_veTC_, _tcRows_).map(function (r) {
+  const _chayDemRows_ = [_dongVeTC_('4T-01', '2026-09-19', 'D', 'CHAY_DEM')];
+  t.bang('boVeGiuaCaDemKhongChayDem_ chỉ giữ lượt ĐÊM của máy-ngày vẫn chạy ca đêm; lượt ca NGÀY luôn giữ',
+    boVeGiuaCaDemKhongChayDem_(_veTC_, _chayDemRows_).map(function (r) {
       return r[HEADER_KE_HOACH_MAY.indexOf('Ma_May')] + '|' + r[HEADER_KE_HOACH_MAY.indexOf('Ngay')] + '|' + r[HEADER_KE_HOACH_MAY.indexOf('Ca')];
     }),
-    ['4T-03|2026-09-19|N', '4T-01|2026-09-19|D', '4T-03|2026-09-18|D']);
-  t.bang('boVeGiuaCaDemBiTangCaDe_ không có tăng ca → giữ nguyên hết',
-    boVeGiuaCaDemBiTangCaDe_(_veTC_, []).length, 4);
+    ['4T-03|2026-09-19|N', '4T-01|2026-09-19|D']);
+  t.bang('boVeGiuaCaDemKhongChayDem_ không còn máy nào chạy ca đêm → chỉ còn lượt ca ngày',
+    boVeGiuaCaDemKhongChayDem_(_veTC_, []).length, 1);
+
+  // ============================================================================
+  // CHẠY CA ĐÊM (ca đêm không cố định, mặc định không chạy) — dòng CHAY_DEM, loại trừ với tăng ca
+  // ============================================================================
+  t.bang('TRANG_THAI_KE_HOACH_MAY có CHAY_DEM', TRANG_THAI_KE_HOACH_MAY.CHAY_DEM, 'CHAY_DEM');
+  const _cd_ = chuanHoaChayDem_({ maMay: ' 4t-08 ', ngay: '2026-09-23' }, 'det', '2026-09-21');
+  t.bang('chuanHoaChayDem_ hợp lệ → ok, chuẩn hoá hoa/thường',
+    [_cd_.ok, _cd_.maMay, _cd_.ngay], [true, '4T-08', '2026-09-23']);
+  t.bang('dòng chạy ca đêm: Trang_Thai CHAY_DEM, Ca D, Bo_Phan hoa, không lý do',
+    (function () {
+      const h = HEADER_KE_HOACH_MAY; const d = _cd_.dong;
+      return [d[h.indexOf('Trang_Thai')], d[h.indexOf('Ca')], d[h.indexOf('Bo_Phan')], d[h.indexOf('Ly_Do')], d.length];
+    })(),
+    ['CHAY_DEM', 'D', 'DET', '', HEADER_KE_HOACH_MAY.length]);
+  t.bang('chuanHoaChayDem_ thiếu mã máy / ngày ngoài tuần → lỗi',
+    [chuanHoaChayDem_({ ngay: '2026-09-23' }, 'DET', '2026-09-21').ok,
+     chuanHoaChayDem_({ maMay: '4T-08', ngay: '2026-10-05' }, 'DET', '2026-09-21').ok], [false, false]);
+  t.bang('nhãn lỗi của chuanHoaChayDem_ nói "chạy ca đêm", của chuanHoaTangCa_ vẫn nói "tăng ca"',
+    [chuanHoaChayDem_({ ngay: '2026-09-23' }, 'DET', '2026-09-21').error,
+     chuanHoaTangCa_({ ngay: '2026-09-23' }, 'DET', '2026-09-21').error],
+    ['Thiếu mã máy (chạy ca đêm).', 'Thiếu mã máy (tăng ca).']);
+
+  const _hopLeCd_ = { '4T-08': true, '4T-12': true };
+  const _dongDemCu_ = chuanHoaDanhSachNgoaiLe_([
+    { maMay: '4T-08', ngay: '2026-09-22', ca: 'D', lyDo: 'Thiếu thợ' },
+  ], 'DET', '2026-09-21', _hopLeCd_, _dsLyDoGia_).dsDong;
+  t.bang('chuanHoaDanhSachChayDem_ hợp lệ → ok, đủ số dòng',
+    (function () {
+      const r = chuanHoaDanhSachChayDem_([{ maMay: '4T-08', ngay: '2026-09-23' }, { maMay: '4T-12', ngay: '2026-09-23' }],
+        'DET', '2026-09-21', _hopLeCd_, _dongDemCu_);
+      return [r.ok, r.dsDong.length];
+    })(), [true, 2]);
+  t.bang('chuanHoaDanhSachChayDem_ danh sách rỗng / không phải mảng → ok, 0 dòng',
+    [chuanHoaDanhSachChayDem_([], 'DET', '2026-09-21', _hopLeCd_, []).dsDong.length,
+     chuanHoaDanhSachChayDem_(undefined, 'DET', '2026-09-21', _hopLeCd_, []).ok], [0, true]);
+  t.bang('chuanHoaDanhSachChayDem_ máy thuộc tổ khác → lỗi',
+    chuanHoaDanhSachChayDem_([{ maMay: 'S-01', ngay: '2026-09-23' }], 'DET', '2026-09-21', _hopLeCd_, []).ok, false);
+  t.bang('chuanHoaDanhSachChayDem_ khai trùng (máy, ngày) → lỗi',
+    chuanHoaDanhSachChayDem_([{ maMay: '4T-08', ngay: '2026-09-23' }, { maMay: '4t-08', ngay: '2026-09-23' }],
+      'DET', '2026-09-21', _hopLeCd_, []).ok, false);
+  t.bang('máy đang bị đóng CA ĐÊM (dữ liệu cũ) đúng ngày đó → không chạy ca đêm được',
+    chuanHoaDanhSachChayDem_([{ maMay: '4T-08', ngay: '2026-09-22' }], 'DET', '2026-09-21', _hopLeCd_, _dongDemCu_).ok, false);
+  t.bang('máy đóng ca đêm ngày KHÁC vẫn chạy ca đêm được',
+    chuanHoaDanhSachChayDem_([{ maMay: '4T-08', ngay: '2026-09-23' }], 'DET', '2026-09-21', _hopLeCd_, _dongDemCu_).ok, true);
+
+  const _tcCd_ = [_dongVeTC_('4T-08', '2026-09-23', 'N', 'TANG_CA')];
+  t.bang('xungDotTangCaChayDem_ cùng máy-ngày vừa tăng ca vừa chạy ca đêm → báo lỗi',
+    xungDotTangCaChayDem_(_tcCd_, [_dongVeTC_('4T-08', '2026-09-23', 'D', 'CHAY_DEM')]),
+    'Máy 4T-08 ngày 2026-09-23 vừa tăng ca vừa chạy ca đêm. Chỉ chọn một: tăng ca thay cho ca đêm.');
+  t.bang('xungDotTangCaChayDem_ khác ngày hoặc khác máy → không xung đột; danh sách rỗng → null',
+    [xungDotTangCaChayDem_(_tcCd_, [_dongVeTC_('4T-08', '2026-09-24', 'D', 'CHAY_DEM')]),
+     xungDotTangCaChayDem_(_tcCd_, [_dongVeTC_('4T-12', '2026-09-23', 'D', 'CHAY_DEM')]),
+     xungDotTangCaChayDem_([], []), xungDotTangCaChayDem_(_tcCd_, undefined)], [null, null, null, null]);
+
+  const _plCd_ = phanLoaiDongKeHoach_([
+    { Bo_Phan: 'DET', Tuan_Bat_Dau: '2026-09-21', Ma_May: '4T-08', Trang_Thai: 'CHAY_DEM', Ngay: '2026-09-23', Ca: 'D' },
+    { Bo_Phan: 'DET', Tuan_Bat_Dau: '2026-09-21', Ma_May: '4T-09', Trang_Thai: 'DONG', Ngay: '2026-09-22', Ca: 'N', Ly_Do: 'Thiếu thợ', Ghi_Chu: '' },
+    { Bo_Phan: 'SOI', Tuan_Bat_Dau: '2026-09-21', Ma_May: 'S-01', Trang_Thai: 'CHAY_DEM', Ngay: '2026-09-23', Ca: 'D' },
+  ], 'DET', '2026-09-21');
+  t.bang('phanLoaiDongKeHoach_ CHAY_DEM ra riêng, KHÔNG lẫn vào ngoaiLe, lọc đúng tổ',
+    [_plCd_.ngoaiLe.length, _plCd_.chayDem], [1, [{ maMay: '4T-08', ngay: '2026-09-23' }]]);
+
+  const _vungCd_ = [
+    _dongVeTC_('4T-08', '2026-09-23', 'D', 'CHAY_DEM'),
+    _dongVeTC_('4T-09', '2026-09-23', 'D', 'CHAY_DEM'),
+  ];
+  _vungCd_.forEach(function (r) {
+    r[HEADER_KE_HOACH_MAY.indexOf('Tuan_Bat_Dau')] = '2026-09-21';
+    r[HEADER_KE_HOACH_MAY.indexOf('Bo_Phan')] = 'DET';
+  });
+  _vungCd_[1][HEADER_KE_HOACH_MAY.indexOf('Bo_Phan')] = 'SOI';
+  t.bang('tachDuLieuKeHoachTuan_ trả CHAY_DEM của đúng tổ/tuần ở chayDemCu, tổ khác giữ nguyên',
+    (function () { const r = tachDuLieuKeHoachTuan_(_vungCd_, 'DET', '2026-09-21'); return [r.chayDemCu.length, r.giuLai.length]; })(),
+    [1, 1]);
+  t.bang('docNguCanhVeGiuaCa_ trả thêm máy đang chạy ca đêm của đúng tổ/ngày',
+    docNguCanhVeGiuaCa_(_vungCd_, 'DET', '2026-09-23').chayDem, { '4T-08|2026-09-23': true });
+
+  t.bang('về giữa ca ĐÊM chỉ ghi được khi máy đã "Chạy ca đêm" ngày đó',
+    [chuanHoaDanhSachVeGiuaCa_(_pVe_({ dsMay: ['4T-01'], ca: 'D', gioVe: '23:00' }), _ctxVe_).ok,
+     chuanHoaDanhSachVeGiuaCa_(_pVe_({ dsMay: ['4T-01'], ca: 'D', gioVe: '23:00' }),
+       Object.assign({}, _ctxVe_, { chayDem: {} })).ok,
+     chuanHoaDanhSachVeGiuaCa_(_pVe_({ dsMay: ['4T-01'], ca: 'N', gioVe: '14:00' }),
+       Object.assign({}, _ctxVe_, { chayDem: {} })).ok], [true, false, true]);
 
   // --- Kết quả ---------------------------------------------------------------
   const tong = kq.dat + kq.loi.length;

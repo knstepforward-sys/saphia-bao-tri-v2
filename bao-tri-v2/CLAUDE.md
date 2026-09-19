@@ -68,7 +68,7 @@ người dùng để hiện cửa sổ đăng nhập.
 | `Test.gs` | 503 test chạy bằng dữ liệu giả, **không đụng sheet nào** |
 | `Index.html` | Trang công nhân |
 | `Tho.html` | Trang thợ |
-| `ToTruong.html` | **Mới** — trang tổ trưởng khai kế hoạch máy theo tuần. Xem mục 2b |
+| `ToTruong.html` | **Mới** — trang tổ trưởng, viết lại 19/09/2026 theo kiểu từng bước (nút lớn, bấm Xác nhận là lưu). Xem mục 2b |
 | `InQr.html` | Trang in QR |
 | `TrangNgay.html` | Trang báo cáo trong ngày |
 | `HopXuat.html` | Hộp thoại chọn kỳ / bộ phận / thợ khi xuất báo cáo (modal trong Sheet) |
@@ -139,6 +139,11 @@ dòng này). Lý do ở `Cau_Hinh.LY_DO_VE_GIUA_CA`. Phút mất: `tinhVeGiuaCa_
 khai TỔNG số phút nghỉ ở `Cau_Hinh.NGHI_DEM_PHUT_<MÃ BỘ PHẬN>` (seed DET/SOI/CMTX = 60; 0 hoặc thiếu =
 không nghỉ). Trừ vào phút kế hoạch ca đêm; về giữa ca ban đêm quy đổi theo tỷ lệ. Không thêm cột.
 Mục 9e của `TASK_KE_HOACH_TO_TRUONG.md`.
+
+**Giao diện viết lại + Chạy ca đêm (19/09/2026, chờ `clasp push` + deploy):** trang tổ trưởng chỉ còn nút lớn theo việc
+(Đóng máy / Tăng ca / Chạy ca đêm / Có người xin về / Xem kế hoạch tuần), từng bước, bấm Xác nhận là lưu ngay. Ca
+đêm KHÔNG cố định: mặc định máy không chạy ca đêm, ngày nào chạy thì chọn "Chạy ca đêm" (dòng `CHAY_DEM`, Ca='D');
+loại trừ với tăng ca cùng máy-ngày. Mục 9f của `TASK_KE_HOACH_TO_TRUONG.md`.
 
 **Đợt 3 (chưa code, trước đây gọi là Đợt 2):** 2 chỉ số **tỷ lệ huy động máy** và **hiệu suất máy được bố trí
 chạy**, tính từ 3 sheet trên + `Su_Co` — không cần schema mới, không đụng `HieuDung.gs`.
