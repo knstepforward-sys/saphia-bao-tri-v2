@@ -59,6 +59,12 @@ select.chon {
   padding: 10px 12px; font: inherit; background: #fff;
 }
 .may-tt-tangca { color: #b45309; font-weight: 600; font-size: 13.5px; margin-top: 6px; }
+.ngoai-le-dong .dong { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.tang-ca-ngay { display: inline-flex; align-items: center; gap: 6px; margin: 4px 6px 0 0; }
+.xoa-dong {
+  flex: none; border: 1px solid var(--vien); background: #fff; color: var(--do);
+  border-radius: 8px; padding: 3px 9px; font-size: 12.5px; font-weight: 600; cursor: pointer;
+}
 </style>
 
 <body>
@@ -645,8 +651,9 @@ function veLaiDanhSachMay_() {
     var dsNgayTangCa = Object.keys(TANG_CA[m.maMay] || {}).sort();
     var dongTangCa = dsNgayTangCa.length
       ? '<div class="may-tt-tangca">⏱ Tăng ca: ' + dsNgayTangCa.map(function (ymd) {
-          return tenThu_(ymd) + ' (' + fmtDDMM_(ymd) + ')';
-        }).join(', ') + '</div>'
+          return '<span class="tang-ca-ngay">' + tenThu_(ymd) + ' (' + fmtDDMM_(ymd) + ')' +
+            '<button class="xoa-dong" type="button" onclick="xoaNgayTangCa(\'' + m.maMay + '\',\'' + ymd + '\')">✕</button></span>';
+        }).join('') + '</div>'
       : '';
     // Về giữa ca của máy này trong tuần đang xem — hiện ngay trên thẻ máy, không chỉ ở danh sách riêng.
     var dongVeGiuaCa = VE_GIUA_CA.filter(function (v) { return v.maMay === m.maMay; })
@@ -664,9 +671,10 @@ function veLaiDanhSachMay_() {
     var than = ngoaiLeMay.length
       ? '<div class="may-tt-dong">🔴 Đóng máy (' + ngoaiLeMay.length + ' lượt)</div>' +
         '<div class="ngoai-le-dong">' + ngoaiLeMay.map(function (nl) {
-          return '<div class="dong">' + tenThu_(nl.ngay) + ' (' + fmtDDMM_(nl.ngay) + '), ' +
+          return '<div class="dong"><span>' + tenThu_(nl.ngay) + ' (' + fmtDDMM_(nl.ngay) + '), ' +
             (TEN_CA[nl.ca] || nl.ca) + ' — ' + thoat(nl.lyDo) +
-            (nl.ghiChu ? ': ' + thoat(nl.ghiChu) : '') + '</div>';
+            (nl.ghiChu ? ': ' + thoat(nl.ghiChu) : '') + '</span>' +
+            '<button class="xoa-dong" type="button" onclick="xoaDongNgoaiLe(\'' + m.maMay + '\',\'' + nl.ngay + '\',\'' + nl.ca + '\')">✕ Xoá</button></div>';
         }).join('') + '</div>' +
         '<div class="may-nut-hang">' +
           '<button class="nut phu" style="flex:1" onclick="moModalDong(\'' + m.maMay + '\')">Sửa</button>' +
@@ -862,6 +870,23 @@ $('modalXacNhan').addEventListener('click', function () {
   an('modalDong');
   veLaiDanhSachMay_();
 });
+
+/** Xoá ĐÚNG MỘT dòng đóng máy (máy, ngày, ca) — các dòng khác của máy giữ nguyên. Chưa ghi lên server. */
+function xoaDongNgoaiLe(maMay, ngay, ca) {
+  var conLai = (NGOAI_LE[maMay] || []).filter(function (nl) { return !(nl.ngay === ngay && nl.ca === ca); });
+  if (conLai.length) NGOAI_LE[maMay] = conLai; else delete NGOAI_LE[maMay];
+  DA_THAY_DOI = true;
+  veLaiDanhSachMay_();
+}
+
+/** Bỏ tăng ca của MỘT ngày cho một máy. Chưa ghi lên server. */
+function xoaNgayTangCa(maMay, ymd) {
+  if (!TANG_CA[maMay]) return;
+  delete TANG_CA[maMay][ymd];
+  if (!Object.keys(TANG_CA[maMay]).length) delete TANG_CA[maMay];
+  DA_THAY_DOI = true;
+  veLaiDanhSachMay_();
+}
 
 function boTriLai(maMay) {
   if (!NGOAI_LE[maMay] || !NGOAI_LE[maMay].length) return;

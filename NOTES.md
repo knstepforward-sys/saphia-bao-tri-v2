@@ -1,3 +1,9 @@
+## [2026-09-19] Tổ trưởng — xoá từng dòng đóng máy / từng ngày tăng ca trên thẻ máy
+- **Yêu cầu (chủ dự án):** đóng máy sai thì trước đây phải "Bố trí lại" cả máy rồi khai lại từ đầu mới chỉnh được.
+- **Thay đổi (chỉ `ToTruong.html`, không đụng server):** mỗi dòng đóng máy trên thẻ có nút "✕ Xoá" (bỏ đúng một dòng máy-ngày-ca, các dòng khác giữ nguyên; xoá hết thì thẻ về "Bố trí chạy cả tuần"). Dòng tăng ca tách mỗi ngày một nhãn kèm nút "✕" (bỏ đúng một ngày). Chưa ghi lên server — vẫn phải bấm "Lưu kế hoạch tuần". Không hỏi xác nhận từng lần.
+- **Đã kiểm tại máy:** `kiem-tra.ps1` sạch cả 5 lớp; thử trong trình duyệt với dữ liệu giả (xoá 1 trong 3 dòng, xoá dòng duy nhất, xoá 1 trong 3 ngày tăng ca, xoá hết tăng ca, payload Lưu không còn dòng đã xoá). **Chưa thử trên link thật.**
+- **Trạng thái:** chưa push GitHub / chưa `clasp push` / chưa deploy. HTML chạy bản đã deploy nên phải `clasp push` rồi deploy mới thấy nút.
+
 ## [2026-09-19] Tổ trưởng — nghỉ ca đêm theo từng bộ phận (`Cau_Hinh.NGHI_DEM_PHUT_*`)
 - **Vấn đề (chủ dự án phát hiện khi khai lịch):** form khai lịch tổ chỉ có giờ nghỉ trưa, thiếu giờ nghỉ ca đêm. Đêm không quản lý giờ nghỉ cụ thể (tự sắp xếp, ~1 tiếng), mỗi bộ phận nghỉ khác nhau, có bộ phận không nghỉ.
 - **Quyết định:** không thêm cột, không sửa form. Khai TỔNG số phút nghỉ theo bộ phận ở `Cau_Hinh`, khoá `NGHI_DEM_PHUT_<MÃ BỘ PHẬN>`. Đề xuất thêm 3 cột trước đó đã RÚT LẠI.
