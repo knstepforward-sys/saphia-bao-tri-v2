@@ -182,6 +182,13 @@ function gioTangCa_(cauHinh) {
   };
 }
 
+/** Danh sách lý do VỀ GIỮA CA của tổ trưởng, đọc từ Cau_Hinh. Trống thì dùng mặc định. */
+function dsLyDoVeGiuaCa_(cauHinh) {
+  const ch = cauHinh || docCauHinh_();
+  const s = String(ch.LY_DO_VE_GIUA_CA || '').trim() || 'Nghỉ có phép, Nghỉ không phép';
+  return s.split(',').map(function (x) { return x.trim(); }).filter(Boolean);
+}
+
 function layUrlCongKhai_() {
   return PropertiesService.getScriptProperties().getProperty('URL_CONG_KHAI') || '';
 }
@@ -303,9 +310,14 @@ const HEADER_LICH_TO = [
 const HEADER_KE_HOACH_MAY = [
   'Tuan_Bat_Dau', 'Ngay', 'Ca', 'Ma_May', 'Bo_Phan', 'Trang_Thai', 'Ly_Do',
   'Ghi_Chu', 'Nguoi_Cap_Nhat', 'Cap_Nhat_Luc', 'Request_ID',
+  // Hai cột cuối dành cho VE_GIUA_CA (Đợt 2b): giờ tổ trưởng cho công nhân về, và giờ
+  // quay lại sớm (trống = nghỉ tới hết ca). Dòng DONG/DA_KHAI/TANG_CA để trống hai cột này.
+  'Gio_Ve', 'Gio_Quay_Lai',
 ];
 
-const TRANG_THAI_KE_HOACH_MAY = { DONG: 'DONG', DA_KHAI: 'DA_KHAI', TANG_CA: 'TANG_CA' };
+const TRANG_THAI_KE_HOACH_MAY = {
+  DONG: 'DONG', DA_KHAI: 'DA_KHAI', TANG_CA: 'TANG_CA', VE_GIUA_CA: 'VE_GIUA_CA',
+};
 
 const HEADER_CAU_HINH = ['Khoa', 'Gia_Tri', 'Ghi_Chu'];
 
@@ -377,6 +389,10 @@ const CAU_HINH_MAC_DINH = [
     'là không trừ nghỉ tối.'],
   ['NGHI_TOI_DEN', '18:00',
     'TĂNG CA CỦA TỔ TRƯỞNG — giờ kết thúc nghỉ ăn tối. Xem NGHI_TOI_TU.'],
+  ['LY_DO_VE_GIUA_CA', 'Nghỉ có phép, Nghỉ không phép',
+    'VỀ GIỮA CA (tổ trưởng ghi cho công nhân xin về) — lý do hiện thành nút bấm. Cách nhau ' +
+    'bằng dấu phẩy. Sửa ở đây là đổi ngay, không cần deploy lại. Nên giữ danh sách ngắn và ' +
+    'cố định để báo cáo gom nhóm được. Khác với LY_DO_DUNG_MAY (công nhân báo dừng máy qua QR).'],
   ['HUONG_DAN_KHOA_LINK_THO', '',
     'KHOÁ LINK KHI THỢ NGHỈ VIỆC: xoá trắng ô Token của người đó trong sheet ' +
     'Danh_Muc_Tho, bỏ tick Hoat_Dong, rồi chạy menu 🔧 Bảo trì → "4. Sinh lại ' +
@@ -1050,7 +1066,11 @@ function setupSystem() {
   shKHMay.setColumnWidth(HEADER_KE_HOACH_MAY.indexOf('Ly_Do') + 1, 200);
   shKHMay.setColumnWidth(HEADER_KE_HOACH_MAY.indexOf('Ghi_Chu') + 1, 260);
   datDropdown_(shKHMay, HEADER_KE_HOACH_MAY.indexOf('Trang_Thai') + 1,
-    [TRANG_THAI_KE_HOACH_MAY.DONG, TRANG_THAI_KE_HOACH_MAY.DA_KHAI, TRANG_THAI_KE_HOACH_MAY.TANG_CA]);
+    [TRANG_THAI_KE_HOACH_MAY.DONG, TRANG_THAI_KE_HOACH_MAY.DA_KHAI, TRANG_THAI_KE_HOACH_MAY.TANG_CA,
+      TRANG_THAI_KE_HOACH_MAY.VE_GIUA_CA]);
+  // Cột giờ để dạng text, nếu không Sheets tự đổi '17:10' thành số thập phân.
+  shKHMay.getRange(2, HEADER_KE_HOACH_MAY.indexOf('Gio_Ve') + 1,
+    shKHMay.getMaxRows() - 1, 2).setNumberFormat('@');
   // Tuan_Bat_Dau + Ngay là 2 cột liền nhau, cả hai đều lưu chuỗi 'yyyy-MM-dd'.
   shKHMay.getRange(2, HEADER_KE_HOACH_MAY.indexOf('Tuan_Bat_Dau') + 1,
     shKHMay.getMaxRows() - 1, 2).setNumberFormat('@');

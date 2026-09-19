@@ -128,6 +128,13 @@ với `Trang_Thai='TANG_CA'` (`Ca='N'`, có `Ma_May`) — không thêm cột. Gi
 một máy-ngày), `chuanHoaDanhSachTangCa_` (một máy-ngày một trạng thái với đóng máy),
 `phanLoaiDongKeHoach_` (tách `TANG_CA` khỏi ngoại lệ khi đọc). Chi tiết: `TASK_KE_HOACH_TO_TRUONG.md` mục 9c.
 
+**Về giữa ca (Đợt 2(b), 19/09/2026, chờ `clasp push` + test tay):** việc của TỔ TRƯỞNG, ghi trên
+trang tổ trưởng — KHÔNG đụng luồng QR công nhân, không tạo phiếu `Su_Co`. Dòng `Ke_Hoach_May` với
+`Trang_Thai='VE_GIUA_CA'` + 2 cột cuối mới `Gio_Ve`, `Gio_Quay_Lai`. Ghi ngay qua `ghiVeGiuaCa` /
+`capNhatQuayLaiVeGiuaCa` / `huyVeGiuaCa` (không qua nút Lưu tuần; `luuKeHoachTuan` luôn giữ lại các
+dòng này). Lý do ở `Cau_Hinh.LY_DO_VE_GIUA_CA`. Phút mất: `tinhVeGiuaCa_`. Chi tiết: mục 9d của
+`TASK_KE_HOACH_TO_TRUONG.md`. Khác hẳn "dừng máy không hư" (`DM-`, công nhân báo qua QR).
+
 **Đợt 3 (chưa code, trước đây gọi là Đợt 2):** 2 chỉ số **tỷ lệ huy động máy** và **hiệu suất máy được bố trí
 chạy**, tính từ 3 sheet trên + `Su_Co` — không cần schema mới, không đụng `HieuDung.gs`.
 Công thức đầy đủ ở `TASK_KE_HOACH_TO_TRUONG.md` mục 8.

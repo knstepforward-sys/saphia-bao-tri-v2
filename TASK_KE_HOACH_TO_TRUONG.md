@@ -193,11 +193,11 @@ Muốn cho **tổ trưởng** báo hộ (vì xin nghỉ vốn phải xin phép t
   QR như cũ hay tổ trưởng cũng đóng được), cách audit "phiếu do tổ trưởng tạo hộ" để không lẫn
   với số liệu công nhân tự báo.
 
-**Làm ở Đợt 2(b) riêng**, sau khi tăng ca (Đợt 2(a)) xong — phương án khác so với ý ban đầu
-ở trên: nút "Về giữa ca" nằm trong luồng QR, tạo phiếu `DM-` (lý do riêng "Về giữa ca") có
-giờ kết thúc = giờ hết ca lấy từ `Lich_Lam_Viec_To` (ngày tăng ca thì 20:30 theo `TANG_CA_DEN`),
-đóng sẵn lúc ghi nên ca sau không phải quét bật lại. Còn phải chốt: phiếu này tính mất giờ chạy
-hay như đóng máy ở Đợt 3, ai được bấm, bộ phận chưa khai lịch thì xử lý sao.
+**Đã làm ở Đợt 2(b) theo phương án KHÁC hẳn ý ban đầu** (chủ dự án đính chính 19/09/2026):
+"Về giữa ca" là việc của TỔ TRƯỞNG (công nhân xin về phải xin tổ trưởng), ghi trên trang tổ
+trưởng — KHÔNG nằm trong luồng QR của công nhân và KHÔNG tạo phiếu `DM-`/`Su_Co`. Tách hẳn
+khỏi "dừng máy không hư" (đổi mặt hàng, vệ sinh, thiếu nguyên liệu — lỗi nhà máy, vẫn do công
+nhân báo qua QR như cũ). Xem mục 9d.
 
 ---
 
@@ -274,6 +274,36 @@ Bộ phận chỉ chạy ca ngày; ngày tăng ca thì máy chạy 07:00–20:30
 xem số test (đã đo: **432/432**), rồi test tay: bật tăng ca vài
 máy → Lưu → F5 giữ nguyên; đóng máy ngày đang tăng ca → tăng ca ngày đó biến mất; tổ có ca đêm
 không thấy nút tăng ca. Deploy sau push, giữ đúng deployment ID.
+
+## 9d. Đợt 2(b) — Về giữa ca, tổ trưởng ghi (chủ dự án chốt 19/09/2026)
+
+Công nhân xin về giữa ca thì phải xin tổ trưởng; tổ trưởng ghi trên trang của mình. Máy tính là
+không chạy từ giờ về tới hết ca (hoặc tới giờ quay lại nếu người đó quay lại sớm). Ca sau vào
+là bình thường, không ai phải quét bật lại. **Không đụng** `Index.html`, `CongNhan.gs`,
+`Su_Co`, trigger hay luồng QR.
+
+| Chủ đề | Đã chốt |
+|---|---|
+| Ai ghi | Tổ trưởng, trên trang `?page=kehoach` (xác thực `xacThucTo_`), chọn MỘT hoặc NHIỀU máy (một công nhân có thể trông nhiều máy) |
+| Lý do | Chỉ "Nghỉ có phép" / "Nghỉ không phép" — `Cau_Hinh.LY_DO_VE_GIUA_CA`, sửa trên Sheet |
+| Lưu ở đâu | `Ke_Hoach_May`, `Trang_Thai='VE_GIUA_CA'`, một dòng/máy-ngày-ca (ghi lần hai đè lần một). **Thêm 2 cột CUỐI `Gio_Ve`, `Gio_Quay_Lai`** (chủ dự án đã đồng ý); `Gio_Quay_Lai` trống = nghỉ tới hết ca |
+| Ghi khi nào | Ghi NGAY qua RPC riêng (`ghiVeGiuaCa`, `capNhatQuayLaiVeGiuaCa`, `huyVeGiuaCa`), KHÔNG qua nút "Lưu kế hoạch tuần"; `luuKeHoachTuan` luôn giữ nguyên các dòng này (trừ lượt bị đóng máy đè lên đúng máy-ngày-ca) |
+| Phút mất | `tinhVeGiuaCa_`: giao của [giờ về, quay lại hoặc hết ca] với khung kế hoạch — nghỉ trưa/nghỉ tối KHÔNG tính là mất. Ngày tăng ca hết ca 20:30. Ca đêm dùng trục liên tục (sau nửa đêm +1440) |
+| Chặn | Ngày chưa tới; máy tổ khác; máy đang đóng ca đó; tổ chưa khai lịch / không có ca đêm; giờ về ngoài ca; giờ quay lại không sau giờ về hoặc sau hết ca; một máy lỗi thì cả lượt không ghi |
+| Đợt 3 | Tính là **mất giờ chạy** (kéo hiệu suất xuống), tách riêng được theo lý do có phép hay không |
+
+| # | Việc | Trạng thái |
+|---|---|---|
+| 1 | 2 cột mới, khoá `LY_DO_VE_GIUA_CA`, `khungCaDemCuaMay_`, `tinhVeGiuaCa_` + 25 test | ✅ viết xong |
+| 2 | `chuanHoaDanhSachVeGiuaCa_`, 3 RPC, `layKeHoachTuan` trả `veGiuaCa`, `luuKeHoachTuan` giữ lại + 25 test | ✅ viết xong |
+| 3 | `ToTruong.html`: mục "Về giữa ca", hộp thoại ghi nhiều máy, quay lại, huỷ; thử với dữ liệu giả | ✅ viết xong |
+| 4 | Tài liệu + push GitHub | ✅ xong. **Chờ**: `clasp push` + menu 🧪 (dự kiến **482**, chưa kiểm chứng) + menu "1. Cài đặt hệ thống" + deploy + test tay |
+
+**Test tay trên link thật (dùng MỘT máy thử, dọn ngay sau đó):** ghi về giữa ca 1 máy → F5 vẫn còn;
+ghi 2 máy một lượt; cập nhật giờ quay lại; huỷ; đóng máy đúng ngày đó rồi Lưu tuần → lượt về
+giữa ca của máy đó biến mất, các lượt khác còn; máy đang đóng thì hộp thoại khoá máy đó.
+**Dọn dữ liệu thử:** mở sheet `Ke_Hoach_May`, lọc cột `Trang_Thai` = `VE_GIUA_CA` (và `TANG_CA`
+nếu có thử), xoá các dòng của máy thử; các dòng `DONG`/`DA_KHAI` do tổ trưởng khai thật thì KHÔNG xoá.
 
 ## 9b. Việc làm thêm SAU khi Đợt 1 xong (không thuộc 8 bước gốc)
 
