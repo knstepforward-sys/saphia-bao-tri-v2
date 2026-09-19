@@ -1,3 +1,18 @@
+## [2026-09-19] Xem kế hoạch tuần: tick nhiều mục rồi xoá MỘT lần (thay cho ✕ xoá từng cái)
+- **Vấn đề (chủ dự án):** xoá từng mục bằng ✕ mỗi lần bấm là một lần lưu + tải lại nên chậm, và dễ bấm nhầm.
+- **Sửa (chỉ `ToTruong.html`, không đổi server/test):** trên màn Xem kế hoạch tuần, mỗi máy là một nút bấm để CHỌN (☐/☑, tô đỏ khi chọn); mỗi ngày có "Chọn cả ngày / Bỏ chọn ngày"; thanh dưới hiện "Bỏ chọn" và "Xoá N mục" khi có mục được chọn. Bấm Xoá → hỏi xác nhận một lần → gỡ hết mục đã chọn (đóng máy, tăng ca, chạy ca đêm) trong MỘT lần lưu; lượt "về giữa ca" (RPC riêng) huỷ lần lượt sau đó. Lưu lỗi thì khôi phục, không huỷ lượt về giữa ca nào. Mỗi lần tick chỉ vẽ lại nội dung, không cuộn lên đầu trang. Đã bỏ nút ✕ từng mục và nút "Huỷ" của về giữa ca (nút "Quay lại" giữ nguyên).
+- **Đã kiểm tại máy:** `kiem-tra.ps1` sạch cả 5 lớp; thử trong trình duyệt với dữ liệu giả (tick lẻ, chọn cả ngày, xoá 7 mục thuộc 4 loại chỉ 1 lần lưu + 1 lần huỷ về giữa ca, lưu lỗi thì giữ nguyên và không huỷ về giữa ca, bỏ chọn, rời màn thì reset chọn) và chụp màn hình khổ điện thoại. **Chưa thử trên link thật.**
+- **Trạng thái:** đã push GitHub (`eb79d1b`; các thay đổi giao diện sau đó chưa commit) / đã `clasp push` (bản trước) / deploy chưa xác nhận. Chưa `clasp push` lại, chưa deploy.
+- **Việc cần làm tiếp theo:** `clasp push` lại + deploy → thử trên điện thoại.
+
+## [2026-09-19] Đã `clasp push`, test 520/520; thêm bước chọn ca cho Đóng máy (tổ có ca đêm)
+- **Xác nhận từ chủ dự án:** đã `clasp push` xong, menu 🧪 ra **520/520**, không đỏ (503 cũ + 17 test, đúng dự kiến). Chủ dự án thử giao diện mới và báo Đóng máy thiếu bước chọn ca.
+- **Nguyên nhân:** khi viết lại giao diện theo mô hình "ca đêm mặc định không chạy" đã bỏ bước chọn ca của Đóng máy — nhưng tổ có ca đêm vẫn cần nói rõ đóng ca ngày, ca đêm hay cả hai.
+- **Sửa (chỉ `ToTruong.html`, không đổi server/test):** tổ có ca đêm thì Đóng máy có thêm bước "Ca nào?" (Ca ngày / Ca đêm / Cả hai ca), 5 bước; tổ không có ca đêm vẫn 4 bước. **Đóng ca đêm = bỏ "Chạy ca đêm"** của các máy-ngày đã chọn (không tạo dòng `DONG` ca D, vì sẽ chặn chọn lại "Chạy ca đêm"); chỉ đóng ca đêm thì bỏ qua bước lý do (còn 4 bước); máy chưa chạy ca đêm ngày đó thì báo "không có gì để đóng". Đóng Chủ nhật: tổ có ca đêm mặc định đóng cả hai ca.
+- **Đã kiểm tại máy:** `kiem-tra.ps1` sạch cả 5 lớp; thử trong trình duyệt với dữ liệu giả cả tổ có / không có ca đêm (đóng ca đêm, cả hai ca, ca đêm khi chưa chạy đêm, Đóng Chủ nhật, số bước 5/4/4). **Chưa thử trên link thật.**
+- **Trạng thái:** đã push GitHub (`eb79d1b`; thay đổi này chưa commit) / đã `clasp push` (bản trước) / deploy chưa xác nhận. Thay đổi này chưa `clasp push`, chưa deploy.
+- **Việc cần làm tiếp theo:** `clasp push` lại + deploy → thử trên điện thoại (nhất là tổ có ca đêm như TRANG/DET).
+
 ## [2026-09-19] Tổ trưởng — viết lại giao diện (từng bước, nút lớn) + "Chạy ca đêm" (mô hình ca đêm mới)
 - **Yêu cầu (chủ dự án):** trang tổ trưởng quá rối, khó nhìn, khó thao tác trên điện thoại; tổ trưởng không rành công nghệ. Đồng ý bản phác (màn hình chính nút lớn, từng bước, Xem kế hoạch gom theo ngày) và chốt phương án B cho ca đêm: ca đêm không cố định nên MẶC ĐỊNH KHÔNG chạy, chọn "Chạy ca đêm" cho ngày cần; không tổ nào chạy ca đêm thường xuyên.
 - **Thay đổi:**

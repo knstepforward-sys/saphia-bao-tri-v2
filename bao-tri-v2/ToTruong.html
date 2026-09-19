@@ -3,6 +3,7 @@
      GIAO DIỆN MỚI (19/09/2026) — thiết kế cho người dùng điện thoại, không rành công nghệ:
        * Màn hình chính chỉ có vài nút LỚN theo việc cần làm (Đóng máy / Tăng ca / Chạy ca đêm /
          Có người xin về / Xem kế hoạch tuần), không còn danh sách 48 thẻ máy.
+         Đóng máy: tổ có ca đêm thì có bước chọn Ca ngày / Ca đêm / Cả hai (đóng ca đêm = bỏ "Chạy ca đêm").
        * Mỗi việc là vài BƯỚC, mỗi bước một câu hỏi; bước cuối bấm Xác nhận là LƯU LUÔN
          (không còn nút "Lưu kế hoạch tuần").
        * "Xem kế hoạch tuần" gom theo NGÀY, mỗi mục có nút ✕ để xoá.
@@ -79,9 +80,13 @@
 .muc-kh { margin: 8px 0 2px; font-size: 14.5px; font-weight: 700; }
 .muc-kh.do { color: var(--do); } .muc-kh.cam { color: #b45309; } .muc-kh.tim { color: #5e35b1; } .muc-kh.xanh { color: var(--xanh-dam); }
 .muc-kh .ly-do { font-weight: 400; color: var(--chu-nhat); }
-.chip-may { display: inline-flex; align-items: center; gap: 6px; background: #f1f3f4; border-radius: 999px; padding: 6px 6px 6px 12px; margin: 5px 6px 0 0; font-size: 14.5px; }
-.chip-may button { border: none; background: #dadce0; border-radius: 50%; width: 26px; height: 26px; font-size: 14px; cursor: pointer; color: var(--chu); }
+.chip-may { border: 1.5px solid var(--vien); background: #fff; border-radius: 999px; padding: 9px 14px; margin: 6px 6px 0 0; font-size: 15px; cursor: pointer; color: var(--chu); font-family: inherit; }
+.chip-may.chon { background: #fce8e6; border-color: var(--do); color: #a50e0b; font-weight: 700; }
+.ngay-kh .dau-ngay { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+.ngay-kh .dau-ngay .tieu-de { margin-bottom: 0; }
+.chon-ngay { background: none; border: none; color: var(--xanh); font-size: 13.5px; font-weight: 700; padding: 6px 0; cursor: pointer; }
 .dong-ve { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 6px; font-size: 14.5px; }
+.dong-ve { flex-wrap: wrap; }
 .dong-ve .nut-nho { flex: none; border: 1px solid var(--vien); background: #fff; color: var(--xanh); border-radius: 8px; padding: 6px 10px; font-size: 13px; font-weight: 700; cursor: pointer; margin-left: 4px; }
 .gio-hang { display: flex; gap: 10px; margin-top: 10px; }
 .gio-hang > div { flex: 1; }
@@ -204,6 +209,13 @@
   </div>
 </div>
 
+<div class="thanh-duoi an" id="thanhDuoiXoa">
+  <div class="boc-nut hang-nut">
+    <button class="nut phu hep" type="button" data-act="xoa-bo-chon">Bỏ chọn</button>
+    <button class="nut do" type="button" id="bNutXoa" data-act="xoa-nhieu">Xoá</button>
+  </div>
+</div>
+
 <div class="thanh-duoi an" id="thanhDuoiKhai">
   <div class="boc-nut">
     <button class="nut" id="nutLuuLich" type="button">Lưu giờ làm việc</button>
@@ -216,7 +228,7 @@
     <button class="huy" type="button" data-act="home">‹ Trang chính</button>
   </div>
   <div class="cau-hoi" id="kTieuDe">Kế hoạch tuần</div>
-  <div class="goi-y">Bấm ✕ để xoá một mục. Ngày không có gì thì tất cả máy chạy ca ngày bình thường.</div>
+  <div class="goi-y">Bấm vào máy để chọn (chọn được nhiều), rồi bấm Xoá một lần. Ngày không có gì thì tất cả máy chạy ca ngày bình thường.</div>
   <div id="kNoiDung"></div>
 </div>
 
@@ -490,8 +502,10 @@ function suaVaLuu_(sua, loiNhan, khiXong) {
 // Điều hướng giữa các màn hình
 // ===========================================================================
 var MAN = ['manHome', 'manBuoc', 'manKeHoach', 'manKhac'];
+var XOA_CHON = {};   // { 'loai|ma|ngay|ca': true } các mục đang được tick để xoá
 function chuyenMan_(ten) {
-  MAN.forEach(an); an('thanhDuoiBuoc');
+  MAN.forEach(an); an('thanhDuoiBuoc'); an('thanhDuoiXoa');
+  if (ten !== 'manKeHoach') XOA_CHON = {};
   hien(ten);
   if (ten === 'manBuoc') hien('thanhDuoiBuoc');
   window.scrollTo(0, 0);
@@ -536,11 +550,21 @@ function veHome_() {
 // XEM KẾ HOẠCH TUẦN — gom theo NGÀY
 // ===========================================================================
 function veKeHoach_() {
+  XOA_CHON = {};
+  chuyenMan_('manKeHoach');
+  veNoiDungKeHoach_();
+}
+
+/** Khoá của một mục có thể xoá: 'dong|MA|ymd|ca', 'tang|MA|ymd|', 'dem|MA|ymd|', 've|MA|ymd|ca'. */
+function khoaMuc_(loai, ma, ymd, ca) { return [loai, ma, ymd, ca || ''].join('|'); }
+
+/** Chỉ vẽ lại nội dung + thanh xoá, KHÔNG cuộn lên đầu trang (dùng cho mỗi lần tick). */
+function veNoiDungKeHoach_() {
   damBaoKhongChong_();
   $('kTieuDe').textContent = 'Tuần ' + fmtDDMM_(TUAN_BAT_DAU) + ' – ' + fmtDDMM_(ymdCongNgay_(TUAN_BAT_DAU, 6));
   var h = '';
   bayNgayCuaTuan_().forEach(function (ymd) {
-    var muc = '';
+    var muc = '', dsKhoa = [];
 
     // Đóng máy: nhóm theo (ca, lý do, ghi chú)
     var nhom = {}, thuTu = [];
@@ -556,37 +580,70 @@ function veKeHoach_() {
       var n = nhom[k];
       muc += '<div class="muc-kh do">🔴 Đóng máy' + (n.ca === 'D' ? ' (ca đêm)' : '') +
         ' <span class="ly-do">— ' + thoat(n.lyDo) + (n.ghiChu ? ': ' + thoat(n.ghiChu) : '') + '</span></div>' +
-        n.ds.sort().map(function (ma) { return chipMay_('xoa-dong', ma, ymd, n.ca); }).join('');
+        n.ds.sort().map(function (ma) { dsKhoa.push(khoaMuc_('dong', ma, ymd, n.ca)); return chipMay_('dong', ma, ymd, n.ca); }).join('');
     });
 
     var dsTang = Object.keys(TANG_CA).filter(function (ma) { return TANG_CA[ma][ymd]; }).sort();
-    if (dsTang.length) muc += '<div class="muc-kh cam">⏱ Tăng ca</div>' + dsTang.map(function (ma) { return chipMay_('xoa-tang', ma, ymd, ''); }).join('');
+    if (dsTang.length) muc += '<div class="muc-kh cam">⏱ Tăng ca</div>' + dsTang.map(function (ma) { dsKhoa.push(khoaMuc_('tang', ma, ymd, '')); return chipMay_('tang', ma, ymd, ''); }).join('');
 
     var dsDem = Object.keys(CHAY_DEM).filter(function (ma) { return CHAY_DEM[ma][ymd]; }).sort();
-    if (dsDem.length) muc += '<div class="muc-kh tim">🌙 Chạy ca đêm</div>' + dsDem.map(function (ma) { return chipMay_('xoa-dem', ma, ymd, ''); }).join('');
+    if (dsDem.length) muc += '<div class="muc-kh tim">🌙 Chạy ca đêm</div>' + dsDem.map(function (ma) { dsKhoa.push(khoaMuc_('dem', ma, ymd, '')); return chipMay_('dem', ma, ymd, ''); }).join('');
 
     var ve = VE_GIUA_CA.filter(function (v) { return v.ngay === ymd; });
     if (ve.length) {
       muc += '<div class="muc-kh xanh">🏠 Có người xin về</div>' + ve.map(function (v) {
-        return '<div class="dong-ve"><span>' + thoat(v.maMay) + (v.ca === 'D' ? ' (ca đêm)' : '') + ' về ' + thoat(v.gioVe) +
-          (v.gioQuayLai ? ', quay lại ' + thoat(v.gioQuayLai) : '') + ' · ' + thoat(v.lyDo) + '</span><span>' +
-          '<button class="nut-nho" type="button" data-act="ql" data-ma="' + thoat(v.maMay) + '" data-ngay="' + ymd + '" data-ca="' + thoat(v.ca) + '">Quay lại</button>' +
-          '<button class="nut-nho" type="button" style="color:var(--do)" data-act="huy-ve" data-ma="' + thoat(v.maMay) + '" data-ngay="' + ymd + '" data-ca="' + thoat(v.ca) + '">Huỷ</button></span></div>';
+        dsKhoa.push(khoaMuc_('ve', v.maMay, ymd, v.ca));
+        return '<div class="dong-ve">' + chipMay_('ve', v.maMay, ymd, v.ca) + '<span>' + (v.ca === 'D' ? 'ca đêm · ' : '') + 'về ' + thoat(v.gioVe) +
+          (v.gioQuayLai ? ', quay lại ' + thoat(v.gioQuayLai) : '') + ' · ' + thoat(v.lyDo) + '</span>' +
+          '<button class="nut-nho" type="button" data-act="ql" data-ma="' + thoat(v.maMay) + '" data-ngay="' + ymd + '" data-ca="' + thoat(v.ca) + '">Quay lại</button></div>';
       }).join('');
     }
-    if (muc) h += '<div class="ngay-kh"><div class="tieu-de">' + nhanNgay_(ymd) + '</div>' + muc + '</div>';
+    if (muc) {
+      var hetChon = dsKhoa.length && dsKhoa.every(function (k) { return XOA_CHON[k]; });
+      h += '<div class="ngay-kh"><div class="dau-ngay"><div class="tieu-de">' + nhanNgay_(ymd) + '</div>' +
+        '<button type="button" class="chon-ngay" data-act="chon-ngay" data-ymd="' + ymd + '">' + (hetChon ? 'Bỏ chọn ngày' : 'Chọn cả ngày') + '</button></div>' + muc + '</div>';
+    }
   });
   $('kNoiDung').innerHTML = h || '<div class="bao xanh">Chưa có gì thay đổi. Tất cả máy chạy ca ngày bình thường.</div>';
-  chuyenMan_('manKeHoach');
+  veThanhXoa_();
 }
 
-function chipMay_(act, ma, ymd, ca) {
-  return '<span class="chip-may">' + thoat(ma) + '<button type="button" aria-label="Xoá ' + thoat(ma) + '" data-act="' + act +
-    '" data-ma="' + thoat(ma) + '" data-ngay="' + ymd + '" data-ca="' + thoat(ca) + '">✕</button></span>';
+function chipMay_(loai, ma, ymd, ca) {
+  var k = khoaMuc_(loai, ma, ymd, ca), on = !!XOA_CHON[k];
+  return '<button type="button" class="chip-may' + (on ? ' chon' : '') + '" data-act="chon-muc" data-k="' + thoat(k) +
+    '" aria-pressed="' + on + '">' + (on ? '☑ ' : '☐ ') + thoat(ma) + '</button>';
 }
 
-function xoaMuc_(loai, ma, ymd, ca) {
-  suaVaLuu_(function () {
+function veThanhXoa_() {
+  var n = Object.keys(XOA_CHON).length;
+  $('bNutXoa').textContent = 'Xoá ' + n + ' mục';
+  (n ? hien : an)('thanhDuoiXoa');
+}
+
+/** Ngày đang hiển thị trên màn Xem kế hoạch → các khoá có thể chọn của ngày đó. */
+function dsKhoaCuaNgay_(ymd) {
+  var ds = [];
+  Object.keys(NGOAI_LE).forEach(function (ma) { NGOAI_LE[ma].forEach(function (nl) { if (nl.ngay === ymd) ds.push(khoaMuc_('dong', ma, ymd, nl.ca)); }); });
+  Object.keys(TANG_CA).forEach(function (ma) { if (TANG_CA[ma][ymd]) ds.push(khoaMuc_('tang', ma, ymd, '')); });
+  Object.keys(CHAY_DEM).forEach(function (ma) { if (CHAY_DEM[ma][ymd]) ds.push(khoaMuc_('dem', ma, ymd, '')); });
+  VE_GIUA_CA.forEach(function (v) { if (v.ngay === ymd) ds.push(khoaMuc_('ve', v.maMay, ymd, v.ca)); });
+  return ds;
+}
+
+/**
+ * Xoá TẤT CẢ mục đã tick trong MỘT lần lưu: đóng máy / tăng ca / chạy ca đêm gỡ khỏi trạng thái rồi
+ * lưu một lượt; về giữa ca (RPC riêng) huỷ lần lượt sau đó. Lưu lỗi thì khôi phục, không huỷ gì.
+ */
+function xoaNhieu_() {
+  var ks = Object.keys(XOA_CHON);
+  if (!ks.length) return;
+  if (!confirm('Xoá ' + ks.length + ' mục đã chọn?')) return;
+
+  var ban = chup_(), dsVe = [], coTrangThai = false;
+  ks.forEach(function (k) {
+    var p = k.split('|'), loai = p[0], ma = p[1], ymd = p[2], ca = p[3];
+    if (loai === 've') { dsVe.push({ maMay: ma, ngay: ymd, ca: ca }); return; }
+    coTrangThai = true;
     if (loai === 'dong') {
       var conLai = (NGOAI_LE[ma] || []).filter(function (nl) { return !(nl.ngay === ymd && nl.ca === ca); });
       if (conLai.length) NGOAI_LE[ma] = conLai; else delete NGOAI_LE[ma];
@@ -594,7 +651,34 @@ function xoaMuc_(loai, ma, ymd, ca) {
       var kho = loai === 'tang' ? TANG_CA : CHAY_DEM;
       if (kho[ma]) { delete kho[ma][ymd]; if (!Object.keys(kho[ma]).length) delete kho[ma]; }
     }
-  }, 'Đã xoá', function () { veKeHoach_(); });
+  });
+
+  function xong_() {
+    XOA_CHON = {};
+    toast_('Đã xoá ' + ks.length + ' mục');
+    taiKeHoachTuan_(TUAN_BAT_DAU, true, function () { veKeHoach_(); });
+  }
+  function huyVeTu_(i) {
+    if (i >= dsVe.length) return xong_();
+    hien('manLuu');
+    google.script.run
+      .withSuccessHandler(function (kq) {
+        an('manLuu');
+        if (!kq || !kq.ok) { alert('Chưa huỷ được ' + dsVe[i].maMay + ': ' + ((kq && kq.error) || 'lỗi không rõ')); return xong_(); }
+        huyVeTu_(i + 1);
+      })
+      .withFailureHandler(function (e) { an('manLuu'); alert('Chưa huỷ được ' + dsVe[i].maMay + ': ' + e.message); xong_(); })
+      .huyVeGiuaCa(BO_PHAN, TOKEN, dsVe[i]);
+  }
+
+  if (coTrangThai) {
+    luuTuan_(ban, function (thanhCong) {
+      if (!thanhCong) { veNoiDungKeHoach_(); return; }
+      huyVeTu_(0);
+    });
+  } else {
+    huyVeTu_(0);
+  }
 }
 
 // ===========================================================================
@@ -602,7 +686,7 @@ function xoaMuc_(loai, ma, ymd, ca) {
 // ===========================================================================
 var WZ = null;
 var CAC_BUOC = {
-  DONG: ['ngay', 'may', 'lydo', 'xacnhan'],
+  DONG: ['ngay', 'ca', 'may', 'lydo', 'xacnhan'],
   TANG: ['ngay', 'may', 'xacnhan'],
   DEM: ['ngay', 'may', 'xacnhan'],
   VE: ['ngay', 'ca', 'may', 'lydogio', 'xacnhan'],
@@ -610,9 +694,22 @@ var CAC_BUOC = {
 };
 var TEN_VIEC = { DONG: 'Đóng máy', TANG: 'Tăng ca', DEM: 'Chạy ca đêm', VE: 'Có người xin về', CHEP: 'Sao chép ngày' };
 
+/**
+ * Danh sách bước của việc đang làm. Bước "ca" chỉ có khi tổ có ca đêm. Đóng máy chỉ ca ĐÊM thì
+ * không cần lý do (ca đêm mặc định không chạy, đóng ca đêm chỉ là gỡ "Chạy ca đêm").
+ */
+function capNhatDsBuoc_() {
+  WZ.dsBuoc = CAC_BUOC[WZ.loai].filter(function (b) {
+    if (b === 'ca' && !coCaDem_()) return false;
+    if (b === 'lydo' && WZ.loai === 'DONG' && WZ.ca === 'D') return false;
+    return true;
+  });
+}
+
 function moWizard_(loai, preset) {
-  var dsBuoc = CAC_BUOC[loai].filter(function (b) { return b !== 'ca' || coCaDem_(); });
-  WZ = { loai: loai, dsBuoc: dsBuoc, i: 0, ngay: {}, may: {}, ca: 'N', lyDo: '', ghiChu: '', gioVe: '', nguon: '', tim: '', khoaRq: 'w-' + Date.now() };
+  WZ = { loai: loai, dsBuoc: [], i: 0, ngay: {}, may: {}, ca: 'N', lyDo: '', ghiChu: '', gioVe: '', nguon: '', tim: '', khoaRq: 'w-' + Date.now() };
+  capNhatDsBuoc_();
+  var dsBuoc = WZ.dsBuoc;
   if (loai === 'VE') {
     var homNay = homNay_(), dsDaToi = bayNgayCuaTuan_().filter(function (y) { return y <= homNay; });
     if (!dsDaToi.length) { WZ = null; return alert('Tuần này chưa tới, chưa có ngày nào để ghi.'); }
@@ -624,7 +721,9 @@ function moWizard_(loai, preset) {
   if (preset) {
     if (preset.ngay) WZ.ngay = preset.ngay;
     if (preset.may) WZ.may = preset.may;
-    if (preset.buoc) WZ.i = dsBuoc.indexOf(preset.buoc);
+    if (preset.ca) WZ.ca = preset.ca;
+    capNhatDsBuoc_();
+    if (preset.buoc) WZ.i = WZ.dsBuoc.indexOf(preset.buoc);
   }
   chuyenMan_('manBuoc');
   veBuoc_();
@@ -672,9 +771,14 @@ function veBuoc_() {
         tenThu_(y) + '<small>' + fmtDDMM_(y) + '</small></button>';
     }).join('') + (don ? '' : '<button type="button" class="o-ngay" data-act="ngay-ca-tuan">Cả tuần</button>') + '</div>';
   } else if (b === 'ca') {
-    h += '<div class="cau-hoi">Ca nào?</div><div class="goi-y">Người xin về thuộc ca ngày hay ca đêm?</div>' +
+    var goiYCa = WZ.loai === 'DONG' ? 'Đóng ca ngày, ca đêm, hay cả hai?' : 'Người xin về thuộc ca ngày hay ca đêm?';
+    h += '<div class="cau-hoi">Ca nào?</div><div class="goi-y">' + goiYCa + '</div>' +
       '<button type="button" class="lua-chon" data-act="ca" data-ca="N" aria-pressed="' + (WZ.ca === 'N') + '">☀️ Ca ngày</button>' +
-      '<button type="button" class="lua-chon" data-act="ca" data-ca="D" aria-pressed="' + (WZ.ca === 'D') + '">🌙 Ca đêm</button>';
+      '<button type="button" class="lua-chon" data-act="ca" data-ca="D" aria-pressed="' + (WZ.ca === 'D') + '">🌙 Ca đêm</button>' +
+      (WZ.loai === 'DONG'
+        ? '<button type="button" class="lua-chon" data-act="ca" data-ca="ND" aria-pressed="' + (WZ.ca === 'ND') + '">☀️🌙 Cả hai ca</button>' +
+          '<div class="goi-y" style="margin-top:6px">Ca đêm mặc định không chạy. Đóng ca đêm là bỏ "Chạy ca đêm" của các máy đã chọn.</div>'
+        : '');
   } else if (b === 'may') {
     var goiY = { DONG: 'Chọn máy cần đóng.', TANG: 'Chọn máy tăng ca.', DEM: 'Chọn máy chạy ca đêm.', VE: 'Chọn máy công nhân đang trông.' }[WZ.loai];
     h += '<div class="cau-hoi">Máy nào?</div><div class="goi-y">' + goiY + '</div>' +
@@ -728,7 +832,15 @@ function tomTatXacNhan_() {
   var ngay = ngayDaChon_().map(nhanNgay_).join(', '), may = mayDaChon_();
   var soMay = may.length + ' máy';
   if (WZ.loai === 'DONG') {
-    return '<b>Đóng ' + soMay + '</b><br>Ngày: ' + ngay + '<br>Lý do: ' + thoat(WZ.lyDo) + (WZ.ghiChu ? ' (' + thoat(WZ.ghiChu) + ')' : '');
+    var dongN = WZ.ca === 'N' || WZ.ca === 'ND', dongD = WZ.ca === 'D' || WZ.ca === 'ND';
+    var tenCa = WZ.ca === 'ND' ? 'ca ngày và ca đêm' : (WZ.ca === 'D' ? 'ca đêm' : 'ca ngày');
+    var dangChayDem = 0;
+    if (dongD) may.forEach(function (ma) { ngayDaChon_().forEach(function (y) { if (coDem_(ma, y)) dangChayDem++; }); });
+    return '<b>Đóng ' + soMay + '</b> (' + tenCa + ')<br>Ngày: ' + ngay +
+      (dongN ? '<br>Lý do: ' + thoat(WZ.lyDo) + (WZ.ghiChu ? ' (' + thoat(WZ.ghiChu) + ')' : '') : '') +
+      (dongD ? '<br><span class="nho">' + (dangChayDem
+        ? 'Bỏ "Chạy ca đêm" của ' + dangChayDem + ' lượt máy-ngày.'
+        : 'Các máy này chưa chạy ca đêm ngày đã chọn, không có gì phải bỏ.') + '</span>' : '');
   }
   if (WZ.loai === 'TANG' || WZ.loai === 'DEM') {
     var bo = 0;
@@ -776,14 +888,26 @@ function xacNhanWizard_() {
   var dsNgay = ngayDaChon_(), dsMay = mayDaChon_();
 
   if (WZ.loai === 'DONG') {
+    var dongN = WZ.ca === 'N' || WZ.ca === 'ND', dongD = WZ.ca === 'D' || WZ.ca === 'ND';
+    var coGiDeBo = false;
+    dsMay.forEach(function (ma) { dsNgay.forEach(function (y) { if (coDem_(ma, y)) coGiDeBo = true; }); });
+    if (!dongN && !coGiDeBo) {
+      return alert('Các máy này chưa chạy ca đêm vào những ngày đã chọn nên không có gì để đóng.');
+    }
     return suaVaLuu_(function () {
       dsMay.forEach(function (ma) {
-        var theoKhoa = {};
-        (NGOAI_LE[ma] || []).forEach(function (nl) { theoKhoa[nl.ngay + '|' + nl.ca] = nl; });
-        dsNgay.forEach(function (y) { theoKhoa[y + '|N'] = { maMay: ma, ngay: y, ca: 'N', lyDo: WZ.lyDo, ghiChu: WZ.ghiChu.trim() }; });
-        NGOAI_LE[ma] = Object.keys(theoKhoa).map(function (k) { return theoKhoa[k]; });
+        if (dongN) {
+          var theoKhoa = {};
+          (NGOAI_LE[ma] || []).forEach(function (nl) { theoKhoa[nl.ngay + '|' + nl.ca] = nl; });
+          dsNgay.forEach(function (y) { theoKhoa[y + '|N'] = { maMay: ma, ngay: y, ca: 'N', lyDo: WZ.lyDo, ghiChu: WZ.ghiChu.trim() }; });
+          NGOAI_LE[ma] = Object.keys(theoKhoa).map(function (k) { return theoKhoa[k]; });
+        }
+        if (dongD && CHAY_DEM[ma]) {
+          dsNgay.forEach(function (y) { delete CHAY_DEM[ma][y]; });
+          if (!Object.keys(CHAY_DEM[ma]).length) delete CHAY_DEM[ma];
+        }
       });
-    }, 'Đã đóng ' + dsMay.length + ' máy', veHomeSauLuu_);
+    }, dongN ? 'Đã đóng ' + dsMay.length + ' máy' : 'Đã bỏ ca đêm cho ' + dsMay.length + ' máy', veHomeSauLuu_);
   }
 
   if (WZ.loai === 'TANG' || WZ.loai === 'DEM') {
@@ -864,7 +988,7 @@ document.addEventListener('click', function (ev) {
       var cn = ymdCongNgay_(TUAN_BAT_DAU, 6), hetMay = {}, ng = {};
       (DATA.may || []).forEach(function (m) { hetMay[m.maMay] = true; });
       ng[cn] = true;
-      moWizard_('DONG', { ngay: ng, may: hetMay, buoc: 'lydo' });
+      moWizard_('DONG', { ngay: ng, may: hetMay, ca: coCaDem_() ? 'ND' : 'N', buoc: 'lydo' });
       break;
     }
     case 'khac-saochep': moWizard_('CHEP'); break;
@@ -894,7 +1018,12 @@ document.addEventListener('click', function (ev) {
       break;
     }
     case 'ngay-ca-tuan': bayNgayCuaTuan_().forEach(function (y2) { WZ.ngay[y2] = true; }); veBuoc_(); break;
-    case 'ca': WZ.ca = el.dataset.ca; WZ.may = {}; veBuoc_(); break;
+    case 'ca':
+      WZ.ca = el.dataset.ca;
+      if (WZ.loai === 'VE') WZ.may = {};
+      capNhatDsBuoc_();
+      veBuoc_();
+      break;
     case 'ly-do': WZ.lyDo = el.dataset.v; veBuoc_(); break;
     case 'may-tat-ca': {
       var ds = WZ.dsHienThi || [];
@@ -907,11 +1036,20 @@ document.addEventListener('click', function (ev) {
       break;
     }
 
-    case 'xoa-dong': xoaMuc_('dong', el.dataset.ma, el.dataset.ngay, el.dataset.ca); break;
-    case 'xoa-tang': xoaMuc_('tang', el.dataset.ma, el.dataset.ngay, ''); break;
-    case 'xoa-dem': xoaMuc_('dem', el.dataset.ma, el.dataset.ngay, ''); break;
+    case 'chon-muc':
+      if (XOA_CHON[el.dataset.k]) delete XOA_CHON[el.dataset.k]; else XOA_CHON[el.dataset.k] = true;
+      veNoiDungKeHoach_();
+      break;
+    case 'chon-ngay': {
+      var dsK = dsKhoaCuaNgay_(el.dataset.ymd);
+      var daHet = dsK.length > 0 && dsK.every(function (k) { return XOA_CHON[k]; });
+      dsK.forEach(function (k) { if (daHet) delete XOA_CHON[k]; else XOA_CHON[k] = true; });
+      veNoiDungKeHoach_();
+      break;
+    }
+    case 'xoa-bo-chon': XOA_CHON = {}; veNoiDungKeHoach_(); break;
+    case 'xoa-nhieu': xoaNhieu_(); break;
     case 'ql': moQuayLai(el.dataset.ma, el.dataset.ngay, el.dataset.ca); break;
-    case 'huy-ve': huyVe_(el.dataset.ma, el.dataset.ngay, el.dataset.ca); break;
   }
 });
 
@@ -963,19 +1101,6 @@ $('qlXacNhan').addEventListener('click', function () {
     });
 });
 
-function huyVe_(maMay, ngay, ca) {
-  if (!confirm('Huỷ lượt về giữa ca của máy ' + maMay + '?')) return;
-  hien('manLuu');
-  google.script.run
-    .withSuccessHandler(function (kq) {
-      an('manLuu');
-      if (!kq || !kq.ok) return alert('Lỗi: ' + ((kq && kq.error) || 'không huỷ được.'));
-      toast_('Đã huỷ');
-      taiKeHoachTuan_(TUAN_BAT_DAU, true, function () { veKeHoach_(); });
-    })
-    .withFailureHandler(function (e) { an('manLuu'); alert('Lỗi: ' + e.message); })
-    .huyVeGiuaCa(BO_PHAN, TOKEN, { maMay: maMay, ngay: ngay, ca: ca });
-}
 </script>
 
 </body>
