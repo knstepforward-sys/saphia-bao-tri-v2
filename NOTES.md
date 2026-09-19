@@ -1,3 +1,14 @@
+## [2026-09-19] Tăng ca luôn hiện kể cả tổ có ca đêm; tăng ca ngày THAY cho ca đêm
+- **Vấn đề (chủ dự án phát hiện ở tổ TRANG):** mục tăng ca biến mất vì lịch tổ tick "Có ca đêm". Thực tế ca đêm KHÔNG cố định: tổ chạy tăng ca ngày nếu đủ người, chỉ khi không đủ mới chạy ca đêm; lâu lâu mới có ca đêm. Nên "có ca đêm" không được làm mất tăng ca.
+- **Luật đã chốt:** máy tăng ca ngày nào thì KHÔNG chạy ca đêm ngày đó (tăng ca thay ca đêm).
+- **Thay đổi:**
+  - `ToTruong.html` — bỏ điều kiện ẩn tăng ca theo `Co_Ca_Dem` (`toCoTangCa_()` luôn true); hộp thoại tăng ca có dòng giải thích luật; hộp thoại về giữa ca khoá máy đang tăng ca khi chọn ca đêm ("đang tăng ca ngày này — không chạy ca đêm").
+  - `KeHoachTo.gs` — `chuanHoaDanhSachVeGiuaCa_` chặn về giữa ca ĐÊM của máy-ngày đang tăng ca (ca ngày vẫn được); `boVeGiuaCaDemBiTangCaDe_` (thuần) + `luuKeHoachTuan` tự bỏ lượt về giữa ca đêm bị tăng ca đè khi lưu tuần.
+  - `Test.gs` — thêm 7 test. Dự kiến tổng **503** (496 + 7), **chưa chạy trong Sheet**.
+- **Đã kiểm tại máy:** `kiem-tra.ps1` sạch cả 5 lớp; test tăng ca + về giữa ca + nghỉ đêm chạy bằng node 71/71; giao diện thử với tổ có ca đêm (mục tăng ca hiện, khoá máy tăng ca ở ca đêm, ca ngày không khoá). **Chưa thử trên link thật.**
+- **Trạng thái:** chưa push GitHub / chưa `clasp push` / chưa deploy.
+- **Việc cần làm tiếp theo:** `clasp push` → menu 🧪 (dự kiến 503) → deploy. **Đợt 3 phải nhớ luật này:** máy-ngày có tăng ca thì không tính phút kế hoạch ca đêm. **Câu hỏi còn treo cho chủ dự án:** tổ có ca đêm không cố định nhưng lịch đang tick "Có ca đêm" nên MẶC ĐỊNH mọi máy đều "Bố trí chạy" cả ca đêm mỗi ngày — nếu ca đêm hiếm thì phải đóng ca đêm hàng ngày mới đúng. Cần chốt cách khai (xem tin nhắn cùng ngày).
+
 ## [2026-09-19] Đã `clasp push`, test 496/496 (nghỉ ca đêm theo bộ phận + xoá từng dòng thẻ máy)
 - **Xác nhận từ chủ dự án:** đã `clasp push` xong, menu 🧪 **Chạy test logic** ra **496/496**, không đỏ (482 cũ + 14 test nghỉ ca đêm, đúng dự kiến). Bản push này gồm cả nghỉ ca đêm theo bộ phận (`70b880e`) và nút ✕ xoá từng dòng đóng máy / từng ngày tăng ca (`13dac4a`; thay đổi này chỉ ở giao diện nên không có test riêng). Cập nhật số test trong `bao-tri-v2/CLAUDE.md` (482 → 496) và trạng thái ở `TASK_KE_HOACH_TO_TRUONG.md` mục 9e.
 - **Trạng thái:** đã push GitHub (`13dac4a`; commit tài liệu này chưa đẩy lúc viết dòng này) / **ĐÃ `clasp push`** / **CHƯA xác nhận deploy** — trang tổ trưởng và RPC ghi về giữa ca chạy bản đã deploy nên chưa thấy nút ✕ và cách tính ca đêm mới cho tới khi deploy.

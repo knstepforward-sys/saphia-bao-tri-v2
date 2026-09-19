@@ -327,6 +327,7 @@ select.chon {
     <button class="nut phu" id="tcChonCaTuan" type="button" style="margin-top:8px;padding:8px;font-size:13px">Chọn cả tuần</button>
 
     <div style="font-size:12.5px;color:var(--chu-nhat);margin-top:10px">
+      Tăng ca ngày nào thì máy đó <b>không chạy ca đêm</b> ngày đó (tăng ca thay cho ca đêm).
       Máy đang đóng ca ngày của ngày nào thì ngày đó không tăng ca được — bấm
       "Bố trí lại" cho máy đó trước. Đóng máy vào ngày đang tăng ca thì tăng ca
       của ngày đó tự bỏ.
@@ -503,8 +504,11 @@ var NGOAI_LE = {};       // { MA_MAY: [{maMay,ngay,ca,lyDo,ghiChu}, ...] } — t
 var TANG_CA = {};        // { MA_MAY: { 'yyyy-MM-dd': true } } — tăng ca ca ngày, cùng vòng đời với NGOAI_LE
 var VE_GIUA_CA = [];     // [{maMay,ngay,ca,lyDo,gioVe,gioQuayLai}] — ghi thẳng lên server, KHÔNG thuộc "Lưu kế hoạch tuần"
 
-/** Tổ có ca đêm thì không có khái niệm tăng ca (chỉ bộ phận chạy ca ngày mới tăng ca). */
-function toCoTangCa_() { return !(DATA && DATA.lich && DATA.lich.Co_Ca_Dem); }
+/**
+ * Tăng ca luôn dùng được, kể cả tổ có ca đêm: ca đêm không cố định, tổ trưởng chọn tăng ca ngày
+ * nếu đủ người, chỉ khi không đủ mới chạy ca đêm. Máy tăng ca ngày nào thì không chạy ca đêm ngày đó.
+ */
+function toCoTangCa_() { return true; }
 
 /** Máy có đang bị đóng CA NGÀY của ngày này không. */
 function dangDongCaNgay_(maMay, ymd) {
@@ -1261,14 +1265,17 @@ function veLaiDsMayVgc_() {
 
   $('vgcDsMay').innerHTML = dsMay.map(function (m) {
     var dong = dangDongCaNgayCa_(m.maMay, ngay, VGC_CA);
+    var tangCaThayDem = VGC_CA === 'D' && !!(TANG_CA[m.maMay] && TANG_CA[m.maMay][ngay]);
     var daGhi = VE_GIUA_CA.some(function (v) { return v.maMay === m.maMay && v.ngay === ngay && v.ca === VGC_CA; });
-    if (dong) delete VGC_MAY[m.maMay];
-    return '<label style="display:flex;align-items:center;gap:8px;padding:7px 0;' + (dong ? 'opacity:.5;' : '') + '">' +
+    var khoa = dong || tangCaThayDem;
+    if (khoa) delete VGC_MAY[m.maMay];
+    return '<label style="display:flex;align-items:center;gap:8px;padding:7px 0;' + (khoa ? 'opacity:.5;' : '') + '">' +
       '<input type="checkbox" class="vgc-may" data-ma="' + m.maMay + '"' +
-        (VGC_MAY[m.maMay] ? ' checked' : '') + (dong ? ' disabled' : '') + '>' +
+        (VGC_MAY[m.maMay] ? ' checked' : '') + (khoa ? ' disabled' : '') + '>' +
       '<span>' + thoat(m.maMay) + ' — ' + thoat(m.tenMay) + '</span>' +
       (dong ? '<span class="nho">(đang đóng — bố trí lại trước)</span>' : '') +
-      (daGhi && !dong ? '<span class="nho">(đã ghi — ghi lại sẽ cập nhật)</span>' : '') +
+      (tangCaThayDem ? '<span class="nho">(đang tăng ca ngày này — không chạy ca đêm)</span>' : '') +
+      (daGhi && !khoa ? '<span class="nho">(đã ghi — ghi lại sẽ cập nhật)</span>' : '') +
       '</label>';
   }).join('') || '<div class="nho" style="padding:8px 0">Không có máy nào khớp.</div>';
 

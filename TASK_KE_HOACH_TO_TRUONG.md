@@ -260,7 +260,7 @@ Bộ phận chỉ chạy ca ngày; ngày tăng ca thì máy chạy 07:00–20:30
 | Giờ | `Cau_Hinh`: `TANG_CA_DEN`=20:30, `NGHI_TOI_TU`=17:00, `NGHI_TOI_DEN`=18:00. Giờ bắt đầu = `Ca_Ngay_Tu` của tổ. Nghỉ trưa vẫn theo `Lich_Lam_Viec_To` (giả định 11:30–12:15, chưa xác nhận từng tổ) |
 | Phút kế hoạch | Ngày thường: theo lịch tổ trừ nghỉ trưa. Ngày tăng ca: 07:00–20:30 − nghỉ trưa 45 − nghỉ tối 60 = **705 phút** |
 | Một máy-ngày một trạng thái | Đóng ca ngày ngày nào thì ngày đó không tăng ca. Server báo lỗi; giao diện bỏ qua và báo lại; đóng máy vào ngày đang tăng ca thì tăng ca ngày đó tự bỏ |
-| Tổ có ca đêm | Ẩn hẳn giao diện tăng ca (chỉ bộ phận chạy ca ngày mới tăng ca) |
+| Tổ có ca đêm | **ĐÃ ĐỔI (19/09/2026):** tăng ca luôn hiện, kể cả tổ có ca đêm — ca đêm không cố định, tổ chọn tăng ca ngày nếu đủ người, chỉ khi không đủ mới chạy ca đêm. **Máy tăng ca ngày nào thì KHÔNG chạy ca đêm ngày đó** (tăng ca thay ca đêm): không ghi được về giữa ca ĐÊM cho máy-ngày đó; lưu tuần tự bỏ lượt về giữa ca đêm bị tăng ca đè; Đợt 3 không tính phút kế hoạch ca đêm của máy-ngày có tăng ca (tránh tính trùng khung 17:00–20:30) |
 | Client bản cũ | Không gửi `tangCa` → server GIỮ NGUYÊN tăng ca đã lưu, không xoá nhầm |
 
 | # | Việc | Trạng thái |

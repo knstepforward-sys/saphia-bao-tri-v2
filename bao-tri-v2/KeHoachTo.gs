@@ -677,7 +677,8 @@ function luuKeHoachTuan(boPhan, token, payload) {
 
     // Về giữa ca ghi riêng lúc xảy ra (ghiVeGiuaCa) nên luôn được GIỮ LẠI — trừ lượt nào
     // vừa bị đóng máy đè lên đúng (máy, ngày, ca) đó (một máy-ngày-ca một trạng thái).
-    const veGiuaCaGhi = boVeGiuaCaBiDongDe_(tach.veGiuaCaCu, chuan.dsDong);
+    const veGiuaCaGhi = boVeGiuaCaDemBiTangCaDe_(
+      boVeGiuaCaBiDongDe_(tach.veGiuaCaCu, chuan.dsDong), dsTangCaGhi);
     const toanBo = tach.giuLai.concat(chuan.dsDong, dsTangCaGhi, veGiuaCaGhi, [dongDaKhai]);
 
     if (toanBo.length) {
@@ -894,6 +895,22 @@ function boVeGiuaCaBiDongDe_(dsVeRows, dsDongRows) {
 }
 
 /**
+ * Bỏ khỏi `dsVeRows` những lượt về giữa ca CA ĐÊM mà máy đó giờ đang tăng ca đúng ngày đó
+ * (`dsTangCaRows`: các dòng thô TANG_CA). Tăng ca ngày thay cho ca đêm của cùng ngày, nên lượt
+ * về giữa ca đêm đó không còn nghĩa. Lượt ca NGÀY không bị ảnh hưởng. Hàm THUẦN.
+ */
+function boVeGiuaCaDemBiTangCaDe_(dsVeRows, dsTangCaRows) {
+  const iNgay = HEADER_KE_HOACH_MAY.indexOf('Ngay');
+  const iCa = HEADER_KE_HOACH_MAY.indexOf('Ca');
+  const iMay = HEADER_KE_HOACH_MAY.indexOf('Ma_May');
+  const tangCa = {};
+  (dsTangCaRows || []).forEach(function (r) { tangCa[r[iMay] + '|' + r[iNgay]] = true; });
+  return (dsVeRows || []).filter(function (r) {
+    return !(r[iCa] === MA_CA.DEM && tangCa[r[iMay] + '|' + r[iNgay]]);
+  });
+}
+
+/**
  * Validate + chuẩn hoá MỘT lần tổ trưởng ghi về giữa ca cho MỘT hoặc NHIỀU máy
  * (một công nhân có thể trông nhiều máy). Hàm THUẦN.
  *
@@ -944,6 +961,12 @@ function chuanHoaDanhSachVeGiuaCa_(p, ctx) {
 
     if (ctx.dangDong && ctx.dangDong[maMay + '|' + ngay + '|' + ca]) {
       return { ok: false, error: 'Máy ' + maMay + ' đang đóng ca này theo kế hoạch, không thể ghi về giữa ca.' };
+    }
+
+    // Tăng ca ngày THAY cho ca đêm: máy đã tăng ca ngày nào thì ca đêm của ngày đó không chạy,
+    // nên không có gì để ghi "về giữa ca" ở ca đêm đó.
+    if (ca === MA_CA.DEM && ctx.tangCa && ctx.tangCa[maMay + '|' + ngay]) {
+      return { ok: false, error: 'Máy ' + maMay + ' đang tăng ca ngày ' + ngay + ' nên không chạy ca đêm ngày đó.' };
     }
 
     const tinh = tinhVeGiuaCa_(ctx.lich, !!(ctx.tangCa && ctx.tangCa[maMay + '|' + ngay]),
