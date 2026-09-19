@@ -1,3 +1,8 @@
+## [2026-09-19] Tổ trưởng — Đợt 2(b) "Về giữa ca": ĐÃ `clasp push`, test 482/482
+- **Xác nhận từ chủ dự án:** đã `clasp push` xong, menu 🧪 **Chạy test logic** ra **482/482**, không đỏ (432 cũ + 50 test về giữa ca mới, đúng dự kiến). Cập nhật số test trong `bao-tri-v2/CLAUDE.md` (432 → 482) và trạng thái bước 4 ở `TASK_KE_HOACH_TO_TRUONG.md` mục 9d.
+- **Trạng thái:** đã push GitHub (`cf4f1bf`; commit tài liệu này chưa đẩy lúc viết dòng này) / **ĐÃ `clasp push`** / **CHƯA deploy**. Link `/exec` vẫn chạy bản cũ nên trang tổ trưởng thật chưa có mục "Về giữa ca".
+- **Việc cần làm tiếp theo:** menu 🔧 "1. Cài đặt hệ thống" (thêm 2 cột `Gio_Ve`/`Gio_Quay_Lai` vào `Ke_Hoach_May` + khoá `LY_DO_VE_GIUA_CA`) → deploy → test tay bằng một máy thử → dọn (lọc `Trang_Thai` = `VE_GIUA_CA`/`TANG_CA`, xoá dòng máy thử, giữ `DONG`/`DA_KHAI` thật) → hướng dẫn tổ trưởng → Đợt 3.
+
 ## [2026-09-19] Tổ trưởng — Đợt 2(b): "Về giữa ca" do TỔ TRƯỞNG ghi (bước 1-4)
 - **Đính chính thiết kế (chủ dự án):** "Về giữa ca" là việc của tổ trưởng (công nhân xin về phải xin tổ trưởng), tách hẳn khỏi "dừng máy không hư" (đổi mặt hàng, vệ sinh, thiếu nguyên liệu — công nhân báo qua QR như cũ). Phương án phiếu `DM-` trong luồng QR đã BỎ. **Không sửa** `Index.html`, `CongNhan.gs`, `BaoCao.gs`, `Su_Co`, không thêm trigger.
 - **Thay đổi:**

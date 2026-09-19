@@ -297,7 +297,7 @@ là bình thường, không ai phải quét bật lại. **Không đụng** `Ind
 | 1 | 2 cột mới, khoá `LY_DO_VE_GIUA_CA`, `khungCaDemCuaMay_`, `tinhVeGiuaCa_` + 25 test | ✅ viết xong |
 | 2 | `chuanHoaDanhSachVeGiuaCa_`, 3 RPC, `layKeHoachTuan` trả `veGiuaCa`, `luuKeHoachTuan` giữ lại + 25 test | ✅ viết xong |
 | 3 | `ToTruong.html`: mục "Về giữa ca", hộp thoại ghi nhiều máy, quay lại, huỷ; thử với dữ liệu giả | ✅ viết xong |
-| 4 | Tài liệu + push GitHub | ✅ xong. **Chờ**: `clasp push` + menu 🧪 (dự kiến **482**, chưa kiểm chứng) + menu "1. Cài đặt hệ thống" + deploy + test tay |
+| 4 | Tài liệu + push | ✅ đã `clasp push`, menu 🧪 ra **482/482**. **Chờ**: menu "1. Cài đặt hệ thống" + deploy + test tay trên link thật |
 
 **Test tay trên link thật (dùng MỘT máy thử, dọn ngay sau đó):** ghi về giữa ca 1 máy → F5 vẫn còn;
 ghi 2 máy một lượt; cập nhật giờ quay lại; huỷ; đóng máy đúng ngày đó rồi Lưu tuần → lượt về
