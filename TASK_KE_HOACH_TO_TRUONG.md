@@ -321,9 +321,9 @@ không nghỉ. Quyết định: **không thêm cột, không sửa form** — ch
 | Ca ngày / ngày tăng ca | Không dùng khoá này (đã có giờ nghỉ cụ thể) |
 | Hàm | `nghiDemPhut_(boPhan)` (Code.gs), `khungCaDemCuaMay_(lich, nghiDemPhut)`, `tinhVeGiuaCa_(..., nghiDemPhut)` (KeHoachTo.gs) |
 
-**Trạng thái:** đã viết + 14 test mới, kiểm bằng node và `kiem-tra.ps1` sạch; số test trong Sheet dự kiến
-**496** (482 + 14), **chưa kiểm chứng**. Chờ: `clasp push` + menu "1. Cài đặt hệ thống" (thêm 3 dòng
-cấu hình) + menu 🧪 + **deploy** (RPC `ghiVeGiuaCa` chạy bản đã deploy, không chạy bản HEAD).
+**Trạng thái:** đã viết + 14 test mới, đã `clasp push`, menu 🧪 ra **496/496** (482 + 14). **Chờ**: menu "1. Cài đặt hệ thống"
+(thêm 3 dòng cấu hình) + **deploy** (RPC `ghiVeGiuaCa` chạy bản đã deploy, không chạy bản HEAD) + chủ dự án chỉnh số
+phút nghỉ từng bộ phận trong `Cau_Hinh`.
 
 ## 9b. Việc làm thêm SAU khi Đợt 1 xong (không thuộc 8 bước gốc)
 

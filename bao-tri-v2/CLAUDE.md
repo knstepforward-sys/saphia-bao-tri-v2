@@ -65,7 +65,7 @@ người dùng để hiện cửa sổ đăng nhập.
 | `DonDuLieu.gs` | Xoá phiếu / dọn dữ liệu chạy thử, có thùng rác. **Chỉ menu, không có route web** |
 | `DoTai.gs` | Đo chi phí thật của từng hàm RPC, chỉ đọc |
 | `ThongBao.gs` | Bot Telegram nhắc thợ: soạn tin, gửi, công tắc, cầu chì, hai mục menu, trigger nhắc |
-| `Test.gs` | 482 test chạy bằng dữ liệu giả, **không đụng sheet nào** |
+| `Test.gs` | 496 test chạy bằng dữ liệu giả, **không đụng sheet nào** |
 | `Index.html` | Trang công nhân |
 | `Tho.html` | Trang thợ |
 | `ToTruong.html` | **Mới** — trang tổ trưởng khai kế hoạch máy theo tuần. Xem mục 2b |
@@ -930,10 +930,10 @@ hàm thuần**: soi mã nguồn từng hàm soạn tin bằng `Function.prototyp
 thật nằm chung file — kéo nhầm một lời gọi mạng vào nhóm hàm soạn tin là mất luôn khả năng
 kiểm thử tại máy.
 
-Lớp thứ sáu: menu **🧪 Chạy test logic** trong Sheet — 482 test bằng dữ liệu giả,
+Lớp thứ sáu: menu **🧪 Chạy test logic** trong Sheet — 496 test bằng dữ liệu giả,
 **không đọc/ghi sheet nào**. (Số cũ "340" trong tài liệu này đã lệch thực tế từ trước —
 một lần kéo trực tiếp từ Apps Script Editor đã thêm test lưu trữ phiếu mà không cập nhật
-số ở đây; số thật đã đo trong Sheet: 402 sau Đợt 1, 432 sau tăng ca, 482 sau về giữa ca (19/09/2026), mục 2b.)
+số ở đây; số thật đã đo trong Sheet: 402 sau Đợt 1, 432 sau tăng ca, 482 sau về giữa ca, 496 sau nghỉ ca đêm theo bộ phận (19/09/2026), mục 2b.)
 
 Điều này làm được nhờ `getOnDutyContacts_` nhận tham số `duLieu` **tiêm theo từng trường**:
 `{ dsTho, cauHinhCa, lichTheoThang, cauHinh }`. Thiếu trường nào thì hàm tự đọc sheet — nên

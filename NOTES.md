@@ -1,3 +1,8 @@
+## [2026-09-19] Đã `clasp push`, test 496/496 (nghỉ ca đêm theo bộ phận + xoá từng dòng thẻ máy)
+- **Xác nhận từ chủ dự án:** đã `clasp push` xong, menu 🧪 **Chạy test logic** ra **496/496**, không đỏ (482 cũ + 14 test nghỉ ca đêm, đúng dự kiến). Bản push này gồm cả nghỉ ca đêm theo bộ phận (`70b880e`) và nút ✕ xoá từng dòng đóng máy / từng ngày tăng ca (`13dac4a`; thay đổi này chỉ ở giao diện nên không có test riêng). Cập nhật số test trong `bao-tri-v2/CLAUDE.md` (482 → 496) và trạng thái ở `TASK_KE_HOACH_TO_TRUONG.md` mục 9e.
+- **Trạng thái:** đã push GitHub (`13dac4a`; commit tài liệu này chưa đẩy lúc viết dòng này) / **ĐÃ `clasp push`** / **CHƯA xác nhận deploy** — trang tổ trưởng và RPC ghi về giữa ca chạy bản đã deploy nên chưa thấy nút ✕ và cách tính ca đêm mới cho tới khi deploy.
+- **Việc cần làm tiếp theo:** menu 🔧 "1. Cài đặt hệ thống" (thêm 3 dòng `NGHI_DEM_PHUT_*` vào `Cau_Hinh`) → deploy → chỉnh số phút nghỉ từng bộ phận trong `Cau_Hinh` (bộ phận không nghỉ đêm đặt 0) → test tay nút ✕ + về giữa ca ca đêm → hướng dẫn tổ trưởng khai báo → Đợt 3.
+
 ## [2026-09-19] Tổ trưởng — xoá từng dòng đóng máy / từng ngày tăng ca trên thẻ máy
 - **Yêu cầu (chủ dự án):** đóng máy sai thì trước đây phải "Bố trí lại" cả máy rồi khai lại từ đầu mới chỉnh được.
 - **Thay đổi (chỉ `ToTruong.html`, không đụng server):** mỗi dòng đóng máy trên thẻ có nút "✕ Xoá" (bỏ đúng một dòng máy-ngày-ca, các dòng khác giữ nguyên; xoá hết thì thẻ về "Bố trí chạy cả tuần"). Dòng tăng ca tách mỗi ngày một nhãn kèm nút "✕" (bỏ đúng một ngày). Chưa ghi lên server — vẫn phải bấm "Lưu kế hoạch tuần". Không hỏi xác nhận từng lần.
