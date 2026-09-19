@@ -268,10 +268,10 @@ Bộ phận chỉ chạy ca ngày; ngày tăng ca thì máy chạy 07:00–20:30
 | 1 | Khoá cấu hình + `gioTangCa_`, `truKhoangNghi_`, `khungKeHoachNgayCuaMay_` + 13 test | ✅ viết xong |
 | 2 | `chuanHoaTangCa_`, `chuanHoaDanhSachTangCa_`, `phanLoaiDongKeHoach_`, sửa `luu/layKeHoachTuan` + 17 test | ✅ viết xong |
 | 3 | `ToTruong.html`: nút tăng ca từng máy / máy đã chọn / tất cả máy, sao chép ngày mang theo tăng ca | ✅ viết xong, thử với dữ liệu giả |
-| 4 | Test + tài liệu + push GitHub | ✅ tài liệu + test đã viết. **Chờ**: `clasp push` + chạy menu 🧪 + test tay trên link thật |
+| 4 | Test + tài liệu + push | ✅ đã `clasp push`, menu 🧪 ra **432/432**. **Chờ**: deploy + test tay trên link thật |
 
 **Việc còn lại trước khi coi là XONG:** `clasp push` (chủ dự án xác nhận riêng), chạy menu 🧪
-xem số test (dự kiến 402 + 13 + 17 = **432**, chưa kiểm chứng), rồi test tay: bật tăng ca vài
+xem số test (đã đo: **432/432**), rồi test tay: bật tăng ca vài
 máy → Lưu → F5 giữ nguyên; đóng máy ngày đang tăng ca → tăng ca ngày đó biến mất; tổ có ca đêm
 không thấy nút tăng ca. Deploy sau push, giữ đúng deployment ID.
 

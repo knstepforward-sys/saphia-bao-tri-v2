@@ -1,3 +1,8 @@
+## [2026-09-19] Tổ trưởng — Đợt 2(a) tăng ca: ĐÃ `clasp push`, test 432/432
+- **Xác nhận từ chủ dự án:** đã `clasp push` xong, menu 🧪 **Chạy test logic** ra **432/432**, không đỏ (402 cũ + 30 test tăng ca mới đúng như dự kiến). Cập nhật số test trong `bao-tri-v2/CLAUDE.md` (401 → 432) và trạng thái bước 4 ở `TASK_KE_HOACH_TO_TRUONG.md` mục 9c.
+- **Trạng thái:** đã push GitHub (`a024563`; commit tài liệu này chưa đẩy lúc viết dòng này) / **ĐÃ `clasp push`** / **CHƯA deploy**. Link `/exec` vẫn chạy bản cũ, nên chưa thấy nút tăng ca trên trang thật.
+- **Việc cần làm tiếp theo:** chủ dự án deploy qua Editor (Phiên bản mới, giữ deployment ID) → chạy menu 🔧 "1. Cài đặt hệ thống" một lần để thêm 3 khoá `TANG_CA_DEN`/`NGHI_TOI_TU`/`NGHI_TOI_DEN` vào `Cau_Hinh` (nếu không, code vẫn chạy nhờ mặc định 20:30 / 17:00–18:00) → test tay trên link thật.
+
 ## [2026-09-19] Tổ trưởng — Đợt 2(a): tăng ca theo máy-ngày (bước 1-4) + đổi thứ tự các đợt
 - **Đổi thứ tự (chủ dự án chốt):** Đợt 2 = hoàn thiện khai báo (tăng ca, rồi nút "Về giữa ca"); Đợt 3 = hai chỉ số huy động/hiệu suất. Ghi trong `TASK_KE_HOACH_TO_TRUONG.md` (mục 9c mới, mục 8 đổi tên Đợt 3).
 - **Thay đổi:**
