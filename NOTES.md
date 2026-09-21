@@ -12,8 +12,9 @@
   - ★ Về giữa ca trùng với dừng máy chỉ tính phần thêm (không đếm hai lần); phân theo lý do theo thứ tự chữ cái.
   - Tổ chưa khai lịch: hai chỉ số = `null` (không đo được), không phải 0.
 - **Đã kiểm tại máy:** `kiem-tra.ps1` sạch cả 5 lớp; `chayTest()` chạy trong node với dịch vụ Apps Script giả: 562/562 đạt. **Chưa** thử giao diện trên trình duyệt/điện thoại, **chưa** chạy báo cáo menu thật (tạo Google Sheet cần Sheet thật).
-- **Trạng thái:** chưa commit / chưa push GitHub / chưa `clasp push` / chưa deploy.
-- **Việc cần làm tiếp theo:** chủ dự án xác nhận các điểm ★ → `roi-may.ps1` để commit + push GitHub → (khi chủ dự án cho phép) `clasp push` → menu 🧪 (dự kiến 562) → thử menu "📉 Báo cáo huy động…" và nút "Chỉ số tuần" trên điện thoại → deploy giữ đúng deployment ID.
+- **Chủ dự án đã chốt cả 3 điểm ★ (21/09/2026).**
+- **Trạng thái:** đã push GitHub (`1bc6e2d`, chỉ 7 file Đợt 3; các file docx/pdf/ảnh chưa theo dõi cố ý không đưa vào) / chưa `clasp push` / chưa deploy.
+- **Việc cần làm tiếp theo:** (khi chủ dự án cho phép) `clasp push` → menu 🧪 (dự kiến 562) → thử menu "📉 Báo cáo huy động…" và nút "Chỉ số tuần" trên điện thoại → deploy giữ đúng deployment ID.
 
 ## [2026-09-21] Giao diện tổ trưởng: bỏ toàn bộ emoji (☀️ 🌙 🔴 ⏱ 🏠 📋 📄 🟢 🔒)
 - **Yêu cầu (chủ dự án, DUYỆT phương án A):** icon mặt trời/mặt trăng ở phần chọn ca nhìn "sến"; bỏ hết emoji, chỉ dùng chữ.
