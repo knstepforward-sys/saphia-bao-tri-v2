@@ -1,3 +1,17 @@
+## [2026-09-21] Sửa lỗi "phải bấm 2 lần": xác nhận đóng máy/tăng ca và nút "Chỉ số tuần"
+- **Triệu chứng (chủ dự án):** bấm "Chỉ số tuần" lần 1 như tải lại trang, lần 2 mới vào; bấm Xác nhận ở bước cuối đóng máy/tăng ca cũng phải bấm 2 lần.
+- **Nguyên nhân (đọc mã, chưa tái hiện trên điện thoại):** (1) `luuTuan_` tắt màn "Đang lưu…" ngay sau khi lưu xong, rồi mới gọi máy chủ lần hai để nạp lại kế hoạch — vài giây đó màn hình trông như chưa lưu nên người dùng bấm lại; nút "Có người xin về" y hệt. (2) `vaoTuan_` khi nạp xong tự `veHome_()` vô điều kiện, kéo màn hình về trang chính nếu người dùng đã bấm sang màn khác lúc đang nạp (lỗi có từ trước Đợt 3).
+- **Đã sửa (chỉ `bao-tri-v2/ToTruong.html`, không đụng máy chủ/sheet/dữ liệu):** màn "Đang lưu…" giữ tới khi nạp lại xong (`taiKeHoachTuan_` tự tắt, kể cả khi lỗi); `vaoTuan_` chỉ về trang chính nếu vẫn đang ở trang chính.
+- **Chưa làm:** "Chỉ số tuần" đọc cả sheet phiếu sự cố nên vẫn có thể mất vài giây ở lần đầu (đã có chữ "Đang tính…"); nếu còn chậm thì cần phương án riêng.
+- **Đã kiểm tại máy:** `kiem-tra.ps1` sạch. **Chưa** thử trên điện thoại.
+- **Trạng thái:** chưa commit / chưa push GitHub / chưa `clasp push` / chưa deploy.
+
+## [2026-09-21] Chỉ số tuần: đổi cách hiển thị giờ phút ("154g00" → "154 giờ", "0g14" → "14 phút")
+- **Yêu cầu (chủ dự án, DUYỆT):** dạng `154g00` nhìn thiếu chuyên nghiệp.
+- **Đã sửa:** chỉ hàm hiển thị `gioPhut_` trong `bao-tri-v2/ToTruong.html` — chữ đầy đủ, bỏ phần bằng 0 ("2 giờ 30 phút", "14 phút", "0 phút"). Không đụng phần tính, sheet, hay báo cáo xuất ra Google Sheet (vẫn số giờ thập phân).
+- **Đã kiểm tại máy:** hàm chạy đúng 7 giá trị mẫu; `kiem-tra.ps1` sạch.
+- **Trạng thái:** chưa commit / chưa push GitHub / chưa `clasp push` / chưa deploy.
+
 ## [2026-09-21] Đợt 3 — hai chỉ số theo tuần: tỷ lệ huy động máy + hiệu suất máy được bố trí chạy
 - **Yêu cầu (chủ dự án DUYỆT phương án):** làm cả hai nơi hiển thị — trang tổ trưởng và báo cáo toàn nhà máy trên menu; kỳ báo cáo là **theo tuần**.
 - **Thay đổi (mã, chưa chạy trong Sheet):**

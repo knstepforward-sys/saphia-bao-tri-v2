@@ -452,6 +452,7 @@ function taiKeHoachTuan_(tuan, choThuLai, khiXong) {
   google.script.run
     .withSuccessHandler(function (kq) {
       if (tuan !== TUAN_BAT_DAU) return;
+      an('manLuu'); // màn "Đang lưu…" (nếu có) chỉ tắt khi đã nạp lại xong, để không trông như chưa lưu
       if (!kq || !kq.ok) return baoLoiTai_((kq && kq.error) || 'Không tải được kế hoạch tuần.');
       nhanKeHoach_(kq);
       if (khiXong) khiXong();
@@ -459,6 +460,7 @@ function taiKeHoachTuan_(tuan, choThuLai, khiXong) {
     .withFailureHandler(function (e) {
       if (tuan !== TUAN_BAT_DAU) return;
       if (choThuLai) { setTimeout(function () { taiKeHoachTuan_(tuan, false, khiXong); }, 400); return; }
+      an('manLuu');
       baoLoiTai_(e.message);
     })
     .layKeHoachTuan(BO_PHAN, TOKEN, tuan);
@@ -483,12 +485,13 @@ function luuTuan_(banChup, khiXong) {
   var tuan = TUAN_BAT_DAU;
   google.script.run
     .withSuccessHandler(function (kq) {
-      an('manLuu');
       if (!kq || !kq.ok) {
+        an('manLuu');
         khoiPhuc_(banChup);
         alert('Chưa lưu được: ' + ((kq && kq.error) || 'lỗi không rõ') + '\nThay đổi vừa rồi đã được huỷ, bạn thử lại nhé.');
         return khiXong && khiXong(false);
       }
+      // Giữ màn "Đang lưu…" cho tới khi nạp lại xong (taiKeHoachTuan_ tự tắt).
       taiKeHoachTuan_(tuan, true, function () { khiXong && khiXong(true); });
     })
     .withFailureHandler(function (e) {
@@ -533,7 +536,9 @@ function vaoTuan_() {
   $('hNhanTuan').textContent = 'Tuần ' + fmtDDMM_(TUAN_BAT_DAU) + ' – ' + fmtDDMM_(ymdCongNgay_(TUAN_BAT_DAU, 6));
   $('hTomTat').innerHTML = '<div class="nho" style="grid-column:1/-1;text-align:center">Đang tải kế hoạch…</div>';
   chuyenMan_('manHome');
-  taiKeHoachTuan_(TUAN_BAT_DAU, true, veHome_);
+  // Tải xong chỉ về trang chính nếu người dùng vẫn đang ở đó; đã bấm sang màn khác (Chỉ số tuần,
+  // Đóng máy…) thì chỉ cập nhật dữ liệu, không kéo màn hình lại.
+  taiKeHoachTuan_(TUAN_BAT_DAU, true, function () { if (!$('manHome').classList.contains('an')) veHome_(); });
 }
 
 function veHome_() {
@@ -569,8 +574,10 @@ function veHome_() {
 // ===========================================================================
 function phanTram_(v) { return v === null || v === undefined ? '—' : (Math.round(v * 1000) / 10) + '%'; }
 function gioPhut_(p) {
+  p = Math.max(0, Math.round(p || 0));
   var h = Math.floor(p / 60), m = p % 60;
-  return h + 'g' + (m < 10 ? '0' : '') + m;
+  if (h === 0) return m + ' phút';
+  return h + ' giờ' + (m ? ' ' + m + ' phút' : '');
 }
 
 function veChiSo_() {
@@ -1043,8 +1050,7 @@ function xacNhanWizard_() {
     var w = WZ;
     google.script.run
       .withSuccessHandler(function (kq) {
-        an('manLuu');
-        if (!kq || !kq.ok) return alert('Chưa ghi được: ' + ((kq && kq.error) || 'lỗi không rõ'));
+        if (!kq || !kq.ok) { an('manLuu'); return alert('Chưa ghi được: ' + ((kq && kq.error) || 'lỗi không rõ')); }
         var tong = (kq.ketQua || []).reduce(function (s, r) { return s + r.phutMat; }, 0);
         toast_('Đã ghi ' + dsMay.length + ' máy về giữa ca' + (kq.ketQua ? ' — mất ' + tong + ' phút' : ''));
         WZ = null;
