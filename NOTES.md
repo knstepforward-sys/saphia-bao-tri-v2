@@ -4,13 +4,13 @@
 - **Đã sửa (chỉ `bao-tri-v2/ToTruong.html`, không đụng máy chủ/sheet/dữ liệu):** màn "Đang lưu…" giữ tới khi nạp lại xong (`taiKeHoachTuan_` tự tắt, kể cả khi lỗi); `vaoTuan_` chỉ về trang chính nếu vẫn đang ở trang chính.
 - **Chưa làm:** "Chỉ số tuần" đọc cả sheet phiếu sự cố nên vẫn có thể mất vài giây ở lần đầu (đã có chữ "Đang tính…"); nếu còn chậm thì cần phương án riêng.
 - **Đã kiểm tại máy:** `kiem-tra.ps1` sạch. **Chưa** thử trên điện thoại.
-- **Trạng thái:** chưa commit / chưa push GitHub / chưa `clasp push` / chưa deploy.
+- **Trạng thái:** đã push GitHub (`1aeaa9f`) / chưa `clasp push` / chưa deploy.
 
 ## [2026-09-21] Chỉ số tuần: đổi cách hiển thị giờ phút ("154g00" → "154 giờ", "0g14" → "14 phút")
 - **Yêu cầu (chủ dự án, DUYỆT):** dạng `154g00` nhìn thiếu chuyên nghiệp.
 - **Đã sửa:** chỉ hàm hiển thị `gioPhut_` trong `bao-tri-v2/ToTruong.html` — chữ đầy đủ, bỏ phần bằng 0 ("2 giờ 30 phút", "14 phút", "0 phút"). Không đụng phần tính, sheet, hay báo cáo xuất ra Google Sheet (vẫn số giờ thập phân).
 - **Đã kiểm tại máy:** hàm chạy đúng 7 giá trị mẫu; `kiem-tra.ps1` sạch.
-- **Trạng thái:** chưa commit / chưa push GitHub / chưa `clasp push` / chưa deploy.
+- **Trạng thái:** đã push GitHub (`1aeaa9f`) / chưa `clasp push` / chưa deploy.
 
 ## [2026-09-21] Đợt 3 — hai chỉ số theo tuần: tỷ lệ huy động máy + hiệu suất máy được bố trí chạy
 - **Yêu cầu (chủ dự án DUYỆT phương án):** làm cả hai nơi hiển thị — trang tổ trưởng và báo cáo toàn nhà máy trên menu; kỳ báo cáo là **theo tuần**.
