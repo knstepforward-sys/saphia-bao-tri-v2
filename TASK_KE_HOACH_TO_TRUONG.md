@@ -201,7 +201,10 @@ nhân báo qua QR như cũ). Xem mục 9d.
 
 ---
 
-## 8. Đợt 3 — hai chỉ số (thiết kế xong, CHƯA code)
+## 8. Đợt 3 — hai chỉ số (đã viết mã 21/09/2026 trong `HuyDong.gs`, chờ `clasp push`/deploy)
+
+> Quy ước chốt khi code (chi tiết ở `NOTES.md` 21/09/2026): ca đêm tổ CHAY luôn vào mẫu số, tổ KHONG chỉ khi
+> có `CHAY_DEM`; máy-ngày tăng ca không có lượt đêm; về giữa ca trùng dừng máy chỉ tính phần thêm.
 
 Tính live từ 3 sheet Đợt 1 + `Su_Co`, **không cần sheet mới**. Phút kế hoạch của một
 máy-ngày lấy từ `khungKeHoachNgayCuaMay_()` (Đợt 2(a)): ngày thường trừ nghỉ trưa, ngày tăng

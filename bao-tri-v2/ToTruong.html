@@ -183,7 +183,19 @@
   <button class="viec" type="button" data-act="ke-hoach">
     <span><div class="ten">Xem kế hoạch tuần</div><div class="mo-ta">Xem và xoá từng mục</div></span>
   </button>
+  <button class="viec" type="button" data-act="chi-so">
+    <span><div class="ten">Chỉ số tuần</div><div class="mo-ta">Huy động máy và hiệu suất của tổ</div></span>
+  </button>
   <button class="lien-ket" type="button" data-act="khac">Việc khác…</button>
+</div>
+
+<!-- ======================= CHỈ SỐ TUẦN ==================================== -->
+<div class="boc an" id="manChiSo">
+  <div class="dau-buoc">
+    <button class="huy" type="button" data-act="home">‹ Trang chính</button>
+  </div>
+  <div class="cau-hoi" id="cTieuDe">Chỉ số tuần</div>
+  <div id="cNoiDung"></div>
 </div>
 
 <!-- ======================= TỪNG BƯỚC ====================================== -->
@@ -506,7 +518,7 @@ function suaVaLuu_(sua, loiNhan, khiXong) {
 // ===========================================================================
 // Điều hướng giữa các màn hình
 // ===========================================================================
-var MAN = ['manHome', 'manBuoc', 'manKeHoach', 'manKhac'];
+var MAN = ['manHome', 'manBuoc', 'manKeHoach', 'manKhac', 'manChiSo'];
 var XOA_CHON = {};   // { 'loai|ma|ngay|ca': true } các mục đang được tick để xoá
 function chuyenMan_(ten) {
   MAN.forEach(an); an('thanhDuoiBuoc'); an('thanhDuoiXoa');
@@ -550,6 +562,70 @@ function veHome_() {
   $('hBao').innerHTML = DA_KHAI_TUAN ? '' :
     '<div class="bao vang">Tuần này chưa khai gì — mọi máy tạm chạy ca ngày bình thường.</div>';
   chuyenMan_('manHome');
+}
+
+// ===========================================================================
+// CHỈ SỐ TUẦN — huy động máy + hiệu suất máy được bố trí chạy (Đợt 3)
+// ===========================================================================
+function phanTram_(v) { return v === null || v === undefined ? '—' : (Math.round(v * 1000) / 10) + '%'; }
+function gioPhut_(p) {
+  var h = Math.floor(p / 60), m = p % 60;
+  return h + 'g' + (m < 10 ? '0' : '') + m;
+}
+
+function veChiSo_() {
+  var tuan = TUAN_BAT_DAU;
+  $('cTieuDe').textContent = 'Chỉ số tuần ' + fmtDDMM_(tuan) + ' – ' + fmtDDMM_(ymdCongNgay_(tuan, 6));
+  $('cNoiDung').innerHTML = '<div class="nho" style="text-align:center;padding:20px 0">Đang tính…</div>';
+  chuyenMan_('manChiSo');
+  google.script.run
+    .withSuccessHandler(function (kq) {
+      if (tuan !== TUAN_BAT_DAU) return;
+      if (!kq || !kq.ok) { $('cNoiDung').innerHTML = '<div class="bao do">' + thoat((kq && kq.error) || 'Không tính được chỉ số.') + '</div>'; return; }
+      veNoiDungChiSo_(kq);
+    })
+    .withFailureHandler(function (e) {
+      if (tuan !== TUAN_BAT_DAU) return;
+      $('cNoiDung').innerHTML = '<div class="bao do">Không tính được: ' + thoat(e.message) + '</div>';
+    })
+    .layChiSoTuan(BO_PHAN, TOKEN, tuan);
+}
+
+function veNoiDungChiSo_(kq) {
+  var t = kq.tong;
+  var o = function (so, nhan, mau) {
+    return '<div class="o"><div class="so" style="color:' + mau + '">' + so + '</div><div class="nhan-nho">' + nhan + '</div></div>';
+  };
+  var h = '';
+  if (kq.thieuLich) h += '<div class="bao vang">Tổ chưa khai giờ làm việc cho cả tuần này nên có ngày chưa tính được.</div>';
+  h += '<div class="tom-tat" style="grid-template-columns:1fr 1fr">' +
+    o(phanTram_(t.tiLeHuyDong), 'Huy động máy', 'var(--xanh-dam)') +
+    o(phanTram_(t.hieuSuat), 'Hiệu suất máy chạy', '#188038') + '</div>';
+  h += '<div class="goi-y"><b>Huy động</b>: trong tất cả lượt máy-ca của tuần, bao nhiêu lượt được đem ra chạy (' +
+    t.luotChay + '/' + t.luotApDung + ').<br><b>Hiệu suất</b>: máy đã bố trí chạy thì chạy được bao nhiêu phần giờ kế hoạch. ' +
+    'Máy đóng không bị tính vào đây.</div>';
+
+  if (t.phutKeHoach > 0) {
+    h += '<div class="tom-tat-xn" style="font-size:15px">Giờ kế hoạch của máy đã bố trí chạy: <b>' + gioPhut_(t.phutKeHoach) + '</b><br>' +
+      'Mất do máy dừng: <b>' + gioPhut_(t.phutDungMay) + '</b><br>' +
+      'Mất do công nhân về giữa ca: <b>' + gioPhut_(t.phutVeGiuaCa) + '</b>';
+    Object.keys(kq.veTheoLyDo || {}).sort().forEach(function (ly) {
+      h += '<br>&nbsp;&nbsp;· ' + thoat(ly) + ': ' + gioPhut_(kq.veTheoLyDo[ly]);
+    });
+    h += '</div>';
+  }
+
+  var mat = (kq.may || []).filter(function (m) { return m.phutDungMay + m.phutVeGiuaCa > 0; })
+    .sort(function (a, b) { return (b.phutDungMay + b.phutVeGiuaCa) - (a.phutDungMay + a.phutVeGiuaCa); }).slice(0, 8);
+  if (mat.length) {
+    h += '<div class="muc-kh" style="margin-top:14px">Máy mất giờ nhiều nhất</div>';
+    mat.forEach(function (m) {
+      h += '<div class="dong-may" style="cursor:default"><span style="flex:1">' + thoat(m.tenMay || m.maMay) +
+        '<div class="ghi-chu">dừng ' + gioPhut_(m.phutDungMay) + ' · về giữa ca ' + gioPhut_(m.phutVeGiuaCa) + '</div></span>' +
+        '<b>' + gioPhut_(m.phutDungMay + m.phutVeGiuaCa) + '</b></div>';
+    });
+  }
+  $('cNoiDung').innerHTML = h;
 }
 
 // ===========================================================================
@@ -998,6 +1074,7 @@ document.addEventListener('click', function (ev) {
     case 'viec-dem': moWizard_('DEM'); break;
     case 'viec-ve': moWizard_('VE'); break;
     case 'ke-hoach': veKeHoach_(); break;
+    case 'chi-so': veChiSo_(); break;
     case 'khac': chuyenMan_('manKhac'); break;
 
     case 'khac-cn': {

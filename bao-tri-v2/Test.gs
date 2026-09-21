@@ -2307,6 +2307,125 @@ function chayTest() {
     [caDemMacDinh_('DET', { CA_DEM_MAC_DINH_DET: '' }), caDemMacDinh_('DET', { CA_DEM_MAC_DINH_DET: 'KHONG' }),
      caDemMacDinh_('TRANG', { CA_DEM_MAC_DINH_TRANG: 'CHAY' })], ['CHAY', 'KHONG', 'CHAY']);
 
+  // ============================================================================
+  // ĐỢT 3 — HUY ĐỘNG + HIỆU SUẤT THEO TUẦN (HuyDong.gs)
+  // ============================================================================
+  const _tuanHd_ = '2026-09-14'; // thứ Hai; 14–20/09
+  const _lichHd_ = [{ Bo_Phan: 'TO1', Ap_Dung_Tu: '2026-01-01', Ca_Ngay_Tu: '07:00', Ca_Ngay_Den: '16:30',
+    Co_Nghi_Trua: true, Nghi_Trua_Tu: '11:30', Nghi_Trua_Den: '12:15', Co_Ca_Dem: false }];
+  const _lichHdDem_ = [{ Bo_Phan: 'TO1', Ap_Dung_Tu: '2026-01-01', Ca_Ngay_Tu: '06:00', Ca_Ngay_Den: '18:00',
+    Co_Nghi_Trua: false, Co_Ca_Dem: true, Ca_Dem_Tu: '18:00', Ca_Dem_Den: '06:00' }];
+  const _mayHd_ = [{ maMay: 'M1', tenMay: 'Máy 1' }, { maMay: 'M2', tenMay: 'Máy 2' }];
+  const _chToiHd_ = { CA_DEM_MAC_DINH_TO1: 'CHAY', NGHI_DEM_PHUT_TO1: '60' };
+  function _khHd_(ma, ngay, tt, ca, extra) {
+    return Object.assign({ Tuan_Bat_Dau: _tuanHd_, Ngay: ngay, Ca: ca || 'N', Ma_May: ma, Bo_Phan: 'TO1', Trang_Thai: tt }, extra || {});
+  }
+  function _dungHd_(ma, tu, den) {
+    return _phieu_({ Ma_Su_Co: 'SC-' + ma + tu, Ma_May: ma, Trang_Thai_May: 'DA_DUNG',
+      Thoi_Gian_Dung_May: _luc_(tu), Thoi_Gian_Hoan_Thanh: _luc_(den) }).v;
+  }
+  function _csHd_(o) {
+    const x = o || {};
+    return tinhChiSoTuan_({ boPhan: 'TO1', tuan: _tuanHd_, bayGio: x.bayGio || _luc_('2026-09-28T00:00'),
+      cauHinh: x.cauHinh || {}, dsMay: _mayHd_, dsLich: x.dsLich || _lichHd_,
+      dsKeHoach: x.dsKeHoach || [], dsPhieu: x.dsPhieu || [] });
+  }
+  const _cs0_ = _csHd_();
+  t.bang('Đợt 3: không khai gì → 2 máy × 7 lượt, chạy hết, huy động = hiệu suất = 100%',
+    [_cs0_.tong.luotApDung, _cs0_.tong.luotChay, _cs0_.tong.tiLeHuyDong, _cs0_.tong.hieuSuat, _cs0_.tong.phutKeHoach],
+    [14, 14, 1, 1, 7350]);
+
+  const _dongCaTuan_ = [0, 1, 2, 3, 4, 5, 6].map(function (i) { return _khHd_('M2', ymdCongNgay_(_tuanHd_, i), 'DONG'); });
+  const _cs1_ = _csHd_({ dsKeHoach: _dongCaTuan_ });
+  t.bang('Đợt 3: đóng máy M2 cả tuần → huy động 50%, hiệu suất vẫn 100% (máy đóng không vào mẫu số hiệu suất)',
+    [_cs1_.tong.luotChay, _cs1_.tong.tiLeHuyDong, _cs1_.tong.hieuSuat, _cs1_.tong.phutKeHoach], [7, 0.5, 1, 3675]);
+  const _cs2_ = _csHd_({ dsKeHoach: [_khHd_('M1', '2026-09-15', 'DONG')] });
+  t.bang('Đợt 3: đóng 1 máy 1 ngày chỉ mất đúng 1 lượt (13/14)',
+    [_cs2_.tong.luotChay, _cs2_.may[0].luotChay, _cs2_.may[0].phutKeHoach], [13, 6, 6 * 525]);
+
+  const _cs3d_ = _csHd_({ dsPhieu: [_dungHd_('M1', '2026-09-15T09:00', '2026-09-15T10:00')] });
+  t.bang('Đợt 3: dừng máy 09:00–10:00 = 60 phút, hiệu suất = 1 − 60/7350',
+    [_cs3d_.may[0].phutDungMay, _cs3d_.tong.hieuSuat], [60, 1 - 60 / 7350]);
+  t.bang('Đợt 3: dừng xuyên nghỉ trưa 11:00–13:00 chỉ tính 30 + 45 phút ngoài nghỉ trưa',
+    _csHd_({ dsPhieu: [_dungHd_('M1', '2026-09-15T11:00', '2026-09-15T13:00')] }).may[0].phutDungMay, 75);
+  t.bang('Đợt 3: hai phiếu dừng chồng lấn không đếm hai lần (09:00–10:00 + 09:30–10:30 = 90)',
+    _csHd_({ dsPhieu: [_dungHd_('M1', '2026-09-15T09:00', '2026-09-15T10:00'),
+      _dungHd_('M1', '2026-09-15T09:30', '2026-09-15T10:30')] }).may[0].phutDungMay, 90);
+  t.bang('Đợt 3: dừng vào ngày máy đã đóng không kéo hiệu suất xuống',
+    _csHd_({ dsKeHoach: [_khHd_('M1', '2026-09-15', 'DONG')],
+      dsPhieu: [_dungHd_('M1', '2026-09-15T09:00', '2026-09-15T10:00')] }).may[0].phutDungMay, 0);
+  t.bang('Đợt 3: phiếu việc chung (CV-) không tính là dừng máy',
+    _csHd_({ dsPhieu: [_phieu_({ Ma_Su_Co: 'CV-1', Loai_Phieu: LOAI_PHIEU.CONG_VIEC, Ma_May: 'M1',
+      Thoi_Gian_Nhan: _luc_('2026-09-15T09:00'), Thoi_Gian_Hoan_Thanh: _luc_('2026-09-15T10:00') }).v] }).may[0].phutDungMay, 0);
+  t.bang('Đợt 3: phiếu DM- (dừng máy) được tính',
+    _csHd_({ dsPhieu: [_phieu_({ Ma_Su_Co: 'DM-1', Loai_Phieu: LOAI_PHIEU.DUNG_MAY, Ma_May: 'M2',
+      Thoi_Gian_Dung_May: _luc_('2026-09-16T08:00'), Thoi_Gian_Hoan_Thanh: _luc_('2026-09-16T08:30') }).v] }).may[1].phutDungMay, 30);
+
+  const _cs3_ = _csHd_({ dsKeHoach: [_khHd_('M1', '2026-09-15', 'TANG_CA')] });
+  t.bang('Đợt 3: tăng ca 07:00–20:30 trừ nghỉ trưa + nghỉ tối = 705 phút cho máy-ngày đó',
+    _cs3_.may[0].phutKeHoach, 6 * 525 + 705);
+
+  const _csDem_ = function (x) { return _csHd_(Object.assign({ dsLich: _lichHdDem_, cauHinh: _chToiHd_ }, x || {})); };
+  t.bang('Đợt 3: tổ CHAY có ca đêm → 14 lượt/máy, kế hoạch 7×720 + 7×660 phút',
+    [_csDem_().may[0].luotApDung, _csDem_().may[0].phutKeHoach], [14, 9660]);
+  const _csDongDem_ = _csDem_({ dsKeHoach: [_khHd_('M1', '2026-09-15', 'DONG', 'D')] });
+  t.bang('Đợt 3: tổ CHAY đóng ca đêm 1 ngày → mất đúng 1 lượt đêm',
+    [_csDongDem_.may[0].luotChay, _csDongDem_.may[0].luotApDung], [13, 14]);
+  const _csTcDem_ = _csDem_({ dsKeHoach: [_khHd_('M1', '2026-09-15', 'TANG_CA')] });
+  t.bang('Đợt 3: máy-ngày tăng ca thì không có lượt ca đêm ngày đó (tránh tính trùng)',
+    [_csTcDem_.may[0].luotApDung, _csTcDem_.may[0].luotChay], [13, 13]);
+  t.bang('Đợt 3: dừng máy ban đêm quy đổi theo tỷ lệ nghỉ đêm (60 phút × 660/720 = 55)',
+    _csDem_({ dsPhieu: [_dungHd_('M1', '2026-09-15T22:00', '2026-09-15T23:00')] }).may[0].phutDungMay, 55);
+
+  const _csK_ = function (x) { return _csHd_(Object.assign({ dsLich: _lichHdDem_, cauHinh: { NGHI_DEM_PHUT_TO1: '60' } }, x || {})); };
+  t.bang('Đợt 3: tổ KHONG không khai chạy đêm → chỉ 7 lượt ca ngày/máy (đêm không vào mẫu số)',
+    [_csK_().may[0].luotApDung, _csK_().may[0].phutKeHoach], [7, 7 * 720]);
+  const _csKDem_ = _csK_({ dsKeHoach: [_khHd_('M1', '2026-09-15', 'CHAY_DEM', 'D')] });
+  t.bang('Đợt 3: tổ KHONG có CHAY_DEM 1 ngày → thêm đúng 1 lượt đêm, đã chạy',
+    [_csKDem_.may[0].luotApDung, _csKDem_.may[0].luotChay], [8, 8]);
+
+  const _ve_ = function (extra) {
+    return _khHd_('M1', '2026-09-15', 'VE_GIUA_CA', 'N', Object.assign({ Gio_Ve: '14:00', Ly_Do: 'Nghỉ có phép' }, extra || {}));
+  };
+  const _cs4_ = _csHd_({ dsKeHoach: [_ve_()] });
+  t.bang('Đợt 3: về giữa ca 14:00 tới hết ca 16:30 = 150 phút mất, ghi theo lý do',
+    [_cs4_.may[0].phutVeGiuaCa, _cs4_.veTheoLyDo], [150, { 'Nghỉ có phép': 150 }]);
+  const _cs5_ = _csHd_({ dsKeHoach: [_ve_()], dsPhieu: [_dungHd_('M1', '2026-09-15T14:00', '2026-09-15T15:00')] });
+  t.bang('Đợt 3: về giữa ca trùng dừng máy không đếm hai lần (dừng 60 + về thêm 90)',
+    [_cs5_.may[0].phutDungMay, _cs5_.may[0].phutVeGiuaCa, _cs5_.tong.phutChay], [60, 90, 7350 - 150]);
+  t.bang('Đợt 3: về giữa ca có giờ quay lại 15:00 → 60 phút',
+    _csHd_({ dsKeHoach: [_ve_({ Gio_Quay_Lai: '15:00' })] }).may[0].phutVeGiuaCa, 60);
+  t.bang('Đợt 3: về giữa ca của lượt đã đóng máy không tính',
+    _csHd_({ dsKeHoach: [_ve_(), _khHd_('M1', '2026-09-15', 'DONG')] }).may[0].phutVeGiuaCa, 0);
+
+  const _cs6_ = _csHd_({ bayGio: _luc_('2026-09-15T12:00') });
+  t.bang('Đợt 3: tuần đang diễn ra chỉ tính kế hoạch tới giờ hiện tại (525 + 270 mỗi máy)',
+    [_cs6_.may[0].phutKeHoach, _cs6_.tong.tiLeHuyDong], [795, 1]);
+  const _cs7_ = _csHd_({ dsLich: [] });
+  t.bang('Đợt 3: tổ chưa khai lịch → không đo được (null), có cờ thiếu lịch',
+    [_cs7_.thieuLich, _cs7_.tong.luotApDung, _cs7_.tong.tiLeHuyDong, _cs7_.tong.hieuSuat], [true, 0, null, null]);
+  t.bang('Đợt 3: dòng kế hoạch của tổ khác / tuần khác bị bỏ qua',
+    _csHd_({ dsKeHoach: [_khHd_('M1', '2026-09-15', 'DONG', 'N', { Bo_Phan: 'TO2' }),
+      _khHd_('M1', '2026-09-15', 'DONG', 'N', { Tuan_Bat_Dau: '2026-09-07' })] }).tong.luotChay, 14);
+
+  const _roll_ = tongHopChiSo_([
+    { soMay: 2, luotApDung: 14, luotChay: 7, phutKeHoach: 3600, phutDungMay: 300, phutVeGiuaCa: 100, phutChay: 3200 },
+    { soMay: 1, luotApDung: 7, luotChay: 7, phutKeHoach: 1800, phutDungMay: 0, phutVeGiuaCa: 0, phutChay: 1800 }]);
+  t.bang('Đợt 3: cộng nhiều tổ dùng cùng công thức, không trung bình các tỷ lệ',
+    [_roll_.soMay, _roll_.tiLeHuyDong, _roll_.hieuSuat], [3, 14 / 21, 5000 / 5400]);
+
+  t.bang('Đợt 3: ymdCongNgay_ qua ranh tháng', [ymdCongNgay_('2026-09-28', 6), ymdCongNgay_('2026-12-31', 1)], ['2026-10-04', '2027-01-01']);
+  t.bang('Đợt 3: tuanTuNgayNhap_ nhận dd/MM/yyyy, yyyy-MM-dd, trống = tuần này; sai → null',
+    [tuanTuNgayNhap_('17/09/2026', '2026-09-21'), tuanTuNgayNhap_('2026-9-20', '2026-09-21'),
+     tuanTuNgayNhap_('', '2026-09-23'), tuanTuNgayNhap_('abc', '2026-09-21'), tuanTuNgayNhap_('31/02/2026x', '2026-09-21')],
+    ['2026-09-14', '2026-09-14', '2026-09-21', null, null]);
+
+  const _bc_ = bangBaoCaoHuyDong_({ tuan: _tuanHd_, tong: _cs0_.tong, to: [_cs0_], veTheoLyDo: { 'Nghỉ có phép': 90 } }, 'x');
+  t.bang('Đợt 3: bảng báo cáo — mọi dòng đủ 9 cột, có cả 2 tỷ lệ ở từng máy',
+    [_bc_.bang.every(function (r) { return r.length === SO_COT_HUY_DONG; }),
+     _bc_.bang.some(function (r) { return r[0] === 'M2' && r[4] === 1 && r[8] === 1; })],
+    [true, true]);
+
   // --- Kết quả ---------------------------------------------------------------
   const tong = kq.dat + kq.loi.length;
   const bao = kq.loi.length

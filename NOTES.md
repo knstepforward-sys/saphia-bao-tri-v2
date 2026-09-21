@@ -1,3 +1,20 @@
+## [2026-09-21] Đợt 3 — hai chỉ số theo tuần: tỷ lệ huy động máy + hiệu suất máy được bố trí chạy
+- **Yêu cầu (chủ dự án DUYỆT phương án):** làm cả hai nơi hiển thị — trang tổ trưởng và báo cáo toàn nhà máy trên menu; kỳ báo cáo là **theo tuần**.
+- **Thay đổi (mã, chưa chạy trong Sheet):**
+  - `HuyDong.gs` (file mới) — `tinhChiSoTuan_` (hàm thuần, tính một tổ một tuần), `tongHopChiSo_`, RPC `layChiSoTuan` (tự `xacThucTo_`), `chiSoToanNhaMay_`, `menuBaoCaoHuyDong` + `xuatBaoCaoHuyDong` (tạo Google Sheet mới như báo cáo khả dụng). Chỉ gọi lại hàm thuần của `HieuDung.gs`/`KeHoachTo.gs`, không sửa chúng. Không thêm cột/sheet/khoá cấu hình.
+  - `Code.gs` — thêm 1 mục menu "📉 Báo cáo huy động / hiệu suất máy (tuần)…".
+  - `ToTruong.html` — nút "Chỉ số tuần" + màn hình mới: hai số lớn song song, giờ kế hoạch / mất do dừng máy / mất do về giữa ca (theo lý do), 8 máy mất giờ nhiều nhất.
+  - `Test.gs` — 27 test mới (Đợt 3). Dự kiến tổng **562**, **chưa chạy trong Sheet**.
+- **Quy ước tính (cần chủ dự án xác nhận các điểm ★):**
+  - Lượt máy-ca: ca ngày mỗi ngày (7/tuần, kể cả Chủ nhật nếu tổ có lịch); ca đêm chỉ khi lịch có ca đêm và máy-ngày đó **không tăng ca**.
+  - ★ Tổ CHAY: ca đêm luôn vào mẫu số, đóng ca đêm = không chạy. Tổ KHONG: ca đêm chỉ vào mẫu số (và tính là chạy) khi có `CHAY_DEM` — nếu tính cả ca đêm không khai vào mẫu số thì huy động của TRANG/CMTX sẽ bị kéo xuống oan.
+  - Hiệu suất: phút mất = dừng máy (SC- đã dừng + DM-, không tính CV-) + về giữa ca, hợp nhất chồng lấn, chỉ trong khung đã bố trí chạy; ca đêm quy đổi theo tỷ lệ phút nghỉ đêm. Tuần đang diễn ra chỉ tính tới giờ hiện tại. Máy đóng không vào mẫu số hiệu suất; dừng máy trong lúc máy đóng không bị tính.
+  - ★ Về giữa ca trùng với dừng máy chỉ tính phần thêm (không đếm hai lần); phân theo lý do theo thứ tự chữ cái.
+  - Tổ chưa khai lịch: hai chỉ số = `null` (không đo được), không phải 0.
+- **Đã kiểm tại máy:** `kiem-tra.ps1` sạch cả 5 lớp; `chayTest()` chạy trong node với dịch vụ Apps Script giả: 562/562 đạt. **Chưa** thử giao diện trên trình duyệt/điện thoại, **chưa** chạy báo cáo menu thật (tạo Google Sheet cần Sheet thật).
+- **Trạng thái:** chưa commit / chưa push GitHub / chưa `clasp push` / chưa deploy.
+- **Việc cần làm tiếp theo:** chủ dự án xác nhận các điểm ★ → `roi-may.ps1` để commit + push GitHub → (khi chủ dự án cho phép) `clasp push` → menu 🧪 (dự kiến 562) → thử menu "📉 Báo cáo huy động…" và nút "Chỉ số tuần" trên điện thoại → deploy giữ đúng deployment ID.
+
 ## [2026-09-21] Giao diện tổ trưởng: bỏ toàn bộ emoji (☀️ 🌙 🔴 ⏱ 🏠 📋 📄 🟢 🔒)
 - **Yêu cầu (chủ dự án, DUYỆT phương án A):** icon mặt trời/mặt trăng ở phần chọn ca nhìn "sến"; bỏ hết emoji, chỉ dùng chữ.
 - **Đã sửa (`bao-tri-v2/ToTruong.html`, chỉ hiển thị, không đụng logic/dữ liệu/sheet):** nút chọn ca thành chữ thuần ("Ca ngày", "Ca đêm", "Cả hai ca"); 8 nút ở màn hình chính và màn "Việc khác" bỏ icon, nút màu (Đóng máy, Tăng ca, Chạy ca đêm, Có người xin về) có vạch màu dày 6 px bên trái để phân biệt; tiêu đề nhóm ở "Xem kế hoạch" bỏ emoji, giữ màu chữ; màn hình khoá bỏ 🔒. **Giữ** ☑ ☐ (ô chọn để xoá nhiều) và ✕ (Huỷ/xoá) vì có chức năng.

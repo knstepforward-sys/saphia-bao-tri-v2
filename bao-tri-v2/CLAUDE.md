@@ -145,9 +145,10 @@ Mục 9e của `TASK_KE_HOACH_TO_TRUONG.md`.
 đêm KHÔNG cố định: mặc định máy không chạy ca đêm, ngày nào chạy thì chọn "Chạy ca đêm" (dòng `CHAY_DEM`, Ca='D');
 loại trừ với tăng ca cùng máy-ngày. Mục 9f của `TASK_KE_HOACH_TO_TRUONG.md`.
 
-**Đợt 3 (chưa code, trước đây gọi là Đợt 2):** 2 chỉ số **tỷ lệ huy động máy** và **hiệu suất máy được bố trí
-chạy**, tính từ 3 sheet trên + `Su_Co` — không cần schema mới, không đụng `HieuDung.gs`.
-Công thức đầy đủ ở `TASK_KE_HOACH_TO_TRUONG.md` mục 8.
+**Đợt 3 (21/09/2026, đã viết mã + test, chờ `clasp push`/deploy):** 2 chỉ số **tỷ lệ huy động máy** và **hiệu suất máy
+được bố trí chạy** theo tuần, tính từ 3 sheet trên + `Su_Co` — không cần schema mới, không đụng `HieuDung.gs`.
+File `HuyDong.gs` (`tinhChiSoTuan_` thuần + RPC `layChiSoTuan` + menu "📉 Báo cáo huy động / hiệu suất máy (tuần)…"),
+nút "Chỉ số tuần" trong `ToTruong.html`. Công thức và quy ước ở `TASK_KE_HOACH_TO_TRUONG.md` mục 8.
 
 **Cố ý CHƯA làm** (ngoài phạm vi hiện tại): tổ trưởng báo dừng máy hộ công nhân giữa ca —
 đụng thẳng vào `Su_Co` đang chạy thật, hoãn sang một đợt riêng, xem mục 7c của tài liệu

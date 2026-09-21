@@ -1653,6 +1653,7 @@ function onOpen() {
     .addItem('🩺 Chẩn đoán KPI (chỉ đọc)', 'menuChanDoanKpi')
     .addItem('📤 Xuất báo cáo (chọn ngày, bộ phận, thợ)…', 'menuXuatBaoCao')
     .addItem('📈 Báo cáo tỉ lệ khả dụng máy…', 'menuBaoCaoKhaDung')
+    .addItem('📉 Báo cáo huy động / hiệu suất máy (tuần)…', 'menuBaoCaoHuyDong')
     .addItem('🗄️ Dọn phiếu tháng cũ sang Lưu trữ', 'menuLuuTru')
     .addItem('⏰ Cài trigger tự chạy', 'menuCaiTrigger')
     .addSeparator()
