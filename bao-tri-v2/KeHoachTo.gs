@@ -712,6 +712,7 @@ function luuKeHoachTuan(boPhan, token, payload) {
     const veGiuaCaGhi = cheDoCaDem === 'CHAY' ? veSauDong : boVeGiuaCaDemKhongChayDem_(veSauDong, dsChayDemGhi);
     const toanBo = tach.giuLai.concat(chuan.dsDong, dsTangCaGhi, dsChayDemGhi, veGiuaCaGhi, [dongDaKhai]);
 
+    dongBoOChonTrangThai_(sh);
     if (toanBo.length) {
       sh.getRange(2, 1, toanBo.length, HEADER_KE_HOACH_MAY.length).setValues(toanBo);
     }
@@ -1146,8 +1147,18 @@ function docVungKeHoachMay_(sh) {
   return { soDong: soDong, vung: vung };
 }
 
+/**
+ * Đặt lại ô chọn (data validation) của cột Trang_Thai theo ĐÚNG danh sách hằng số hiện tại. Sheet đã tạo
+ * từ trước giữ danh sách cũ; thêm loại Trang_Thai mới mà chưa chạy "Cài đặt hệ thống" thì mọi lần ghi loại đó
+ * bị Google Sheets từ chối ("vi phạm các quy tắc xác thực dữ liệu"). Gọi TRƯỚC mỗi lần ghi để tự chữa.
+ */
+function dongBoOChonTrangThai_(sh) {
+  datDropdown_(sh, HEADER_KE_HOACH_MAY.indexOf('Trang_Thai') + 1, dsTrangThaiKeHoachMay_());
+}
+
 /** Ghi đè lại toàn bộ vùng dữ liệu bằng MỘT setValues, dọn phần dư phía dưới. */
 function ghiLaiVungKeHoachMay_(sh, soDongCu, toanBo) {
+  dongBoOChonTrangThai_(sh);
   if (toanBo.length) {
     sh.getRange(2, 1, toanBo.length, HEADER_KE_HOACH_MAY.length).setValues(toanBo);
   }

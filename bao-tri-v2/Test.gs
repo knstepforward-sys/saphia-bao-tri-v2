@@ -2266,11 +2266,11 @@ function chayTest() {
   t.bang('caDemMacDinh_ khoá thiếu / KHONG / giá trị lạ / bộ phận rỗng → KHONG',
     [caDemMacDinh_('ICM', _chCd_), caDemMacDinh_('TRANG', _chCd_), caDemMacDinh_('MTX', _chCd_), caDemMacDinh_('', _chCd_)],
     ['KHONG', 'KHONG', 'KHONG', 'KHONG']);
-  t.bang('seed cấu hình: DET, SOI, CMTX = CHAY; TRANG không có dòng (= KHONG)',
+  t.bang('seed cấu hình: DET, SOI = CHAY; CMTX, TRANG không có dòng (= KHONG)',
     ['CA_DEM_MAC_DINH_DET', 'CA_DEM_MAC_DINH_SOI', 'CA_DEM_MAC_DINH_CMTX', 'CA_DEM_MAC_DINH_TRANG'].map(function (k) {
       const r = CAU_HINH_MAC_DINH.filter(function (x) { return x[0] === k; })[0];
       return r ? r[1] : null;
-    }), ['CHAY', 'CHAY', 'CHAY', null]);
+    }), ['CHAY', 'CHAY', null, null]);
 
   t.bang('chonTangCaChayDemGhi_ tổ CHAY: bỏ hết tăng ca + chạy ca đêm, kể cả dữ liệu cũ đã lưu',
     chonTangCaChayDemGhi_('CHAY', true, ['tm'], ['tc'], true, ['dm'], ['dc']), { tangCa: [], chayDem: [] });
@@ -2290,6 +2290,22 @@ function chayTest() {
   t.bang('tổ KHONG (mặc định) vẫn đòi "Chạy ca đêm" như cũ',
     chuanHoaDanhSachVeGiuaCa_(_pVe_({ dsMay: ['4T-01'], ca: 'D', gioVe: '23:00' }),
       Object.assign({}, _ctxVe_, { chayDem: {} })).ok, false);
+
+  // ============================================================================
+  // Trang_Thai hợp lệ lấy từ hằng số; chế độ ca đêm có mặc định khi chưa cài đặt
+  // ============================================================================
+  t.bang('dsTrangThaiKeHoachMay_ có đủ 5 loại, gồm CHAY_DEM (thiếu loại này từng làm lưu "Chạy ca đêm" bị Sheets từ chối)',
+    [dsTrangThaiKeHoachMay_().length, dsTrangThaiKeHoachMay_().indexOf('CHAY_DEM') !== -1],
+    [Object.keys(TRANG_THAI_KE_HOACH_MAY).length, true]);
+  t.bang('dsTrangThaiKeHoachMay_ chứa DONG, DA_KHAI, TANG_CA, VE_GIUA_CA, CHAY_DEM',
+    dsTrangThaiKeHoachMay_().slice().sort(), ['CHAY_DEM', 'DA_KHAI', 'DONG', 'TANG_CA', 'VE_GIUA_CA']);
+  t.bang('caDemMacDinh_ chưa cài đặt (khoá thiếu): DET, SOI vẫn là CHAY; CMTX là KHONG',
+    [caDemMacDinh_('DET', {}), caDemMacDinh_('SOI', {}), caDemMacDinh_('CMTX', {})], ['CHAY', 'CHAY', 'KHONG']);
+  t.bang('caDemMacDinh_ chưa cài đặt: TRANG, ICM, MTX vẫn là KHONG',
+    [caDemMacDinh_('TRANG', {}), caDemMacDinh_('ICM', {}), caDemMacDinh_('MTX', {})], ['KHONG', 'KHONG', 'KHONG']);
+  t.bang('caDemMacDinh_ ô để trống cũng dùng mặc định; gõ KHONG thì ép được KHONG',
+    [caDemMacDinh_('DET', { CA_DEM_MAC_DINH_DET: '' }), caDemMacDinh_('DET', { CA_DEM_MAC_DINH_DET: 'KHONG' }),
+     caDemMacDinh_('TRANG', { CA_DEM_MAC_DINH_TRANG: 'CHAY' })], ['CHAY', 'KHONG', 'CHAY']);
 
   // --- Kết quả ---------------------------------------------------------------
   const tong = kq.dat + kq.loi.length;

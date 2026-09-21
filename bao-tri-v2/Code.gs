@@ -210,8 +210,13 @@ function caDemMacDinh_(boPhan, cauHinh) {
   const ch = cauHinh || docCauHinh_();
   const bp = String(boPhan || '').trim().toUpperCase().replace(/\s+/g, '_');
   if (!bp) return 'KHONG';
-  return String(ch['CA_DEM_MAC_DINH_' + bp] || '').trim().toUpperCase() === 'CHAY' ? 'CHAY' : 'KHONG';
+  const raw = ch['CA_DEM_MAC_DINH_' + bp];
+  // Khoá thiếu hoặc để trống → dùng mặc định của hệ thống, để tổ luôn chạy ca đêm không bị hiểu nhầm
+  // là "không chạy" chỉ vì chưa chạy menu Cài đặt hệ thống.
+  if (raw === undefined || raw === null || String(raw).trim() === '') return CA_DEM_MAC_DINH_SAN[bp] || 'KHONG';
+  return String(raw).trim().toUpperCase() === 'CHAY' ? 'CHAY' : 'KHONG';
 }
+const CA_DEM_MAC_DINH_SAN = { DET: 'CHAY', SOI: 'CHAY' };
 
 function layUrlCongKhai_() {
   return PropertiesService.getScriptProperties().getProperty('URL_CONG_KHAI') || '';
@@ -346,6 +351,11 @@ const TRANG_THAI_KE_HOACH_MAY = {
   CHAY_DEM: 'CHAY_DEM',
 };
 
+/** Mọi Trang_Thai hợp lệ của Ke_Hoach_May — lấy từ hằng số, KHÔNG gõ tay ở nơi khác (thêm loại mới là tự có). */
+function dsTrangThaiKeHoachMay_() {
+  return Object.keys(TRANG_THAI_KE_HOACH_MAY).map(function (k) { return TRANG_THAI_KE_HOACH_MAY[k]; });
+}
+
 const HEADER_CAU_HINH = ['Khoa', 'Gia_Tri', 'Ghi_Chu'];
 
 /** Seed sheet Cau_Hinh. Người dùng sửa trực tiếp trên sheet, không cần đụng code. */
@@ -430,12 +440,13 @@ const CAU_HINH_MAC_DINH = [
   ['NGHI_DEM_PHUT_CMTX', '60', 'CA ĐÊM — số phút nghỉ của bộ phận CMTX. Xem NGHI_DEM_PHUT_DET.'],
   ['CA_DEM_MAC_DINH_DET', 'CHAY',
     'CA ĐÊM MẶC ĐỊNH của bộ phận DET — CHAY: luôn chạy ca đêm, ngày nào KHÔNG chạy thì tổ trưởng ' +
-    'chọn Đóng máy → Ca đêm; nút "Chạy ca đêm" và nút Tăng ca bị ẩn. KHONG (hoặc xoá dòng, để trống): ' +
+    'chọn Đóng máy → Ca đêm; nút "Chạy ca đêm" và nút Tăng ca bị ẩn. KHONG: ' +
     'ca đêm mặc định KHÔNG chạy, ngày nào chạy thì tổ trưởng bấm "Chạy ca đêm"; Tăng ca dùng được. ' +
+    'Xoá dòng hoặc để trống = dùng mặc định của hệ thống (DET, SOI = CHAY, còn lại = KHONG; CMTX chỉ vài máy chạy ca đêm nên là KHONG); ' +
+    'muốn ép một tổ là KHONG thì gõ KHONG. ' +
     'Mỗi bộ phận một dòng, tên khoá CA_DEM_MAC_DINH_<MÃ BỘ PHẬN>. Chỉ có tác dụng với bộ phận có ' +
     'tick "Có ca đêm" trong lịch làm việc của tổ. Sửa ở đây là đổi ngay, không cần deploy lại.'],
   ['CA_DEM_MAC_DINH_SOI', 'CHAY', 'CA ĐÊM MẶC ĐỊNH của bộ phận SOI. Xem CA_DEM_MAC_DINH_DET.'],
-  ['CA_DEM_MAC_DINH_CMTX', 'CHAY', 'CA ĐÊM MẶC ĐỊNH của bộ phận CMTX. Xem CA_DEM_MAC_DINH_DET.'],
   ['HUONG_DAN_KHOA_LINK_THO', '',
     'KHOÁ LINK KHI THỢ NGHỈ VIỆC: xoá trắng ô Token của người đó trong sheet ' +
     'Danh_Muc_Tho, bỏ tick Hoat_Dong, rồi chạy menu 🔧 Bảo trì → "4. Sinh lại ' +
@@ -1108,9 +1119,7 @@ function setupSystem() {
   const shKHMay = taoSheet_(SHEET.KE_HOACH_MAY, HEADER_KE_HOACH_MAY);
   shKHMay.setColumnWidth(HEADER_KE_HOACH_MAY.indexOf('Ly_Do') + 1, 200);
   shKHMay.setColumnWidth(HEADER_KE_HOACH_MAY.indexOf('Ghi_Chu') + 1, 260);
-  datDropdown_(shKHMay, HEADER_KE_HOACH_MAY.indexOf('Trang_Thai') + 1,
-    [TRANG_THAI_KE_HOACH_MAY.DONG, TRANG_THAI_KE_HOACH_MAY.DA_KHAI, TRANG_THAI_KE_HOACH_MAY.TANG_CA,
-      TRANG_THAI_KE_HOACH_MAY.VE_GIUA_CA, TRANG_THAI_KE_HOACH_MAY.CHAY_DEM]);
+  datDropdown_(shKHMay, HEADER_KE_HOACH_MAY.indexOf('Trang_Thai') + 1, dsTrangThaiKeHoachMay_());
   // Cột giờ để dạng text, nếu không Sheets tự đổi '17:10' thành số thập phân.
   shKHMay.getRange(2, HEADER_KE_HOACH_MAY.indexOf('Gio_Ve') + 1,
     shKHMay.getMaxRows() - 1, 2).setNumberFormat('@');
