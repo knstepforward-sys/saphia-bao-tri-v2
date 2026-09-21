@@ -1,3 +1,11 @@
+## [2026-09-21] ĐÃ `clasp push` + DEPLOY toàn bộ mã lên bản chạy thật (deployment cũ `@27` → `@29`, URL `/exec` không đổi)
+- **Đã làm:** `day-len.ps1 -Buoc Push` chạy thật lúc 3:06 PM (25 file, kiểm tra tĩnh sạch, `HEAD` = `origin` = `22ce55b`). Chủ dự án chạy menu 🧪 và thử link `/dev` trên điện thoại, báo đã thử xong. `-Buoc Deploy` **thất bại**: "Only users in the same domain as the script owner may deploy this script" — tài khoản `clasp` (`kn.stepforward@gmail.com`) đẩy mã được nhưng không deploy được vì khác domain chủ sở hữu script. Không có gì bị đổi (deployment vẫn 2). Chủ dự án deploy tay trong Editor (Manage deployments → bút chì → New version) vào đúng deployment cũ.
+- **Đã kiểm sau deploy:** `clasp deployments` — ID web app **giữ nguyên** (khớp `.deployment-id`), số deployment vẫn 2, phiên bản `@29` (nhảy qua `@28`, chưa rõ nguồn gốc; không ảnh hưởng link).
+- **Mã trên bản chạy thật gồm:** Đợt 3 (chỉ số huy động/hiệu suất theo tuần), hiển thị giờ phút, sửa lỗi "phải bấm 2 lần", và mọi thay đổi trước đó chưa deploy (bỏ emoji giao diện tổ trưởng, chế độ ca đêm theo bộ phận…) — các mục cũ hơn bên dưới có thể còn ghi "chưa deploy", lấy mục này làm chuẩn.
+- **Bài học:** `day-len.ps1 -Buoc Deploy` không dùng được với tài khoản `clasp` hiện tại; deploy phải làm trong Editor bằng tài khoản chủ sở hữu, hoặc `clasp login` lại bằng tài khoản cùng domain. Chưa sửa script để in gợi ý khi gặp lỗi này.
+- **Trạng thái:** đã push GitHub / đã `clasp push` / đã deploy (bằng Editor).
+- **Việc còn lại:** chủ dự án xác nhận app chạy đúng trên link QR thật; nếu deploy lần sau vẫn qua Editor thì cân nhắc sửa `day-len.ps1` (bỏ `-Buoc Deploy` hoặc in hướng dẫn Editor).
+
 ## [2026-09-21] Thêm `day-len.ps1`: đường duy nhất để `clasp push` + deploy vào đúng deployment ID cũ
 - **Yêu cầu (chủ dự án DUYỆT):** lười đẩy tay; chỉ cần xác nhận trong chat là Claude được đẩy, link không được đổi; giữ bước nhắc thử trên điện thoại.
 - **Đã làm (chưa chạy lần nào):**
