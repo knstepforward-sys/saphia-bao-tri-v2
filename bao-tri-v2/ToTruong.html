@@ -31,13 +31,12 @@
   padding: 16px 14px; border-radius: 14px; border: 1.5px solid var(--vien);
   background: #fff; color: var(--chu); margin-bottom: 10px; cursor: pointer; font: inherit;
 }
-.viec .bieu-tuong { font-size: 30px; flex: none; }
 .viec .ten { font-size: 18px; font-weight: 700; line-height: 1.2; }
 .viec .mo-ta { font-size: 13.5px; color: var(--chu-nhat); margin-top: 2px; font-weight: 400; }
-.viec.do { background: #fce8e6; border-color: #f4b6b1; }
-.viec.cam { background: #fef7e0; border-color: #f0cf7a; }
-.viec.tim { background: #ede7f6; border-color: #c9b8ea; }
-.viec.xanh { background: #e8f0fe; border-color: #aecbfa; }
+.viec.do { background: #fce8e6; border-color: #f4b6b1; border-left: 6px solid var(--do); }
+.viec.cam { background: #fef7e0; border-color: #f0cf7a; border-left: 6px solid #b45309; }
+.viec.tim { background: #ede7f6; border-color: #c9b8ea; border-left: 6px solid #5e35b1; }
+.viec.xanh { background: #e8f0fe; border-color: #aecbfa; border-left: 6px solid var(--xanh-dam); }
 .dau-buoc { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
 .dau-buoc .huy { background: none; border: none; color: var(--chu-nhat); font-size: 15px; font-weight: 600; padding: 6px 0; cursor: pointer; }
 .dau-buoc .so-buoc { font-size: 13.5px; color: var(--chu-nhat); }
@@ -115,7 +114,6 @@
 </div>
 
 <div class="phu-kin an" id="manLoi">
-  <div style="font-size:42px">🔒</div>
   <div id="loiND" class="giua" style="padding:0 24px"></div>
 </div>
 
@@ -171,23 +169,18 @@
   <div id="hBao"></div>
 
   <button class="viec do" type="button" data-act="viec-dong">
-    <span class="bieu-tuong">🔴</span>
     <span><div class="ten">Đóng máy</div><div class="mo-ta">Máy nghỉ, không chạy</div></span>
   </button>
   <button class="viec cam" type="button" data-act="viec-tang" id="nutViecTang">
-    <span class="bieu-tuong">⏱</span>
     <span><div class="ten">Tăng ca</div><div class="mo-ta" id="hMoTaTang">Máy chạy ca ngày lâu hơn</div></span>
   </button>
   <button class="viec tim an" type="button" data-act="viec-dem" id="nutViecDem">
-    <span class="bieu-tuong">🌙</span>
     <span><div class="ten">Chạy ca đêm</div><div class="mo-ta">Máy chạy thêm ca đêm</div></span>
   </button>
   <button class="viec xanh" type="button" data-act="viec-ve">
-    <span class="bieu-tuong">🏠</span>
     <span><div class="ten">Có người xin về</div><div class="mo-ta">Công nhân về giữa ca</div></span>
   </button>
   <button class="viec" type="button" data-act="ke-hoach">
-    <span class="bieu-tuong">📋</span>
     <span><div class="ten">Xem kế hoạch tuần</div><div class="mo-ta">Xem và xoá từng mục</div></span>
   </button>
   <button class="lien-ket" type="button" data-act="khac">Việc khác…</button>
@@ -240,15 +233,12 @@
   <div class="cau-hoi">Việc khác</div>
   <div class="goi-y">Những việc ít dùng.</div>
   <button class="viec" type="button" data-act="khac-cn">
-    <span class="bieu-tuong">🌙</span>
     <span><div class="ten">Đóng Chủ nhật</div><div class="mo-ta">Cho tất cả máy</div></span>
   </button>
   <button class="viec" type="button" data-act="khac-saochep">
-    <span class="bieu-tuong">📄</span>
     <span><div class="ten">Sao chép ngày</div><div class="mo-ta">Chép kế hoạch một ngày sang ngày khác</div></span>
   </button>
   <button class="viec" type="button" data-act="khac-botri">
-    <span class="bieu-tuong">🟢</span>
     <span><div class="ten">Bỏ hết đóng máy</div><div class="mo-ta">Tất cả máy chạy lại cả tuần</div></span>
   </button>
 </div>
@@ -405,7 +395,7 @@ var DA_KHAI_TUAN = false;
 
 function coCaDem_() { return !!(DATA && DATA.lich && DATA.lich.Co_Ca_Dem); }
 /**
- * Tổ CHAY (Dệt, Sợi, CMTX): luôn chạy ca đêm — ngày nào không chạy thì Đóng máy → Ca đêm; KHÔNG dùng
+ * Tổ CHAY (Dệt, Sợi): luôn chạy ca đêm — ngày nào không chạy thì Đóng máy → Ca đêm; KHÔNG dùng
  * "Chạy ca đêm" và Tăng ca. Tổ còn lại (KHONG): ca đêm mặc định không chạy, ngày nào chạy thì bấm
  * "Chạy ca đêm"; Tăng ca dùng được. Cấu hình ở Cau_Hinh.CA_DEM_MAC_DINH_<BO_PHAN>.
  */
@@ -594,20 +584,20 @@ function veNoiDungKeHoach_() {
     });
     thuTu.forEach(function (k) {
       var n = nhom[k];
-      muc += '<div class="muc-kh do">🔴 Đóng máy' + (n.ca === 'D' ? ' (ca đêm)' : '') +
+      muc += '<div class="muc-kh do">Đóng máy' + (n.ca === 'D' ? ' (ca đêm)' : '') +
         ' <span class="ly-do">— ' + thoat(n.lyDo) + (n.ghiChu ? ': ' + thoat(n.ghiChu) : '') + '</span></div>' +
         n.ds.sort().map(function (ma) { dsKhoa.push(khoaMuc_('dong', ma, ymd, n.ca)); return chipMay_('dong', ma, ymd, n.ca); }).join('');
     });
 
     var dsTang = Object.keys(TANG_CA).filter(function (ma) { return TANG_CA[ma][ymd]; }).sort();
-    if (dsTang.length) muc += '<div class="muc-kh cam">⏱ Tăng ca</div>' + dsTang.map(function (ma) { dsKhoa.push(khoaMuc_('tang', ma, ymd, '')); return chipMay_('tang', ma, ymd, ''); }).join('');
+    if (dsTang.length) muc += '<div class="muc-kh cam">Tăng ca</div>' + dsTang.map(function (ma) { dsKhoa.push(khoaMuc_('tang', ma, ymd, '')); return chipMay_('tang', ma, ymd, ''); }).join('');
 
     var dsDem = Object.keys(CHAY_DEM).filter(function (ma) { return CHAY_DEM[ma][ymd]; }).sort();
-    if (dsDem.length) muc += '<div class="muc-kh tim">🌙 Chạy ca đêm</div>' + dsDem.map(function (ma) { dsKhoa.push(khoaMuc_('dem', ma, ymd, '')); return chipMay_('dem', ma, ymd, ''); }).join('');
+    if (dsDem.length) muc += '<div class="muc-kh tim">Chạy ca đêm</div>' + dsDem.map(function (ma) { dsKhoa.push(khoaMuc_('dem', ma, ymd, '')); return chipMay_('dem', ma, ymd, ''); }).join('');
 
     var ve = VE_GIUA_CA.filter(function (v) { return v.ngay === ymd; });
     if (ve.length) {
-      muc += '<div class="muc-kh xanh">🏠 Có người xin về</div>' + ve.map(function (v) {
+      muc += '<div class="muc-kh xanh">Có người xin về</div>' + ve.map(function (v) {
         dsKhoa.push(khoaMuc_('ve', v.maMay, ymd, v.ca));
         return '<div class="dong-ve">' + chipMay_('ve', v.maMay, ymd, v.ca) + '<span>' + (v.ca === 'D' ? 'ca đêm · ' : '') + 'về ' + thoat(v.gioVe) +
           (v.gioQuayLai ? ', quay lại ' + thoat(v.gioQuayLai) : '') + ' · ' + thoat(v.lyDo) + '</span>' +
@@ -789,10 +779,10 @@ function veBuoc_() {
   } else if (b === 'ca') {
     var goiYCa = WZ.loai === 'DONG' ? 'Đóng ca ngày, ca đêm, hay cả hai?' : 'Người xin về thuộc ca ngày hay ca đêm?';
     h += '<div class="cau-hoi">Ca nào?</div><div class="goi-y">' + goiYCa + '</div>' +
-      '<button type="button" class="lua-chon" data-act="ca" data-ca="N" aria-pressed="' + (WZ.ca === 'N') + '">☀️ Ca ngày</button>' +
-      '<button type="button" class="lua-chon" data-act="ca" data-ca="D" aria-pressed="' + (WZ.ca === 'D') + '">🌙 Ca đêm</button>' +
+      '<button type="button" class="lua-chon" data-act="ca" data-ca="N" aria-pressed="' + (WZ.ca === 'N') + '">Ca ngày</button>' +
+      '<button type="button" class="lua-chon" data-act="ca" data-ca="D" aria-pressed="' + (WZ.ca === 'D') + '">Ca đêm</button>' +
       (WZ.loai === 'DONG'
-        ? '<button type="button" class="lua-chon" data-act="ca" data-ca="ND" aria-pressed="' + (WZ.ca === 'ND') + '">☀️🌙 Cả hai ca</button>' +
+        ? '<button type="button" class="lua-chon" data-act="ca" data-ca="ND" aria-pressed="' + (WZ.ca === 'ND') + '">Cả hai ca</button>' +
           '<div class="goi-y" style="margin-top:6px">' + (modeChay_()
             ? 'Tổ luôn chạy ca đêm. Đóng ca đêm là máy nghỉ ca đêm ngày đã chọn.'
             : 'Ca đêm mặc định không chạy. Đóng ca đêm là bỏ "Chạy ca đêm" của các máy đã chọn.') + '</div>'

@@ -1,3 +1,29 @@
+## [2026-09-21] Giao diện tổ trưởng: bỏ toàn bộ emoji (☀️ 🌙 🔴 ⏱ 🏠 📋 📄 🟢 🔒)
+- **Yêu cầu (chủ dự án, DUYỆT phương án A):** icon mặt trời/mặt trăng ở phần chọn ca nhìn "sến"; bỏ hết emoji, chỉ dùng chữ.
+- **Đã sửa (`bao-tri-v2/ToTruong.html`, chỉ hiển thị, không đụng logic/dữ liệu/sheet):** nút chọn ca thành chữ thuần ("Ca ngày", "Ca đêm", "Cả hai ca"); 8 nút ở màn hình chính và màn "Việc khác" bỏ icon, nút màu (Đóng máy, Tăng ca, Chạy ca đêm, Có người xin về) có vạch màu dày 6 px bên trái để phân biệt; tiêu đề nhóm ở "Xem kế hoạch" bỏ emoji, giữ màu chữ; màn hình khoá bỏ 🔒. **Giữ** ☑ ☐ (ô chọn để xoá nhiều) và ✕ (Huỷ/xoá) vì có chức năng.
+- **Chưa làm:** ảnh chụp trong `hinh-anh-tai-lieu/man-hinh-app/` và tài liệu `.docx` vẫn là ảnh cũ có emoji, cần chụp lại.
+- **Trạng thái:** chưa commit / chưa push GitHub / chưa `clasp push` / chưa deploy.
+
+## [2026-09-19] Tạo hướng dẫn thao tác khai báo kế hoạch máy theo mẫu dọc
+- **Thay đổi:** tạo `hinh-anh-tai-lieu/HUONG_DAN_THAO_TAC_KHAI_BAO_KE_HOACH_MAY.docx`, 15 trang, dùng mẫu `FORM VIẾT QUY TRÌNH (mẫu dọc).docx`, logo hiện có và đủ 25 ảnh theo `CHU_THICH.md`; có hướng dẫn từng bước và lưu ý cho các chức năng.
+- **Lý do:** chủ dự án yêu cầu tạo tài liệu thao tác theo form công ty và chú thích đã cung cấp.
+- **Kiểm tra:** kết xuất bằng Microsoft Word; kiểm tra trực quan đủ 15 trang, đối chiếu 25 hình, số trang và các phần giữ nguyên của mẫu. File mẫu và ảnh nguồn không thay đổi. Mã tài liệu, ngày hiệu lực và thông tin ký duyệt để công ty điền.
+- **Trạng thái:** đã tạo file tại máy; chưa commit / chưa push GitHub / chưa `clasp push` / chưa deploy. Đây là tài liệu hướng dẫn, không phải xác nhận ứng dụng đã chạy thật.
+- **Việc tiếp theo:** chủ dự án rà soát nội dung, điền thông tin kiểm soát và ký duyệt trước khi ban hành.
+
+## [2026-09-19] Lỗi lưu "Chạy ca đêm" ở CMTX: ô chọn Trang_Thai của sheet còn danh sách cũ — sửa để tự chữa
+- **ĐÍNH CHÍNH (chủ dự án, cùng ngày):** CMTX chỉ ~7–8 máy chạy ca đêm, các máy còn lại tăng ca đến 20:30 → CMTX là chế độ **KHONG** (khai "Chạy ca đêm" theo máy, có Tăng ca), KHÔNG phải CHAY. Đã bỏ CMTX khỏi mặc định CHAY (`CA_DEM_MAC_DINH_SAN` chỉ còn DET, SOI) và khỏi seed `Cau_Hinh`; các đoạn dưới nói "CMTX = CHAY" đã lỗi thời. Menu "Cài đặt hệ thống" vẫn cần chạy để sửa ô chọn `Trang_Thai`; nút "Chạy ca đêm" của CMTX giữ nguyên.
+- **Lỗi (chủ dự án chụp màn hình):** khai Chạy ca đêm cho CMTX → "Chưa lưu được: Dữ liệu bạn đã nhập vào ô F321 vi phạm các quy tắc xác thực dữ liệu… Vui lòng nhập một trong: DONG, DA_KHAI, TANG_CA, VE_GIUA_CA".
+- **Nguyên nhân:** cột `Trang_Thai` của sheet `Ke_Hoach_May` có ô chọn (data validation) được đặt bởi `setupSystem()` lúc chưa có loại `CHAY_DEM`. Sau khi thêm `CHAY_DEM` vào mã mà chưa chạy lại menu "Cài đặt hệ thống", mọi lần ghi dòng `CHAY_DEM` bị Google Sheets chặn. **Sai sót của tôi:** khi giao bản giao diện mới tôi nói "không cần chạy menu Cài đặt hệ thống" — sai, vì danh sách ô chọn có đổi. Cùng gốc: tổ CMTX vẫn hiện nút "Chạy ca đêm" (đáng ra là tổ luôn chạy ca đêm) vì `Cau_Hinh` chưa có khoá `CA_DEM_MAC_DINH_CMTX` nên bị hiểu là KHONG.
+- **Cách chữa ngay không cần đẩy mã:** chạy menu 🔧 "1. Cài đặt hệ thống" một lần (cập nhật ô chọn + thêm các khoá cấu hình còn thiếu), rồi F5 trang tổ trưởng.
+- **Sửa mã để không lặp lại (chưa push/deploy):**
+  - `Code.gs` — `dsTrangThaiKeHoachMay_()` lấy danh sách trạng thái từ hằng số, `setupSystem` dùng hàm này (thêm loại mới là tự có); `caDemMacDinh_` khi khoá thiếu/để trống dùng mặc định của hệ thống (DET, SOI = CHAY, còn lại KHONG) nên chưa cài đặt vẫn đúng; mô tả khoá cấu hình cập nhật (gõ KHONG để ép KHONG).
+  - `KeHoachTo.gs` — `dongBoOChonTrangThai_()` đặt lại ô chọn theo hằng số ngay trước mỗi lần ghi `Ke_Hoach_May` (trong `luuKeHoachTuan` và `ghiLaiVungKeHoachMay_`): sheet cũ tự chữa ở lần lưu đầu tiên.
+  - `Test.gs` — 5 test mới (đủ 5 loại trạng thái gồm CHAY_DEM; mặc định ca đêm khi chưa cài đặt). Dự kiến tổng **535** (530 + 5), **chưa chạy trong Sheet**.
+- **Đã kiểm tại máy:** `kiem-tra.ps1` sạch cả 5 lớp; khối test chạy bằng node 103/103. Không thể tái hiện lỗi Sheets ở máy tôi (cần Sheet thật).
+- **Trạng thái:** chưa commit / chưa push GitHub / chưa `clasp push` / chưa deploy.
+- **Việc cần làm tiếp theo:** chạy menu "1. Cài đặt hệ thống" ngay để hết lỗi; sau đó `clasp push` → menu 🧪 (dự kiến 535) → deploy để lần sau không phụ thuộc menu này.
+
 ## [2026-09-19] Chế độ ca đêm THEO TỪNG BỘ PHẬN (`CA_DEM_MAC_DINH_*`) — sửa lại mô hình "mọi tổ mặc định không chạy ca đêm"
 - **Vấn đề (chủ dự án báo lại):** trước đó chốt "không tổ nào chạy ca đêm thường xuyên" nên mọi tổ mặc định KHÔNG chạy ca đêm. Thực tế: **Dệt, Sợi, CMTX luôn có ca đêm**; chỉ **TRANG** lâu lâu mới có; **ICM, MTX** không có ca đêm nhưng có tăng ca. Mô hình cũ buộc Dệt/Sợi/CMTX bấm "Chạy ca đêm" cho từng máy từng ngày.
 - **Chốt (DUYỆT):** khoá `Cau_Hinh.CA_DEM_MAC_DINH_<BO_PHAN>` = `CHAY` | `KHONG` (thiếu = KHONG); seed DET, SOI, CMTX = CHAY. Tổ CHAY: ca đêm mặc định chạy, ngày không chạy thì Đóng máy → Ca đêm (dòng `DONG` Ca='D' + lý do); **ẩn nút "Chạy ca đêm" và nút Tăng ca** ở 3 tổ này. Tổ KHONG (TRANG): giữ nguyên chế độ trước (Chạy ca đêm, tăng ca thay ca đêm). Tổ không có ca đêm: không đổi.
