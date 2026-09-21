@@ -21,6 +21,9 @@
       "Bash(node apps-script/test/test_baoCaoSep.js)",
       "Bash(node apps-script/test/test_kpiDet.js)"
     ],
+    "ask": [
+      "PowerShell(powershell -ExecutionPolicy Bypass -File day-len.ps1:*)"
+    ],
     "deny": [
       "Bash(clasp push:*)",
       "Bash(clasp.cmd push:*)",

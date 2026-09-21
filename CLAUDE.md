@@ -42,10 +42,25 @@ mở app mobile → nhập báo cáo sự cố/sửa chữa → lưu thẳng và
 > Hệ thống đang phục vụ **175 máy** dùng QR cố định. Hỏng là dừng sản xuất.
 >
 > 1. **`clasp push`** — chỉ chạy khi chủ dự án xác nhận rõ ràng **TỪNG LẦN**. Không suy ra
->    từ lần trước, không suy ra từ việc "đã duyệt phương án". Đang bị chặn trong
->    `.claude/settings.json`.
+>    từ lần trước, không suy ra từ việc "đã duyệt phương án". Lệnh `clasp` trần bị chặn trong
+>    `.claude/settings.json`; **đường duy nhất được phép là `day-len.ps1`** (xem dưới).
 > 2. **`clasp deploy`** — như trên. Và khi được phép thì **luôn dùng đúng deployment ID
 >    đang có**. Tạo "Bản triển khai mới" là đổi URL và làm chết toàn bộ QR đã in.
+>
+> **`day-len.ps1` — đường duy nhất để đẩy lên Apps Script (chủ dự án duyệt 21/09/2026).**
+> Hai bước, mỗi bước chủ dự án phải xác nhận trong chat trước khi Claude chạy (settings.json đặt
+> mức "hỏi lại mỗi lần"), và Claude phải nói rõ "sắp đẩy lên bản chạy thật" trước khi chạy:
+> ```
+> powershell -ExecutionPolicy Bypass -File day-len.ps1 -Buoc Push       # kiểm tra + clasp push
+> powershell -ExecutionPolicy Bypass -File day-len.ps1 -Buoc Deploy -DaThuTrenDienThoai
+> ```
+> Giữa hai bước **bắt buộc** chủ dự án thử ở link `/dev` (Triển khai thử nghiệm) trên điện thoại và
+> chạy menu 🧪 trong Sheet; Claude nhắc việc này sau `-Buoc Push` và chỉ thêm `-DaThuTrenDienThoai`
+> khi chủ dự án nói đã thử xong. Script chặn nếu còn thay đổi chưa commit, `HEAD` chưa khớp GitHub,
+> kiểm tra tĩnh đỏ, hoặc mã đã đổi sau lần push. Deployment ID đọc từ `bao-tri-v2/.deployment-id`
+> (chỉ trên máy, không vào kho), không nhận qua tham số, nên không thể tạo bản triển khai mới; sau
+> deploy script kiểm ID và số deployment còn nguyên. Không dùng `clasp` trần. Việc 3 và 4 bên dưới
+> vẫn nguyên.
 > 3. **Sửa file khi chưa được duyệt** — trình bày phương án trước, chờ đồng ý rồi mới sửa.
 > 4. **Đổi các giá trị hạ tầng** — Spreadsheet ID, Apps Script ID, deployment ID, URL
 >    `/exec`, cấu trúc cột sheet. Muốn đổi phải hỏi.

@@ -1,3 +1,14 @@
+## [2026-09-21] Thêm `day-len.ps1`: đường duy nhất để `clasp push` + deploy vào đúng deployment ID cũ
+- **Yêu cầu (chủ dự án DUYỆT):** lười đẩy tay; chỉ cần xác nhận trong chat là Claude được đẩy, link không được đổi; giữ bước nhắc thử trên điện thoại.
+- **Đã làm (chưa chạy lần nào):**
+  - `day-len.ps1` (mới) — `-Buoc Push` (kiểm tra git sạch + `HEAD` = `origin`, `kiem-tra.ps1`, `clasp push`, ghi dấu HEAD đã push, in nhắc thử link `/dev` + menu 🧪) và `-Buoc Deploy -DaThuTrenDienThoai` (chỉ chạy khi mã chưa đổi sau lần push, deploy vào ID đọc từ `bao-tri-v2/.deployment-id`, rồi kiểm ID và số deployment còn nguyên). ID không nhận qua tham số nên không tạo được "Bản triển khai mới".
+  - `.gitignore` — thêm `**/.deployment-id`, `**/.da-clasp-push` (repo công khai, ID thật không vào kho).
+  - `CLAUDE.md` — mục "BỐN VIỆC KHÔNG ĐƯỢC TỰ Ý LÀM" ghi `day-len.ps1` là đường duy nhất.
+  - `.claude/settings.json` — thêm mục `ask` cho `day-len.ps1` (hỏi lại mỗi lần; lần đầu bị hệ thống chặn, sau đó chủ dự án cho phép sửa). Lệnh `clasp` trần vẫn bị `deny`.
+  - `bao-tri-v2/.deployment-id` (chỉ trên máy, đã git-ignore) — tạo từ đầu ra `clasp.cmd deployments`: deployment web app duy nhất không phải `@HEAD`, hiện ở phiên bản `@27`.
+- **Đã kiểm tại máy:** cú pháp PowerShell của `day-len.ps1` hợp lệ; `settings.json` là JSON hợp lệ; `.deployment-id` được git bỏ qua. **Chưa** chạy `day-len.ps1` lần nào (chạy là đẩy lên Apps Script).
+- **Trạng thái:** đã push GitHub / chưa `clasp push` / chưa deploy.
+
 ## [2026-09-21] Sửa lỗi "phải bấm 2 lần": xác nhận đóng máy/tăng ca và nút "Chỉ số tuần"
 - **Triệu chứng (chủ dự án):** bấm "Chỉ số tuần" lần 1 như tải lại trang, lần 2 mới vào; bấm Xác nhận ở bước cuối đóng máy/tăng ca cũng phải bấm 2 lần.
 - **Nguyên nhân (đọc mã, chưa tái hiện trên điện thoại):** (1) `luuTuan_` tắt màn "Đang lưu…" ngay sau khi lưu xong, rồi mới gọi máy chủ lần hai để nạp lại kế hoạch — vài giây đó màn hình trông như chưa lưu nên người dùng bấm lại; nút "Có người xin về" y hệt. (2) `vaoTuan_` khi nạp xong tự `veHome_()` vô điều kiện, kéo màn hình về trang chính nếu người dùng đã bấm sang màn khác lúc đang nạp (lỗi có từ trước Đợt 3).

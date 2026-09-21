@@ -42,3 +42,7 @@ baocao-saphia/
 #     KHONG dua len kho cong khai. Xem .clasp.json.mau de biet cau truc. ---
 .clasp.json
 **/.clasp.json
+
+# --- Deployment ID + dau da clasp push: rieng cua tung may, khong dua len kho cong khai ---
+**/.deployment-id
+**/.da-clasp-push
