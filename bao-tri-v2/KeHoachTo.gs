@@ -9,7 +9,18 @@
  *
  * ĐỘC LẬP hoàn toàn với luồng thợ (LuongTho.gs): không dùng chung cột Token,
  * không dùng chung hàm xác thực. Không đụng Su_Co, HieuDung.gs, Ke_Hoach_Chay_May.
+ *
+ * BA MỐC của một máy trong một ngày (chủ dự án chốt 22/09/2026):
+ *   1. Ca ngày (Ca='N') — Ca_Ngay_Tu → Ca_Ngay_Den, trừ nghỉ trưa. Chạy / Đóng.
+ *   2. Tăng ca (Ca='T') — từ hết nghỉ tối (hoặc hết ca ngày, lấy giờ muộn hơn) → TANG_CA_DEN.
+ *      Độc lập với ca ngày: đóng ca ngày vẫn tăng ca được.
+ *   3. Ca đêm  (Ca='D') — Ca_Dem_Tu → Ca_Dem_Den.
+ * Có mốc 2 thì KHÔNG có mốc 3 và ngược lại. Tổ luôn chạy ca đêm (CHAY) mà tăng ca = thợ ca ngày ở
+ * lại thay ca đêm: phần ca đêm còn lại tính là hao hụt theo lý do của dòng tăng ca.
  */
+
+/** Mã mốc tăng ca trong cột Ca của Ke_Hoach_May (MA_CA chỉ có N/D — đó là ca trực của thợ). */
+const CA_TANG_CA = 'T';
 
 // ============================================================================
 // 1. XÁC THỰC
@@ -165,7 +176,8 @@ function getToTruongBootstrap(boPhan, token) {
       may: dsMayCuaBoPhan_(bp),
       lyDoDongMay: dsLyDoDongMayKeHoach_(),
       lyDoVeGiuaCa: dsLyDoVeGiuaCa_(),
-      caDemMacDinh: caDemMacDinh_(bp), // 'CHAY' | 'KHONG' — quyết định nút Chạy ca đêm / Tăng ca hiện hay ẩn
+      lyDoTangCaThayCaDem: dsLyDoTangCaThayCaDem_(),
+      caDemMacDinh: caDemMacDinh_(bp), // 'CHAY' | 'KHONG' — quyết định nút Chạy ca đêm hiện hay ẩn
       gioTangCa: gioTangCa_(), // phút từ 00:00 — client tự đổi ra HH:mm để hiện trên modal tăng ca
     };
   } catch (err) {
@@ -402,12 +414,13 @@ function chuanHoaDanhSachNgoaiLe_(dsRaw, boPhan, tuanBatDau, dsMayHopLe, dsLyDoH
 
 /**
  * Validate + chuẩn hoá MỘT lượt tăng ca (một máy, một ngày) thành 1 dòng đúng thứ
- * tự HEADER_KE_HOACH_MAY, Trang_Thai = TANG_CA. Hàm THUẦN.
+ * tự HEADER_KE_HOACH_MAY, Trang_Thai = TANG_CA, Ca = 'T' (mốc tăng ca). Hàm THUẦN.
  *
- * Tăng ca chỉ áp cho CA NGÀY (bộ phận chỉ chạy ca ngày mới tăng ca) nên Ca luôn
- * là 'N' và client không gửi ca. Không có lý do — tăng ca không cần giải trình.
+ * Dòng cũ ghi trước 22/09/2026 có Ca = 'N' — mọi nơi đọc TANG_CA chỉ xét (máy, ngày),
+ * không xét Ca, nên hai kiểu cùng đúng. Lý do (`lyDo`) chỉ có ở tổ luôn chạy ca đêm, do
+ * chuanHoaDanhSachTangCa_ kiểm; ở đây chỉ chép sang.
  *
- * item = { maMay, ngay: 'yyyy-MM-dd' }
+ * item = { maMay, ngay: 'yyyy-MM-dd', lyDo? }
  */
 function chuanHoaTangCa_(item, boPhan, tuanBatDau, nhan) {
   const p = item || {};
@@ -424,10 +437,11 @@ function chuanHoaTangCa_(item, boPhan, tuanBatDau, nhan) {
   const dong = new Array(HEADER_KE_HOACH_MAY.length).fill('');
   dong[HEADER_KE_HOACH_MAY.indexOf('Tuan_Bat_Dau')] = tuanBatDau;
   dong[HEADER_KE_HOACH_MAY.indexOf('Ngay')] = ngay;
-  dong[HEADER_KE_HOACH_MAY.indexOf('Ca')] = MA_CA.NGAY;
+  dong[HEADER_KE_HOACH_MAY.indexOf('Ca')] = CA_TANG_CA;
   dong[HEADER_KE_HOACH_MAY.indexOf('Ma_May')] = maMay;
   dong[HEADER_KE_HOACH_MAY.indexOf('Bo_Phan')] = String(boPhan).trim().toUpperCase();
   dong[HEADER_KE_HOACH_MAY.indexOf('Trang_Thai')] = TRANG_THAI_KE_HOACH_MAY.TANG_CA;
+  dong[HEADER_KE_HOACH_MAY.indexOf('Ly_Do')] = String(p.lyDo || '').trim();
 
   return { ok: true, dong: dong, maMay: maMay, ngay: ngay };
 }
@@ -435,24 +449,18 @@ function chuanHoaTangCa_(item, boPhan, tuanBatDau, nhan) {
 /**
  * Validate + chuẩn hoá TOÀN BỘ danh sách tăng ca của một lần lưu tuần. Hàm THUẦN.
  *
- * Ba luật:
+ * Luật:
  *  - máy phải thuộc đúng bộ phận (dsMayHopLe), như ngoại lệ đóng máy;
  *  - không khai trùng (máy, ngày) trong cùng payload;
- *  - MỘT MÁY-NGÀY CHỈ CÓ MỘT TRẠNG THÁI: máy đang bị đóng ca ngày của đúng ngày đó
- *    thì không tăng ca được (dsDongNgoaiLe = các dòng ngoại lệ đã chuẩn hoá của
- *    payload này). Không âm thầm bỏ một trong hai — báo lỗi để tổ trưởng chọn lại,
- *    vì hiệu suất của lượt đó sẽ vô nghĩa nếu vừa đóng vừa tăng ca.
+ *  - tăng ca là mốc RIÊNG: máy đóng ca ngày vẫn tăng ca được (đóng máy không cản);
+ *  - dsLyDoThayCaDem: mảng lý do hợp lệ khi tổ LUÔN CHẠY ca đêm (tăng ca thay ca đêm → phần ca
+ *    đêm còn lại là hao hụt theo lý do này). Trống thì lấy lý do đầu tiên; ngoài danh sách thì báo
+ *    lỗi. null = tổ khác → không ghi lý do.
  */
-function chuanHoaDanhSachTangCa_(dsRaw, boPhan, tuanBatDau, dsMayHopLe, dsDongNgoaiLe) {
+function chuanHoaDanhSachTangCa_(dsRaw, boPhan, tuanBatDau, dsMayHopLe, dsLyDoThayCaDem) {
   const ds = Array.isArray(dsRaw) ? dsRaw : [];
-  const iNgay = HEADER_KE_HOACH_MAY.indexOf('Ngay');
-  const iCa = HEADER_KE_HOACH_MAY.indexOf('Ca');
-  const iMay = HEADER_KE_HOACH_MAY.indexOf('Ma_May');
-
-  const dangDong = {};
-  (dsDongNgoaiLe || []).forEach(function (d) {
-    if (d[iCa] === MA_CA.NGAY) dangDong[d[iMay] + '|' + d[iNgay]] = true;
-  });
+  const iLyDo = HEADER_KE_HOACH_MAY.indexOf('Ly_Do');
+  const dsLyDo = Array.isArray(dsLyDoThayCaDem) && dsLyDoThayCaDem.length ? dsLyDoThayCaDem : null;
 
   const dsDong = [];
   const daThay = {};
@@ -470,12 +478,14 @@ function chuanHoaDanhSachTangCa_(dsRaw, boPhan, tuanBatDau, dsMayHopLe, dsDongNg
     }
     daThay[khoa] = true;
 
-    if (dangDong[khoa]) {
-      return {
-        ok: false,
-        error: 'Máy ' + chuan.maMay + ' đang đóng ca ngày ' + chuan.ngay +
-          ', không thể tăng ca. Hãy bố trí chạy lại trước.',
-      };
+    if (dsLyDo) {
+      const lyDo = chuan.dong[iLyDo] || dsLyDo[0];
+      if (dsLyDo.indexOf(lyDo) === -1) {
+        return { ok: false, error: 'Lý do "' + lyDo + '" không có trong danh sách cho phép (máy ' + chuan.maMay + ').' };
+      }
+      chuan.dong[iLyDo] = lyDo;
+    } else {
+      chuan.dong[iLyDo] = '';
     }
 
     dsDong.push(chuan.dong);
@@ -554,7 +564,7 @@ function phanLoaiDongKeHoach_(dsDong, bp, tuan) {
       return;
     }
     if (trangThai === TRANG_THAI_KE_HOACH_MAY.TANG_CA) {
-      tangCa.push({ maMay: String(r.Ma_May).trim(), ngay: chuanHoaNgay_(r.Ngay) });
+      tangCa.push({ maMay: String(r.Ma_May).trim(), ngay: chuanHoaNgay_(r.Ngay), lyDo: String(r.Ly_Do || '').trim() });
       return;
     }
     if (trangThai === TRANG_THAI_KE_HOACH_MAY.CHAY_DEM) {
@@ -640,9 +650,13 @@ function luuKeHoachTuan(boPhan, token, payload) {
     p.ngoaiLe, bp, tuanBatDau, dsMayHopLe, dsLyDoDongMayKeHoach_());
   if (!chuan.ok) return chuan;
 
+  // Tổ CHAY (luôn chạy ca đêm): tăng ca = thợ ca ngày ở lại thay ca đêm → dòng tăng ca mang lý do
+  // ca đêm không chạy. Tổ khác: tăng ca là chạy thêm, không lý do.
+  const cheDoCaDem = caDemMacDinh_(bp);
   const guiTangCa = Array.isArray(p.tangCa);
   const chuanTangCa = guiTangCa
-    ? chuanHoaDanhSachTangCa_(p.tangCa, bp, tuanBatDau, dsMayHopLe, chuan.dsDong)
+    ? chuanHoaDanhSachTangCa_(p.tangCa, bp, tuanBatDau, dsMayHopLe,
+      cheDoCaDem === 'CHAY' ? dsLyDoTangCaThayCaDem_() : null)
     : { ok: true, dsDong: [] };
   if (!chuanTangCa.ok) return chuanTangCa;
 
@@ -677,8 +691,7 @@ function luuKeHoachTuan(boPhan, token, payload) {
     const iReqId = HEADER_KE_HOACH_MAY.indexOf('Request_ID');
 
     // Client cũ không gửi tangCa → giữ nguyên dòng TANG_CA đã lưu (đã có đủ metadata).
-    // Tổ CHAY (luôn chạy ca đêm): không dùng tăng ca và "Chạy ca đêm" — bỏ hết, kể cả dữ liệu cũ.
-    const cheDoCaDem = caDemMacDinh_(bp);
+    // Tổ CHAY (luôn chạy ca đêm): không dùng "Chạy ca đêm" — bỏ hết, kể cả dữ liệu cũ.
     const chon = chonTangCaChayDemGhi_(cheDoCaDem, guiTangCa, chuanTangCa.dsDong, tach.tangCaCu,
       guiChayDem, chuanChayDem.dsDong, tach.chayDemCu);
     const dsTangCaGhi = chon.tangCa;
@@ -705,11 +718,10 @@ function luuKeHoachTuan(boPhan, token, payload) {
     dongDaKhai[iReqId] = requestId;
 
     // Về giữa ca ghi riêng lúc xảy ra (ghiVeGiuaCa) nên luôn được GIỮ LẠI — trừ lượt nào
-    // vừa bị đóng máy đè lên đúng (máy, ngày, ca) đó (một máy-ngày-ca một trạng thái).
-    // Về giữa ca ĐÊM chỉ còn nghĩa khi máy đó vẫn chạy ca đêm ngày đó (CHAY_DEM).
-    // Tổ CHAY: ca đêm mặc định chạy, lượt về giữa ca đêm chỉ bị bỏ khi máy đó bị đóng ca đêm.
+    // vừa bị đóng máy đè lên đúng (máy, ngày, ca) đó (một máy-ngày-ca một trạng thái), và lượt
+    // của mốc không còn chạy: tăng ca đã bỏ, hoặc ca đêm không chạy (xem locVeGiuaCaTheoMoc_).
     const veSauDong = boVeGiuaCaBiDongDe_(tach.veGiuaCaCu, chuan.dsDong);
-    const veGiuaCaGhi = cheDoCaDem === 'CHAY' ? veSauDong : boVeGiuaCaDemKhongChayDem_(veSauDong, dsChayDemGhi);
+    const veGiuaCaGhi = locVeGiuaCaTheoMoc_(veSauDong, dsTangCaGhi, dsChayDemGhi, cheDoCaDem);
     const toanBo = tach.giuLai.concat(chuan.dsDong, dsTangCaGhi, dsChayDemGhi, veGiuaCaGhi, [dongDaKhai]);
 
     dongBoOChonTrangThai_(sh);
@@ -757,28 +769,20 @@ function truKhoangNghi_(tu, den, dsNghi) {
 }
 
 /**
- * Khung giờ kế hoạch CA NGÀY của MỘT máy trong MỘT ngày, theo lịch của tổ (`lich`,
- * dạng lichHienHanhCuaTo_) và cờ tăng ca của đúng máy-ngày đó.
- *
- *   ngày thường : Ca_Ngay_Tu → Ca_Ngay_Den, trừ nghỉ trưa (nếu lịch có)
- *   ngày tăng ca: Ca_Ngay_Tu → TANG_CA_DEN,  trừ nghỉ trưa (theo lịch) VÀ nghỉ tối
+ * Khung giờ kế hoạch CA NGÀY (mốc 1) của MỘT máy trong MỘT ngày, theo lịch của tổ
+ * (`lich`, dạng lichHienHanhCuaTo_): Ca_Ngay_Tu → Ca_Ngay_Den, trừ nghỉ trưa (nếu có).
+ * Tăng ca KHÔNG kéo dài khung này nữa — tăng ca là mốc riêng, xem khungTangCaCuaMay_.
  *
  * Trả { khung: [[tuPhut, denPhut], ...], tongPhut, hetCa } — `hetCa` là giờ hết ca
- * (phút từ 00:00), dùng cho nút "Về giữa ca" sau này. Trả null nếu tổ CHƯA KHAI
- * lịch (`lich` null) hoặc lịch không có khung hợp lệ — tầng gọi phải tự xử lý
- * "chưa khai", không suy diễn giờ mặc định (cùng nguyên tắc lichHienHanhCuaTo_).
- *
- * Tăng ca không bao giờ làm NGẮN ca đi: nếu TANG_CA_DEN <= Ca_Ngay_Den thì lấy
- * Ca_Ngay_Den. Chỉ áp cho ca ngày — bộ phận có tăng ca là bộ phận chỉ chạy ca ngày.
- * Hàm THUẦN.
- *
- * gioTangCa: kết quả gioTangCa_() (tiêm cho test, mặc định đọc Cau_Hinh).
+ * (phút từ 00:00), dùng cho "Về giữa ca". Trả null nếu tổ CHƯA KHAI lịch (`lich`
+ * null) hoặc lịch không có khung hợp lệ — tầng gọi phải tự xử lý "chưa khai", không
+ * suy diễn giờ mặc định (cùng nguyên tắc lichHienHanhCuaTo_). Hàm THUẦN.
  */
-function khungKeHoachNgayCuaMay_(lich, tangCa, gioTangCa) {
+function khungKeHoachNgayCuaMay_(lich) {
   if (!lich) return null;
   const tu = gioSangPhut_(lich.Ca_Ngay_Tu);
-  const denLich = gioSangPhut_(lich.Ca_Ngay_Den);
-  if (tu === null || denLich === null || denLich <= tu) return null;
+  const den = gioSangPhut_(lich.Ca_Ngay_Den);
+  if (tu === null || den === null || den <= tu) return null;
 
   const nghi = [];
   if (lich.Co_Nghi_Trua) {
@@ -787,16 +791,28 @@ function khungKeHoachNgayCuaMay_(lich, tangCa, gioTangCa) {
     if (nt !== null && nd !== null && nd > nt) nghi.push([nt, nd]);
   }
 
-  let den = denLich;
-  if (tangCa) {
-    const g = gioTangCa || gioTangCa_();
-    den = Math.max(denLich, g.den);
-    if (g.nghiToiTu !== null && g.nghiToiDen !== null) nghi.push([g.nghiToiTu, g.nghiToiDen]);
-  }
-
   const khung = truKhoangNghi_(tu, den, nghi);
   const tongPhut = khung.reduce(function (s, k) { return s + (k[1] - k[0]); }, 0);
   return { khung: khung, tongPhut: tongPhut, hetCa: den };
+}
+
+/**
+ * Khung giờ TĂNG CA (mốc 2) của một máy-ngày: một đoạn liền, bắt đầu lúc hết nghỉ tối
+ * (NGHI_TOI_DEN) hoặc lúc hết ca ngày của tổ — lấy giờ MUỘN hơn — và kết thúc lúc TANG_CA_DEN.
+ * Nhờ vậy nghỉ tối không bao giờ bị tính là giờ chạy, và tổ hết ca ngày muộn (DET 18:00) không
+ * bị trừ oan một tiếng. Cùng dạng kết quả với khungKeHoachNgayCuaMay_. Trả null nếu tổ chưa khai
+ * lịch, lịch không hợp lệ, hoặc giờ hết tăng ca không sau giờ bắt đầu. Hàm THUẦN.
+ *
+ * gioTangCa: kết quả gioTangCa_() (tiêm cho test, mặc định đọc Cau_Hinh).
+ */
+function khungTangCaCuaMay_(lich, gioTangCa) {
+  const kN = khungKeHoachNgayCuaMay_(lich);
+  if (!kN) return null;
+  const g = gioTangCa || gioTangCa_();
+  const tu = Math.max(kN.hetCa, g.nghiToiDen === null ? kN.hetCa : g.nghiToiDen);
+  const den = g.den;
+  if (den === null || den <= tu) return null;
+  return { khung: [[tu, den]], tongPhut: den - tu, hetCa: den };
 }
 
 // ============================================================================
@@ -847,10 +863,23 @@ function phutGiaoKhung_(khung, tu, den) {
 }
 
 /**
+ * Mốc THẬT của một lượt về giữa ca: người về lúc đã sang giờ tăng ca thì tính theo mốc tăng ca,
+ * dù được ghi là ca ngày ('N'). Dùng cho cả lượt mới (ghiVeGiuaCa) lẫn dòng ghi trước 22/09/2026,
+ * khi tăng ca còn là phần kéo dài của ca ngày. Mốc khác giữ nguyên. Hàm THUẦN.
+ */
+function caThatCuaVeGiuaCa_(ca, gioVe, lich, coTangCa, gioTangCa) {
+  if (ca !== MA_CA.NGAY || !coTangCa) return ca;
+  const kT = khungTangCaCuaMay_(lich, gioTangCa);
+  const kN = khungKeHoachNgayCuaMay_(lich);
+  const ve = gioSangPhut_(gioVe);
+  if (!kT || !kN || ve === null) return ca;
+  return ve >= kN.hetCa ? CA_TANG_CA : ca;
+}
+
+/**
  * Tính một lượt về giữa ca của MỘT máy.
  *   lich       lịch hiện hành của tổ (lichHienHanhCuaTo_), null nếu chưa khai
- *   tangCa     máy này có tăng ca ngày đó không (chỉ ảnh hưởng ca ngày)
- *   ca         'N' | 'D'
+ *   ca         'N' (ca ngày) | 'T' (tăng ca) | 'D' (ca đêm) — mỗi mốc hết ca riêng
  *   gioVe      'HH:mm' bắt buộc
  *   gioQuayLai 'HH:mm' hoặc rỗng (rỗng = nghỉ tới hết ca)
  *   gioTangCa  kết quả gioTangCa_() (tiêm cho test)
@@ -861,22 +890,32 @@ function phutGiaoKhung_(khung, tu, den) {
  * { ok:false, error }. Chặn: tổ chưa khai lịch/ca, giờ về ngoài ca, giờ quay lại không
  * sau giờ về hoặc sau hết ca. Hàm THUẦN.
  */
-function tinhVeGiuaCa_(lich, tangCa, ca, gioVe, gioQuayLai, gioTangCa, nghiDemPhut) {
-  if (ca !== MA_CA.NGAY && ca !== MA_CA.DEM) return { ok: false, error: 'Ca không hợp lệ.' };
+function tinhVeGiuaCa_(lich, ca, gioVe, gioQuayLai, gioTangCa, nghiDemPhut) {
+  if (ca !== MA_CA.NGAY && ca !== MA_CA.DEM && ca !== CA_TANG_CA) return { ok: false, error: 'Ca không hợp lệ.' };
   if (!lich) return { ok: false, error: 'Tổ chưa khai giờ làm việc.' };
 
-  const info = ca === MA_CA.DEM
-    ? khungCaDemCuaMay_(lich, nghiDemPhut)
-    : khungKeHoachNgayCuaMay_(lich, tangCa, gioTangCa);
+  const info = ca === MA_CA.DEM ? khungCaDemCuaMay_(lich, nghiDemPhut)
+    : ca === CA_TANG_CA ? khungTangCaCuaMay_(lich, gioTangCa)
+      : khungKeHoachNgayCuaMay_(lich);
   if (!info) {
-    return { ok: false, error: ca === MA_CA.DEM ? 'Tổ không có ca đêm.' : 'Lịch của tổ không có khung ca ngày hợp lệ.' };
+    return {
+      ok: false,
+      error: ca === MA_CA.DEM ? 'Tổ không có ca đêm.'
+        : ca === CA_TANG_CA ? 'Không có khung tăng ca hợp lệ.' : 'Lịch của tổ không có khung ca ngày hợp lệ.',
+    };
   }
 
   const batDau = info.khung[0][0];
   const hetCa = info.hetCa;
 
-  const ve = gioTrenTrucCa_(gioVe, batDau);
+  let ve = gioTrenTrucCa_(gioVe, batDau);
   if (ve === null) return { ok: false, error: 'Giờ về không hợp lệ.' };
+  // Về trong giờ nghỉ tối (sau hết ca ngày, trước khi tăng ca bắt đầu) = bỏ cả mốc tăng ca.
+  if (ca === CA_TANG_CA) {
+    const ve0 = gioSangPhut_(gioVe);
+    const kN = khungKeHoachNgayCuaMay_(lich);
+    if (kN && ve0 >= kN.hetCa && ve0 < batDau) ve = batDau;
+  }
   if (ve < batDau || ve >= hetCa) return { ok: false, error: 'Giờ về nằm ngoài ca.' };
 
   let den = hetCa;
@@ -929,29 +968,36 @@ function boVeGiuaCaBiDongDe_(dsVeRows, dsDongRows) {
 }
 
 /**
- * Giữ lại các lượt về giữa ca CA ĐÊM chỉ khi máy đó VẪN chạy ca đêm đúng ngày đó
- * (`dsChayDemRows`: các dòng thô CHAY_DEM). Không chạy ca đêm (chưa chọn, đã bỏ, hoặc đã chuyển
- * sang tăng ca ngày) thì lượt về giữa ca đêm không còn nghĩa. Lượt ca NGÀY không bị ảnh hưởng.
+ * Chỉ giữ các lượt về giữa ca của MỐC VẪN CÒN CHẠY (dsVeRows: dòng thô VE_GIUA_CA):
+ *   - mốc tăng ca ('T'): máy-ngày đó còn dòng TANG_CA;
+ *   - ca đêm ('D'): máy-ngày đó KHÔNG tăng ca (có tăng ca thì không có ca đêm), và với tổ không
+ *     mặc định chạy ca đêm (cheDo khác 'CHAY') thì phải có dòng CHAY_DEM;
+ *   - ca ngày ('N'): luôn giữ (đóng ca ngày đã do boVeGiuaCaBiDongDe_ lo).
  * Hàm THUẦN.
  */
-function boVeGiuaCaDemKhongChayDem_(dsVeRows, dsChayDemRows) {
+function locVeGiuaCaTheoMoc_(dsVeRows, dsTangCaRows, dsChayDemRows, cheDo) {
   const iNgay = HEADER_KE_HOACH_MAY.indexOf('Ngay');
   const iCa = HEADER_KE_HOACH_MAY.indexOf('Ca');
   const iMay = HEADER_KE_HOACH_MAY.indexOf('Ma_May');
-  const chayDem = {};
-  (dsChayDemRows || []).forEach(function (r) { chayDem[r[iMay] + '|' + r[iNgay]] = true; });
+  const khoa = function (r) { return String(r[iMay]).trim().toUpperCase() + '|' + chuanHoaNgay_(r[iNgay]); };
+  const tangCa = {}, chayDem = {};
+  (dsTangCaRows || []).forEach(function (r) { tangCa[khoa(r)] = true; });
+  (dsChayDemRows || []).forEach(function (r) { chayDem[khoa(r)] = true; });
   return (dsVeRows || []).filter(function (r) {
-    return r[iCa] !== MA_CA.DEM || chayDem[r[iMay] + '|' + r[iNgay]];
+    const ca = String(r[iCa]).trim().toUpperCase();
+    if (ca === CA_TANG_CA) return !!tangCa[khoa(r)];
+    if (ca === MA_CA.DEM) return !tangCa[khoa(r)] && (cheDo === 'CHAY' || !!chayDem[khoa(r)]);
+    return true;
   });
 }
 
 /**
- * Chọn danh sách TĂNG CA và CHẠY CA ĐÊM thật sự được ghi. Tổ CHAY (luôn chạy ca đêm) không dùng cả hai
- * → bỏ hết (kể cả dữ liệu cũ đã lưu). Tổ KHONG: client có gửi thì lấy bản mới, không gửi (client cũ)
- * thì giữ nguyên bản đã lưu. Hàm THUẦN.
+ * Chọn danh sách TĂNG CA và CHẠY CA ĐÊM thật sự được ghi. Client có gửi thì lấy bản mới, không gửi
+ * (client cũ) thì giữ nguyên bản đã lưu. Tổ CHAY (luôn chạy ca đêm) không dùng "Chạy ca đêm" → bỏ hết
+ * CHAY_DEM (kể cả dữ liệu cũ); tăng ca thì dùng như mọi tổ. Hàm THUẦN.
  */
 function chonTangCaChayDemGhi_(cheDo, guiTangCa, tangCaMoi, tangCaCu, guiChayDem, chayDemMoi, chayDemCu) {
-  if (cheDo === 'CHAY') return { tangCa: [], chayDem: [] };
+  if (cheDo === 'CHAY') return { tangCa: guiTangCa ? tangCaMoi : tangCaCu, chayDem: [] };
   return {
     tangCa: guiTangCa ? tangCaMoi : tangCaCu,
     chayDem: guiChayDem ? chayDemMoi : chayDemCu,
@@ -966,6 +1012,7 @@ function chuanHoaChayDem_(item, boPhan, tuanBatDau) {
   const r = chuanHoaTangCa_(item, boPhan, tuanBatDau, 'chạy ca đêm');
   if (!r.ok) return r;
   r.dong[HEADER_KE_HOACH_MAY.indexOf('Ca')] = MA_CA.DEM;
+  r.dong[HEADER_KE_HOACH_MAY.indexOf('Ly_Do')] = '';
   r.dong[HEADER_KE_HOACH_MAY.indexOf('Trang_Thai')] = TRANG_THAI_KE_HOACH_MAY.CHAY_DEM;
   return r;
 }
@@ -1053,8 +1100,8 @@ function chuanHoaDanhSachVeGiuaCa_(p, ctx) {
   if (!ngay) return { ok: false, error: 'Ngày không hợp lệ.' };
   if (ngay > ctx.homNay) return { ok: false, error: 'Không ghi về giữa ca cho ngày chưa tới.' };
 
-  const ca = String(q.ca || '').trim().toUpperCase();
-  if (ca !== MA_CA.NGAY && ca !== MA_CA.DEM) return { ok: false, error: 'Ca không hợp lệ.' };
+  const caChon = String(q.ca || '').trim().toUpperCase();
+  if (caChon !== MA_CA.NGAY && caChon !== MA_CA.DEM && caChon !== CA_TANG_CA) return { ok: false, error: 'Ca không hợp lệ.' };
 
   const lyDo = String(q.lyDo || '').trim();
   if (!lyDo) return { ok: false, error: 'Vui lòng chọn lý do về giữa ca.' };
@@ -1081,19 +1128,29 @@ function chuanHoaDanhSachVeGiuaCa_(p, ctx) {
     if (daThay[maMay]) return { ok: false, error: 'Máy ' + maMay + ' bị chọn trùng.' };
     daThay[maMay] = true;
 
+    // Ghi ca ngày mà giờ về đã sang giờ tăng ca của máy này → tính theo mốc tăng ca.
+    const coTang = !!(ctx.tangCa && ctx.tangCa[maMay + '|' + ngay]);
+    const ca = caThatCuaVeGiuaCa_(caChon, q.gioVe, ctx.lich, coTang, ctx.gioTangCa);
+
+    if (ca === CA_TANG_CA && !coTang) {
+      return { ok: false, error: 'Máy ' + maMay + ' không tăng ca ngày ' + ngay + '.' };
+    }
     if (ctx.dangDong && ctx.dangDong[maMay + '|' + ngay + '|' + ca]) {
       return { ok: false, error: 'Máy ' + maMay + ' đang đóng ca này theo kế hoạch, không thể ghi về giữa ca.' };
     }
 
+    // Có tăng ca thì không có ca đêm (mốc 2 và mốc 3 loại trừ nhau).
+    if (ca === MA_CA.DEM && coTang) {
+      return { ok: false, error: 'Máy ' + maMay + ' tăng ca ngày ' + ngay + ' nên không chạy ca đêm. Chọn mốc "Tăng ca".' };
+    }
     // Ca đêm KHÔNG cố định: mặc định máy không chạy ca đêm. Chỉ ghi "về giữa ca" ở ca đêm khi
-    // tổ trưởng đã chọn "Chạy ca đêm" cho máy-ngày đó (tăng ca ngày thì không chạy ca đêm).
+    // tổ trưởng đã chọn "Chạy ca đêm" cho máy-ngày đó.
     // (Tổ CHAY luôn chạy ca đêm: máy nào chưa bị đóng ca đêm là ghi được — luật "đang đóng" ở trên lo.)
     if (ca === MA_CA.DEM && ctx.caDemMacDinh !== 'CHAY' && !(ctx.chayDem && ctx.chayDem[maMay + '|' + ngay])) {
       return { ok: false, error: 'Máy ' + maMay + ' không chạy ca đêm ngày ' + ngay + '. Chọn "Chạy ca đêm" cho máy này trước.' };
     }
 
-    const tinh = tinhVeGiuaCa_(ctx.lich, !!(ctx.tangCa && ctx.tangCa[maMay + '|' + ngay]),
-      ca, q.gioVe, q.gioQuayLai, ctx.gioTangCa, ctx.nghiDemPhut);
+    const tinh = tinhVeGiuaCa_(ctx.lich, ca, q.gioVe, q.gioQuayLai, ctx.gioTangCa, ctx.nghiDemPhut);
     if (!tinh.ok) return { ok: false, error: 'Máy ' + maMay + ': ' + tinh.error };
 
     const dong = new Array(HEADER_KE_HOACH_MAY.length).fill('');
@@ -1109,10 +1166,10 @@ function chuanHoaDanhSachVeGiuaCa_(p, ctx) {
     dong[HEADER_KE_HOACH_MAY.indexOf('Gio_Quay_Lai')] = chuanHoaGio_(q.gioQuayLai) || '';
 
     dsDong.push(dong);
-    ketQua.push({ maMay: maMay, phutMat: tinh.phutMat });
+    ketQua.push({ maMay: maMay, ca: ca, phutMat: tinh.phutMat });
   }
 
-  return { ok: true, ngay: ngay, ca: ca, tuanBatDau: tuanBatDau, dsDong: dsDong, ketQua: ketQua };
+  return { ok: true, ngay: ngay, ca: caChon, tuanBatDau: tuanBatDau, dsDong: dsDong, ketQua: ketQua };
 }
 
 /**
@@ -1287,7 +1344,7 @@ function capNhatQuayLaiVeGiuaCa(boPhan, token, payload) {
   const ngay = chuanHoaNgay_(p.ngay);
   const ca = String(p.ca || '').trim().toUpperCase();
   const maMay = String(p.maMay || '').trim().toUpperCase();
-  if (!ngay || !maMay || (ca !== MA_CA.NGAY && ca !== MA_CA.DEM)) {
+  if (!ngay || !maMay || (ca !== MA_CA.NGAY && ca !== MA_CA.DEM && ca !== CA_TANG_CA)) {
     return { ok: false, error: 'Thiếu máy, ngày hoặc ca.' };
   }
 
@@ -1303,8 +1360,12 @@ function capNhatQuayLaiVeGiuaCa(boPhan, token, payload) {
 
     const r = doc.vung[i];
     const nc = docNguCanhVeGiuaCa_(doc.vung, bp, ngay);
-    const tinh = tinhVeGiuaCa_(lichHienHanhCuaTo_(bp, ngay), !!nc.tangCa[maMay + '|' + ngay], ca,
-      chuanHoaGio_(r[HEADER_KE_HOACH_MAY.indexOf('Gio_Ve')]), p.gioQuayLai, gioTangCa_(), nghiDemPhut_(bp));
+    const lich = lichHienHanhCuaTo_(bp, ngay);
+    const gioTC = gioTangCa_();
+    const gioVe = chuanHoaGio_(r[HEADER_KE_HOACH_MAY.indexOf('Gio_Ve')]);
+    // Dòng cũ ghi 'N' mà giờ về đã sang giờ tăng ca → kiểm theo mốc tăng ca.
+    const caThat = caThatCuaVeGiuaCa_(ca, gioVe, lich, !!nc.tangCa[maMay + '|' + ngay], gioTC);
+    const tinh = tinhVeGiuaCa_(lich, caThat, gioVe, p.gioQuayLai, gioTC, nghiDemPhut_(bp));
     if (!tinh.ok) return { ok: false, error: 'Máy ' + maMay + ': ' + tinh.error };
 
     r[HEADER_KE_HOACH_MAY.indexOf('Gio_Quay_Lai')] = chuanHoaGio_(p.gioQuayLai) || '';
@@ -1329,7 +1390,7 @@ function huyVeGiuaCa(boPhan, token, payload) {
   const ngay = chuanHoaNgay_(p.ngay);
   const ca = String(p.ca || '').trim().toUpperCase();
   const maMay = String(p.maMay || '').trim().toUpperCase();
-  if (!ngay || !maMay || (ca !== MA_CA.NGAY && ca !== MA_CA.DEM)) {
+  if (!ngay || !maMay || (ca !== MA_CA.NGAY && ca !== MA_CA.DEM && ca !== CA_TANG_CA)) {
     return { ok: false, error: 'Thiếu máy, ngày hoặc ca.' };
   }
 

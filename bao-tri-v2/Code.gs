@@ -182,6 +182,16 @@ function gioTangCa_(cauHinh) {
   };
 }
 
+/**
+ * Lý do ca đêm không chạy sau tăng ca ở tổ luôn chạy ca đêm (Cau_Hinh.LY_DO_TANG_CA_THAY_CA_DEM).
+ * Trống thì dùng mặc định "Thợ vắng ca đêm".
+ */
+function dsLyDoTangCaThayCaDem_(cauHinh) {
+  const ch = cauHinh || docCauHinh_();
+  const s = String(ch.LY_DO_TANG_CA_THAY_CA_DEM || '').trim() || 'Thợ vắng ca đêm';
+  return s.split(',').map(function (x) { return x.trim(); }).filter(Boolean);
+}
+
 /** Danh sách lý do VỀ GIỮA CA của tổ trưởng, đọc từ Cau_Hinh. Trống thì dùng mặc định. */
 function dsLyDoVeGiuaCa_(cauHinh) {
   const ch = cauHinh || docCauHinh_();
@@ -417,15 +427,20 @@ const CAU_HINH_MAC_DINH = [
     'không cần deploy lại. KHÁC với LY_DO_DUNG_MAY (đó là lý do công nhân báo dừng máy tức ' +
     'thời qua QR). Chọn "Khác" thì bắt buộc nhập ghi chú.'],
   ['TANG_CA_DEN', '20:30',
-    'TĂNG CA CỦA TỔ TRƯỞNG — giờ HẾT CA của ngày có tăng ca (giờ bắt đầu vẫn là ' +
-    'Ca_Ngay_Tu trong lịch của tổ). Định dạng HH:mm, VD 20:30. Sửa ở đây là đổi ngay, ' +
-    'không cần deploy lại.'],
+    'TĂNG CA CỦA TỔ TRƯỞNG — giờ HẾT tăng ca. Tăng ca là một mốc RIÊNG, tách khỏi ca ngày: ' +
+    'bắt đầu lúc hết nghỉ tối (NGHI_TOI_DEN) hoặc lúc hết ca ngày của tổ, lấy giờ muộn hơn. ' +
+    'Máy tăng ca ngày nào thì ca đêm ngày đó không chạy. Định dạng HH:mm, VD 20:30. Sửa ở ' +
+    'đây là đổi ngay, không cần deploy lại.'],
   ['NGHI_TOI_TU', '17:00',
-    'TĂNG CA CỦA TỔ TRƯỞNG — giờ bắt đầu nghỉ ăn tối, chỉ trừ khỏi khung kế hoạch của ' +
-    'ngày có tăng ca. Nghỉ trưa vẫn lấy theo lịch của tổ. Để trống cả hai ô NGHI_TOI ' +
-    'là không trừ nghỉ tối.'],
+    'TĂNG CA CỦA TỔ TRƯỞNG — giờ bắt đầu nghỉ ăn tối, giữa ca ngày và mốc tăng ca. ' +
+    'Để trống cả hai ô NGHI_TOI thì tăng ca bắt đầu ngay lúc hết ca ngày.'],
   ['NGHI_TOI_DEN', '18:00',
-    'TĂNG CA CỦA TỔ TRƯỞNG — giờ kết thúc nghỉ ăn tối. Xem NGHI_TOI_TU.'],
+    'TĂNG CA CỦA TỔ TRƯỞNG — giờ kết thúc nghỉ ăn tối = giờ bắt đầu tăng ca. Xem NGHI_TOI_TU.'],
+  ['LY_DO_TANG_CA_THAY_CA_DEM', 'Thợ vắng ca đêm',
+    'TĂNG CA Ở TỔ LUÔN CHẠY CA ĐÊM (DET, SOI…) — lý do ca đêm không chạy sau giờ hết tăng ca. ' +
+    'Phần ca đêm còn lại tính là HAO HỤT theo lý do này (kéo hiệu suất xuống, hiện riêng trong ' +
+    'Chỉ số tuần). Cách nhau bằng dấu phẩy; chỉ một lý do thì tổ trưởng không phải chọn. Ca đêm ' +
+    'nghỉ theo kế hoạch thì dùng Đóng máy → Ca đêm, không dùng tăng ca.'],
   ['LY_DO_VE_GIUA_CA', 'Nghỉ có phép, Nghỉ không phép',
     'VỀ GIỮA CA (tổ trưởng ghi cho công nhân xin về) — lý do hiện thành nút bấm. Cách nhau ' +
     'bằng dấu phẩy. Sửa ở đây là đổi ngay, không cần deploy lại. Nên giữ danh sách ngắn và ' +
@@ -440,8 +455,9 @@ const CAU_HINH_MAC_DINH = [
   ['NGHI_DEM_PHUT_CMTX', '60', 'CA ĐÊM — số phút nghỉ của bộ phận CMTX. Xem NGHI_DEM_PHUT_DET.'],
   ['CA_DEM_MAC_DINH_DET', 'CHAY',
     'CA ĐÊM MẶC ĐỊNH của bộ phận DET — CHAY: luôn chạy ca đêm, ngày nào KHÔNG chạy thì tổ trưởng ' +
-    'chọn Đóng máy → Ca đêm; nút "Chạy ca đêm" và nút Tăng ca bị ẩn. KHONG: ' +
-    'ca đêm mặc định KHÔNG chạy, ngày nào chạy thì tổ trưởng bấm "Chạy ca đêm"; Tăng ca dùng được. ' +
+    'chọn Đóng máy → Ca đêm; nút "Chạy ca đêm" bị ẩn; Tăng ca = thợ ca ngày ở lại, ca đêm chỉ chạy ' +
+    'tới giờ hết tăng ca, phần còn lại là hao hụt (LY_DO_TANG_CA_THAY_CA_DEM). KHONG: ' +
+    'ca đêm mặc định KHÔNG chạy, ngày nào chạy thì tổ trưởng bấm "Chạy ca đêm"; Tăng ca là chạy thêm. ' +
     'Xoá dòng hoặc để trống = dùng mặc định của hệ thống (DET, SOI = CHAY, còn lại = KHONG; CMTX chỉ vài máy chạy ca đêm nên là KHONG); ' +
     'muốn ép một tổ là KHONG thì gõ KHONG. ' +
     'Mỗi bộ phận một dòng, tên khoá CA_DEM_MAC_DINH_<MÃ BỘ PHẬN>. Chỉ có tác dụng với bộ phận có ' +

@@ -65,7 +65,7 @@ người dùng để hiện cửa sổ đăng nhập.
 | `DonDuLieu.gs` | Xoá phiếu / dọn dữ liệu chạy thử, có thùng rác. **Chỉ menu, không có route web** |
 | `DoTai.gs` | Đo chi phí thật của từng hàm RPC, chỉ đọc |
 | `ThongBao.gs` | Bot Telegram nhắc thợ: soạn tin, gửi, công tắc, cầu chì, hai mục menu, trigger nhắc |
-| `Test.gs` | 520 test chạy bằng dữ liệu giả, **không đụng sheet nào** |
+| `Test.gs` | 583 test chạy bằng dữ liệu giả, **không đụng sheet nào** |
 | `Index.html` | Trang công nhân |
 | `Tho.html` | Trang thợ |
 | `ToTruong.html` | **Mới** — trang tổ trưởng, viết lại 19/09/2026 theo kiểu từng bước (nút lớn, bấm Xác nhận là lưu). Xem mục 2b |
@@ -149,6 +149,17 @@ loại trừ với tăng ca cùng máy-ngày. Mục 9f của `TASK_KE_HOACH_TO_T
 được bố trí chạy** theo tuần, tính từ 3 sheet trên + `Su_Co` — không cần schema mới, không đụng `HieuDung.gs`.
 File `HuyDong.gs` (`tinhChiSoTuan_` thuần + RPC `layChiSoTuan` + menu "📉 Báo cáo huy động / hiệu suất máy (tuần)…"),
 nút "Chỉ số tuần" trong `ToTruong.html`. Công thức và quy ước ở `TASK_KE_HOACH_TO_TRUONG.md` mục 8.
+
+**BA MỐC ca ngày / tăng ca / ca đêm (22/09/2026, chờ `clasp push` + deploy) — THAY các mô tả tăng ca ở trên:**
+một máy-ngày có 3 mốc: ca ngày (`Ca='N'`), **tăng ca** (`Ca='T'`, từ giờ muộn hơn giữa hết ca ngày và
+`NGHI_TOI_DEN` tới `TANG_CA_DEN`, mặc định 18:00–20:30), ca đêm (`Ca='D'`). Tăng ca là mốc RIÊNG: đóng ca ngày vẫn
+tăng ca được (ca thật: CMTX đóng MCQ06 giờ hành chính để chạy máy cắt nhám, tối tăng ca MCQ06). **Có tăng ca thì
+không có ca đêm.** Tăng ca dùng được ở MỌI tổ; ở tổ CHAY (DET, SOI) nghĩa là thợ ca ngày ở lại thay ca đêm vắng thợ:
+ca đêm vẫn trong kế hoạch, phần sau giờ hết tăng ca là hao hụt theo `Ly_Do` của dòng `TANG_CA`
+(`Cau_Hinh.LY_DO_TANG_CA_THAY_CA_DEM`, mặc định "Thợ vắng ca đêm"). Về giữa ca tính theo mốc chứa giờ về
+(`caThatCuaVeGiuaCa_` — cũng đọc đúng dòng cũ ghi `N`). Dòng `TANG_CA` cũ có `Ca='N'`: mọi nơi đọc chỉ xét (máy, ngày).
+Hàm: `khungTangCaCuaMay_`, `caThatCuaVeGiuaCa_`, `locVeGiuaCaTheoMoc_` (KeHoachTo.gs); nhánh "lượt tối" trong
+`tinhChiSoTuan_` (HuyDong.gs). Mục 9g của `TASK_KE_HOACH_TO_TRUONG.md`.
 
 **Cố ý CHƯA làm** (ngoài phạm vi hiện tại): tổ trưởng báo dừng máy hộ công nhân giữa ca —
 đụng thẳng vào `Su_Co` đang chạy thật, hoãn sang một đợt riêng, xem mục 7c của tài liệu
@@ -936,10 +947,10 @@ hàm thuần**: soi mã nguồn từng hàm soạn tin bằng `Function.prototyp
 thật nằm chung file — kéo nhầm một lời gọi mạng vào nhóm hàm soạn tin là mất luôn khả năng
 kiểm thử tại máy.
 
-Lớp thứ sáu: menu **🧪 Chạy test logic** trong Sheet — 520 test bằng dữ liệu giả,
+Lớp thứ sáu: menu **🧪 Chạy test logic** trong Sheet — 583 test bằng dữ liệu giả,
 **không đọc/ghi sheet nào**. (Số cũ "340" trong tài liệu này đã lệch thực tế từ trước —
 một lần kéo trực tiếp từ Apps Script Editor đã thêm test lưu trữ phiếu mà không cập nhật
-số ở đây; số thật đã đo trong Sheet: 402 sau Đợt 1, 432 sau tăng ca, 482 sau về giữa ca, 496 sau nghỉ ca đêm theo bộ phận, 503 sau tăng ca thay ca đêm, 520 sau giao diện mới + chạy ca đêm (19/09/2026), mục 2b.)
+số ở đây; số thật đã đo trong Sheet: 402 sau Đợt 1, 432 sau tăng ca, 482 sau về giữa ca, 496 sau nghỉ ca đêm theo bộ phận, 503 sau tăng ca thay ca đêm, 520 sau giao diện mới + chạy ca đêm (19/09/2026), 562 sau Đợt 3; 583 sau ba mốc (22/09/2026, mới đo bằng node, chưa đo trong Sheet), mục 2b.)
 
 Điều này làm được nhờ `getOnDutyContacts_` nhận tham số `duLieu` **tiêm theo từng trường**:
 `{ dsTho, cauHinhCa, lichTheoThang, cauHinh }`. Thiếu trường nào thì hàm tự đọc sheet — nên

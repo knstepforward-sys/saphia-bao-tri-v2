@@ -11,12 +11,17 @@
  * Hai chỉ số KHÔNG gộp thành một. Không thêm cột/sheet; không sửa HieuDung.gs (chỉ gọi lại các
  * hàm thuần của nó). Nguồn: Ke_Hoach_May + Lich_Lam_Viec_To + Cau_Hinh + Su_Co/Luu_Tru.
  *
- * Lượt máy-ca (1 máy × 1 ngày × 1 ca):
- *   ca ngày : luôn áp dụng khi tổ đã khai lịch. Không chạy nếu có dòng DONG ca N.
- *   ca đêm  : chỉ khi lịch có ca đêm VÀ máy-ngày đó KHÔNG tăng ca (tăng ca thay ca đêm).
- *             tổ CHAY : áp dụng mọi ngày; không chạy nếu có dòng DONG ca D.
- *             tổ KHONG: chỉ áp dụng (và tính là chạy) khi có dòng CHAY_DEM — ca đêm không phải
- *                       kế hoạch mặc định nên không đưa vào mẫu số khi tổ không khai chạy.
+ * Lượt máy-ca (1 máy × 1 ngày × 1 mốc) — ba mốc: ca ngày, tăng ca, ca đêm (tăng ca và ca đêm
+ * loại trừ nhau, gọi chung là "lượt tối"):
+ *   ca ngày : luôn áp dụng khi tổ đã khai lịch. Không chạy nếu có dòng DONG ca N. Tăng ca không
+ *             kéo dài ca ngày nữa.
+ *   lượt tối, tổ CHAY (luôn chạy ca đêm): áp dụng mọi ngày có ca đêm.
+ *             - không tăng ca: ca đêm; không chạy nếu có dòng DONG ca D.
+ *             - có tăng ca, chưa đóng ca đêm: ca đêm VẪN trong kế hoạch; đoạn tăng ca là phần chạy
+ *               được, phần ca đêm còn lại là HAO HỤT theo lý do của dòng tăng ca (thợ vắng ca đêm).
+ *             - có tăng ca, đã đóng ca đêm: chỉ đoạn tăng ca vào kế hoạch.
+ *   lượt tối, tổ khác: chỉ áp dụng (và tính là chạy) khi có tăng ca hoặc CHAY_DEM — không phải kế
+ *             hoạch mặc định nên không đưa vào mẫu số khi tổ không khai.
  */
 
 /** 'yyyy-MM-dd' + n ngày, không phụ thuộc múi giờ máy chủ. Hàm THUẦN. */
@@ -70,7 +75,7 @@ function tinhChiSoTuan_(o) {
     const tt = String(r.Trang_Thai).trim().toUpperCase();
     if (tt === TRANG_THAI_KE_HOACH_MAY.DONG) dong[ma + '|' + ngay + '|' + ca] = true;
     else if (tt === TRANG_THAI_KE_HOACH_MAY.CHAY_DEM) chayDem[ma + '|' + ngay] = true;
-    else if (tt === TRANG_THAI_KE_HOACH_MAY.TANG_CA) tangCa[ma + '|' + ngay] = true;
+    else if (tt === TRANG_THAI_KE_HOACH_MAY.TANG_CA) tangCa[ma + '|' + ngay] = String(r.Ly_Do || '').trim() || true;
     else if (tt === TRANG_THAI_KE_HOACH_MAY.VE_GIUA_CA) {
       if (!veTheoMay[ma]) veTheoMay[ma] = [];
       veTheoMay[ma].push({
@@ -116,41 +121,61 @@ function tinhChiSoTuan_(o) {
     const MA = ma.toUpperCase();
     let luotApDung = 0, luotChay = 0;
     const dsKhung = [];
+    const thieuDem = []; // [{lyDo, tu, den}] phần ca đêm không chạy vì tăng ca thay (tổ CHAY)
+    const them = function (n, tu, den, he) {
+      dsKhung.push({ tu: ngayGioTuPhut_(n, tu), den: ngayGioTuPhut_(n, den), he: he });
+    };
 
     dsNgay.forEach(function (n) {
       const lich = lichTheoNgay[n];
       if (!lich) return;
-      const coTang = !!tangCa[MA + '|' + n];
+      const lyDoTang = tangCa[MA + '|' + n];
 
-      const kN = khungKeHoachNgayCuaMay_(lich, coTang, gioTC);
+      const kN = khungKeHoachNgayCuaMay_(lich);
       if (kN) {
         luotApDung++;
         if (!dong[MA + '|' + n + '|' + MA_CA.NGAY]) {
           luotChay++;
-          kN.khung.forEach(function (k) {
-            dsKhung.push({ tu: ngayGioTuPhut_(n, k[0]), den: ngayGioTuPhut_(n, k[1]), he: 1 });
-          });
+          kN.khung.forEach(function (k) { them(n, k[0], k[1], 1); });
         }
       }
 
-      if (coTang) return;                       // tăng ca thay ca đêm: không tính ca đêm ngày này
+      const kT = lyDoTang ? khungTangCaCuaMay_(lich, gioTC) : null;
       const kD = khungCaDemCuaMay_(lich, nghiDem);
-      if (!kD) return;
-      let chay;
-      if (cheDoDem === 'CHAY') {
+      const dongDem = !!dong[MA + '|' + n + '|' + MA_CA.DEM];
+
+      if (kD && cheDoDem === 'CHAY') {
         luotApDung++;
-        chay = !dong[MA + '|' + n + '|' + MA_CA.DEM];
-      } else {
-        if (!chayDem[MA + '|' + n]) return;
-        luotApDung++;
-        chay = true;
-      }
-      if (chay) {
-        luotChay++;
-        dsKhung.push({
-          tu: ngayGioTuPhut_(n, kD.khung[0][0]), den: ngayGioTuPhut_(n, kD.khung[0][1]),
-          he: kD.tongPhut / kD.phutKhung,
-        });
+        if (!dongDem && kT) {
+          // Thợ ca ngày ở lại thay ca đêm: ca đêm vẫn là kế hoạch. Đoạn tăng ca nằm trong ca đêm tính
+          // đủ phút (không trừ nghỉ đêm); phần còn lại gánh hết phút nghỉ đêm và là hao hụt.
+          luotChay++;
+          const dTu = kD.khung[0][0], dDen = kD.hetCa;
+          const tTu = Math.max(kT.khung[0][0], dTu), tDen = Math.min(kT.hetCa, dDen);
+          const trong = Math.max(0, tDen - tTu);
+          const conLai = trong ? truKhoangNghi_(dTu, dDen, [[tTu, tDen]]) : [[dTu, dDen]];
+          const phutConLai = kD.phutKhung - trong;
+          const heCon = phutConLai > 0 ? Math.max(0, kD.tongPhut - trong) / phutConLai : 0;
+          if (trong) them(n, tTu, tDen, 1);
+          truKhoangNghi_(kT.khung[0][0], kT.hetCa, [[dTu, dDen]]).forEach(function (k) { them(n, k[0], k[1], 1); });
+          const lyDo = typeof lyDoTang === 'string' ? lyDoTang : '(không ghi lý do)';
+          conLai.forEach(function (k) {
+            them(n, k[0], k[1], heCon);
+            thieuDem.push({ lyDo: lyDo, tu: ngayGioTuPhut_(n, k[0]), den: ngayGioTuPhut_(n, k[1]) });
+          });
+        } else if (!dongDem) {
+          luotChay++;
+          them(n, kD.khung[0][0], kD.hetCa, kD.tongPhut / kD.phutKhung);
+        } else if (kT) {
+          luotChay++;                           // đóng ca đêm theo kế hoạch, vẫn tăng ca
+          them(n, kT.khung[0][0], kT.hetCa, 1);
+        }
+      } else if (kT) {
+        luotApDung++; luotChay++;               // tăng ca là chạy thêm
+        them(n, kT.khung[0][0], kT.hetCa, 1);
+      } else if (kD && chayDem[MA + '|' + n]) {
+        luotApDung++; luotChay++;
+        them(n, kD.khung[0][0], kD.hetCa, kD.tongPhut / kD.phutKhung);
       }
     });
 
@@ -171,10 +196,18 @@ function tinhChiSoTuan_(o) {
     (veTheoMay[MA] || []).forEach(function (v) {
       const lich = lichTheoNgay[v.ngay];
       if (!lich || !v.gioVe) return;
-      const kq = tinhVeGiuaCa_(lich, !!tangCa[MA + '|' + v.ngay], v.ca, v.gioVe, v.gioQuayLai, gioTC, nghiDem);
+      const coTang = !!tangCa[MA + '|' + v.ngay];
+      const ca = caThatCuaVeGiuaCa_(v.ca, v.gioVe, lich, coTang, gioTC);
+      if (ca === CA_TANG_CA && !coTang) return;   // tăng ca đã bỏ → lượt này không còn nghĩa
+      if (ca === MA_CA.DEM && coTang) return;     // có tăng ca thì không có ca đêm
+      const kq = tinhVeGiuaCa_(lich, ca, v.gioVe, v.gioQuayLai, gioTC, nghiDem);
       if (!kq.ok) return;
       (veKhoang[v.lyDo] = veKhoang[v.lyDo] || []).push(
         { tu: ngayGioTuPhut_(v.ngay, kq.veLuc), den: ngayGioTuPhut_(v.ngay, kq.denLuc) });
+    });
+    // Ca đêm không chạy sau tăng ca (tổ CHAY) là hao hụt cùng nhóm với về giữa ca, gom theo lý do.
+    thieuDem.forEach(function (k) {
+      (veKhoang[k.lyDo] = veKhoang[k.lyDo] || []).push({ tu: k.tu, den: k.den });
     });
     let tichLuy = dung.slice();
     let daMat = phutDungMay;
@@ -336,7 +369,7 @@ function bangBaoCaoHuyDong_(kq, luc) {
   them(['Tuần ' + kq.tuan.slice(8) + '/' + kq.tuan.slice(5, 7) + ' – ' + ngayCuoi.slice(8) + '/' + ngayCuoi.slice(5, 7) +
     '/' + ngayCuoi.slice(0, 4), '', '', '', '', '', '', 'Xuất lúc', luc || '']);
   them(['Huy động = lượt bố trí chạy / lượt áp dụng (máy có được đem ra chạy không). ' +
-    'Hiệu suất = 1 − (dừng máy + về giữa ca) / kế hoạch của các lượt đã bố trí chạy (máy đã chạy thì chạy tốt không). ' +
+    'Hiệu suất = 1 − (dừng máy + về giữa ca + ca đêm thiếu thợ sau tăng ca) / kế hoạch của các lượt đã bố trí chạy (máy đã chạy thì chạy tốt không). ' +
     'Hai chỉ số không gộp.']);
   them([]);
 
@@ -359,7 +392,7 @@ function bangBaoCaoHuyDong_(kq, luc) {
 
   const lyDo = Object.keys(kq.veTheoLyDo).sort();
   if (lyDo.length) {
-    dongTieuDe.push(them(['VỀ GIỮA CA THEO LÝ DO (giờ, đã trừ phần trùng dừng máy)']));
+    dongTieuDe.push(them(['VỀ GIỮA CA / CA ĐÊM THIẾU THỢ THEO LÝ DO (giờ, đã trừ phần trùng dừng máy)']));
     lyDo.forEach(function (k) { them([k, '', '', '', '', '', '', gio(kq.veTheoLyDo[k])]); });
     them([]);
   }

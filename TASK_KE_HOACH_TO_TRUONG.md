@@ -364,6 +364,26 @@ tự bị bỏ khi lưu. **Đợt 3:** ca đêm chỉ tính cho máy-ngày có d
 **Trạng thái:** đã viết, 17 test mới (dự kiến **520**, chưa kiểm chứng trong Sheet), thử trong trình duyệt
 với dữ liệu giả cả tổ có / không có ca đêm. Chờ: `clasp push` + menu 🧪 + deploy + chủ dự án thử trên điện thoại.
 
+## 9g. BA MỐC ca ngày / tăng ca / ca đêm (chủ dự án chốt 22/09/2026)
+
+Hai ca có thật: (1) CMTX đóng MCQ06 giờ hành chính để chạy máy cắt nhám, 17h đóng máy cắt nhám để tăng ca MCQ06;
+(2) DỆT ca đêm vắng thợ, thợ ca sáng ở lại tăng ca tới 20:30. Tổ trưởng "tự xoay để đủ sản lượng", không theo quy
+tắc chung — nên mô hình tách thành 3 mốc độc lập thay vì thêm nút cho từng kiểu.
+
+| Chủ đề | Đã chốt |
+|---|---|
+| Ba mốc | Ca ngày (`N`, theo lịch tổ) · **Tăng ca** (`T`, từ giờ muộn hơn giữa hết ca ngày và `NGHI_TOI_DEN` tới `TANG_CA_DEN` — mặc định 18:00–20:30; nghỉ 17:00–18:00 nằm giữa, tăng ca KHÔNG nối liền ca ngày) · Ca đêm (`D`) |
+| Loại trừ | Có tăng ca thì không có ca đêm và ngược lại. Ca ngày độc lập: đóng ca ngày vẫn tăng ca được |
+| Tổ luôn chạy ca đêm (DET, SOI) | Tăng ca = thợ ca ngày ở lại thay ca đêm vắng thợ. Ca đêm VẪN là kế hoạch (huy động không đổi); đoạn tăng ca tính đủ phút; phần còn lại (gánh cả phút nghỉ đêm) là **hao hụt** theo `Ly_Do` của dòng tăng ca, kéo hiệu suất, hiện riêng theo lý do. Lý do ở `Cau_Hinh.LY_DO_TANG_CA_THAY_CA_DEM` (mặc định "Thợ vắng ca đêm"; một lý do thì không hỏi). Ca đêm nghỉ theo kế hoạch thì dùng Đóng máy → Ca đêm; đóng ca đêm + tăng ca = chỉ đoạn tăng ca vào kế hoạch, không hao hụt |
+| Tổ khác | Tăng ca là chạy thêm: +1 lượt áp dụng, +1 lượt chạy, +150 phút kế hoạch |
+| Về giữa ca | Tính theo mốc chứa giờ về: ghi "ca ngày" mà giờ về ≥ hết ca ngày ở máy tăng ca → tự thành mốc `T`; về trong giờ nghỉ tối = bỏ cả tăng ca. Về giữa ca ca đêm bị chặn ở máy-ngày tăng ca |
+| Phạm vi | Đồng bộ MỌI tổ (kể cả SỢI) |
+| Lưu | Không thêm cột/sheet. Dòng `TANG_CA` ghi `Ca='T'` (dòng cũ `Ca='N'` vẫn đọc đúng — nơi đọc chỉ xét máy + ngày) + `Ly_Do` (chỉ tổ CHAY); `VE_GIUA_CA` nhận thêm `Ca='T'` |
+| Số liệu cũ đổi | Tổ hết ca ngày trước 17:00 không còn tính khoảng hết ca → 17:00 ngày tăng ca; tăng ca ở tổ không ca đêm thành lượt riêng; lượt "xin về" cũ ghi ca ngày, về trước hết ca, không quay lại, ngày tăng ca → nay chỉ tính tới hết ca ngày |
+
+**Trạng thái:** đã viết mã + test (node 583/583), thử giao diện với mã server thật + sheet giả. Chờ: push GitHub,
+`clasp push`, menu "1. Cài đặt hệ thống" (khoá mới), menu 🧪, thử link `/dev` trên điện thoại, deploy.
+
 ## 9b. Việc làm thêm SAU khi Đợt 1 xong (không thuộc 8 bước gốc)
 
 - **Vá lỗi `getLastRow()` ở `themMayMoi()` (`DanhMuc.gs`)** — xác nhận thật trên Sheet (`Ctrl+End` nhảy dòng 1000 dù chỉ ~162 máy), vá bằng `soDongCoDuLieu_`. Không ảnh hưởng dữ liệu đã có (`CMTD02`/`CMTD03` vẫn đúng vị trí). Đã push + deploy.
