@@ -8,8 +8,8 @@
   - `Test.gs` — sửa các test mang luật cũ, thêm test 3 mốc: 562 → **583**.
 - **Thay đổi số liệu so với trước (đã nói với chủ dự án):** ngày tăng ca của tổ hết ca ngày trước 17:00 (VD lịch 16:30) không còn tính 16:30–17:00; tăng ca ở tổ không ca đêm thành 1 lượt riêng (huy động của các tuần đã khai đổi nhẹ); dòng "Có người xin về" cũ ghi ca ngày, về trước giờ hết ca ngày, không quay lại, vào ngày tăng ca → nay chỉ tính tới hết ca ngày (trước đây tính tới 20:30). Không sửa dòng nào trên sheet.
 - **Đã kiểm tại máy:** `kiem-tra.ps1` sạch cả 5 lớp; `chayTest()` trong node với Apps Script giả **583/583** (bản gốc 562/562; cố ý làm hỏng 2 chỗ thì báo 6 ca đỏ); giao diện thử trong trình duyệt khổ điện thoại, chạy **mã server thật** với sheet giả trong bộ nhớ: CMTX đóng MCQ06 ca ngày + tăng ca → 2 dòng `DONG N` + `TANG_CA T`, về giữa ca mốc tăng ca 19:00 → dòng Ca T; DỆT tăng ca → dòng `TANG_CA` có lý do "Thợ vắng ca đêm", ca đêm khoá máy đang tăng ca; MTX (không ca đêm) bước "Ca nào?" có Ca ngày + Tăng ca (vá lỗi bước này không hiện khi mở từ trang chính). **Chưa** chạy menu 🧪 trong Sheet, **chưa** thử trên link thật/điện thoại.
-- **Trạng thái:** chưa push GitHub / chưa `clasp push` / chưa deploy.
-- **Việc cần làm tiếp:** commit + push → (chủ dự án xác nhận) `day-len.ps1 -Buoc Push` → menu "1. Cài đặt hệ thống" (thêm khoá `LY_DO_TANG_CA_THAY_CA_DEM`) + menu 🧪 (dự kiến 583) + thử link `/dev` trên điện thoại → `-Buoc Deploy` (hoặc deploy trong Editor, xem mục 21/09).
+- **Trạng thái:** đã push GitHub (`dd8c265`) / chưa `clasp push` / chưa deploy.
+- **Việc cần làm tiếp:** (chủ dự án xác nhận) `day-len.ps1 -Buoc Push` → menu "1. Cài đặt hệ thống" (thêm khoá `LY_DO_TANG_CA_THAY_CA_DEM`) + menu 🧪 (dự kiến 583) + thử link `/dev` trên điện thoại → `-Buoc Deploy` (hoặc deploy trong Editor, xem mục 21/09).
 
 ## [2026-09-21] Tài liệu hướng dẫn tổ trưởng: bổ sung "Chỉ số tuần", giờ quay lại, xóa lượt xin về → bản v7 (từ v6 của chủ dự án)
 - **Yêu cầu (chủ dự án, DUYỆT hướng):** rà xem tài liệu đã đủ thao tác chưa; bổ sung chỗ thiếu.
