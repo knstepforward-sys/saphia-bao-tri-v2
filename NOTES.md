@@ -1,3 +1,9 @@
+## [2026-09-25] Ý tưởng đếm giờ máy chạy thật bằng HMI + module IO Modbus — ghi lại, CHƯA làm
+- **Bối cảnh (bàn với chủ dự án):** tỷ lệ huy động (tổ trưởng khai) là đúng; "hiệu suất" trong báo cáo tuần không tính ngưng vặt (lấy vải, WC…) nên cao hơn thực tế, trừ Dệt có đồng hồ đếm giờ để đối chiếu.
+- **Chốt hướng:** cách 1 — tiếp điểm phụ contactor → module IO Modbus RTU 16DI → RS485 → HMI (không PLC ở quy mô 1 tổ). **Tự lập trình mô phỏng và đấu mạch thử trước**, chắc làm được rồi mới đề xuất / báo sếp. Chi tiết: `TASK_DEM_GIO_MAY_HMI.md`.
+- **Còn treo:** báo cáo tuần 6 tổ (SOI, DET, ICM, TRANG, CMTX, MTX) gửi sếp — phương án B (lọc tổ qua `Cau_Hinh`, trang Tóm tắt, so tuần trước, đổi tên cột hiệu suất) chờ chủ dự án duyệt.
+- **Trạng thái:** chỉ thêm tài liệu, không sửa mã / đã push GitHub / không cần `clasp push` / không deploy.
+
 ## [2026-09-22] Kế hoạch máy: BA MỐC ca ngày / tăng ca / ca đêm (MCQ06 CMTX + thợ vắng ca đêm DỆT)
 - **Yêu cầu (chủ dự án DUYỆT phương án 22/09/2026):** (1) CMTX đóng MCQ06 giờ hành chính để chạy máy cắt nhám, 17h đóng máy cắt nhám để tăng ca MCQ06; (2) DỆT ca đêm vắng thợ, thợ ca sáng ở lại tăng ca tới 20:30. Chốt: một máy-ngày có **3 mốc** — ca ngày, tăng ca (18:00–20:30, sau nghỉ tối 17–18), ca đêm; **có tăng ca thì không có ca đêm** và ngược lại; về giữa ca rơi vào mốc nào tính theo mốc đó; tổ luôn chạy ca đêm mà tăng ca thì phần ca đêm còn lại là **hao hụt "Thợ vắng ca đêm"** (kéo hiệu suất, không kéo huy động); áp dụng đồng bộ mọi tổ (kể cả SỢI).
 - **Đã sửa:**
