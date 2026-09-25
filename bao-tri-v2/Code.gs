@@ -228,6 +228,9 @@ function caDemMacDinh_(boPhan, cauHinh) {
 }
 const CA_DEM_MAC_DINH_SAN = { DET: 'CHAY', SOI: 'CHAY' };
 
+/** Các tổ của báo cáo huy động tuần khi Cau_Hinh.BAO_CAO_TUAN_TO trống / chưa có (HuyDong.gs). */
+const BAO_CAO_TUAN_TO_SAN = 'SOI,DET,ICM,TRANG,CMTX,MTX';
+
 function layUrlCongKhai_() {
   return PropertiesService.getScriptProperties().getProperty('URL_CONG_KHAI') || '';
 }
@@ -463,6 +466,11 @@ const CAU_HINH_MAC_DINH = [
     'Mỗi bộ phận một dòng, tên khoá CA_DEM_MAC_DINH_<MÃ BỘ PHẬN>. Chỉ có tác dụng với bộ phận có ' +
     'tick "Có ca đêm" trong lịch làm việc của tổ. Sửa ở đây là đổi ngay, không cần deploy lại.'],
   ['CA_DEM_MAC_DINH_SOI', 'CHAY', 'CA ĐÊM MẶC ĐỊNH của bộ phận SOI. Xem CA_DEM_MAC_DINH_DET.'],
+  ['BAO_CAO_TUAN_TO', BAO_CAO_TUAN_TO_SAN,
+    'BÁO CÁO HUY ĐỘNG THEO TUẦN (menu 📉) — các tổ đưa vào báo cáo, đúng thứ tự trên báo cáo, ' +
+    'cách nhau bằng dấu phẩy, dùng mã bộ phận như Danh_Muc_May. Dòng tổng chỉ cộng các tổ này. ' +
+    'Gõ TAT_CA = mọi bộ phận có máy đang hoạt động. Để trống hoặc xoá dòng = danh sách mặc định. ' +
+    'Sửa ở đây là đổi ngay, không cần deploy lại.'],
   ['HUONG_DAN_KHOA_LINK_THO', '',
     'KHOÁ LINK KHI THỢ NGHỈ VIỆC: xoá trắng ô Token của người đó trong sheet ' +
     'Danh_Muc_Tho, bỏ tick Hoat_Dong, rồi chạy menu 🔧 Bảo trì → "4. Sinh lại ' +

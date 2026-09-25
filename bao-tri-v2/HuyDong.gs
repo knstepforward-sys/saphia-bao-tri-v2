@@ -279,7 +279,7 @@ function layChiSoTuan(boPhan, token, tuanBatDau) {
 }
 
 // ============================================================================
-// BÁO CÁO TOÀN NHÀ MÁY (menu) — xuất ra một Google Sheet mới
+// BÁO CÁO TUẦN CÁC TỔ (menu) — xuất ra một Google Sheet mới; danh sách tổ ở Cau_Hinh.BAO_CAO_TUAN_TO
 // ============================================================================
 
 /** Thứ Hai của tuần chứa ngày người dùng nhập ('yyyy-MM-dd' hoặc 'dd/MM/yyyy'); trống = tuần này. null nếu sai. */
@@ -295,8 +295,25 @@ function tuanTuNgayNhap_(s, homNay) {
   return thuHaiCuaNgay_(ymd);
 }
 
-/** Tính mọi tổ của tuần `tuan`, kèm tổng toàn nhà máy. */
-function chiSoToanNhaMay_(tuan, dulieu) {
+/**
+ * Các tổ đưa vào báo cáo tuần, đúng thứ tự, theo Cau_Hinh.BAO_CAO_TUAN_TO. Hàm THUẦN.
+ * Trống / chưa có khoá = BAO_CAO_TUAN_TO_SAN; 'TAT_CA' = mọi tổ trong `dsCoMay` (xếp chữ cái).
+ * Tổ khai mà không có máy vẫn giữ lại để báo cáo hiện "(không có máy)" thay vì lặng lẽ biến mất.
+ */
+function dsToBaoCaoTuan_(ch, dsCoMay) {
+  let raw = String((ch || {}).BAO_CAO_TUAN_TO || '').trim();
+  if (raw.toUpperCase() === 'TAT_CA') return (dsCoMay || []).slice().sort();
+  if (!raw) raw = BAO_CAO_TUAN_TO_SAN;
+  const daCo = {};
+  return raw.split(',').map(function (x) { return x.trim().toUpperCase(); }).filter(function (b) {
+    if (!b || daCo[b]) return false;
+    daCo[b] = true;
+    return true;
+  });
+}
+
+/** Đọc sẵn mọi sheet báo cáo cần, để tính nhiều tuần chỉ đọc một lần. Trường nào đã tiêm thì giữ. */
+function napDuLieuHuyDong_(dulieu) {
   const d = Object.assign({}, dulieu || {});
   d.bayGio = d.bayGio || nowVN_();
   d.cauHinh = d.cauHinh || docCauHinh_();
@@ -304,13 +321,19 @@ function chiSoToanNhaMay_(tuan, dulieu) {
   d.dsLich = d.dsLich || docSheet_(SHEET.LICH_TO, HEADER_LICH_TO);
   d.dsKeHoach = d.dsKeHoach || docSheet_(SHEET.KE_HOACH_MAY, HEADER_KE_HOACH_MAY);
   d.dsPhieu = d.dsPhieu || docSuCoVaLuuTru_();
+  return d;
+}
+
+/** Tính các tổ của báo cáo tuần (dsToBaoCaoTuan_) trong tuần `tuan`, kèm tổng CỦA CÁC TỔ ĐÓ. */
+function chiSoToanNhaMay_(tuan, dulieu) {
+  const d = napDuLieuHuyDong_(dulieu);
 
   const dsBp = {};
   d.dsMay.forEach(function (m) {
     const b = String(m.Bo_Phan || '').trim().toUpperCase();
     if (b && laTrue_(m.Hoat_Dong)) dsBp[b] = true;
   });
-  const dsTo = Object.keys(dsBp).sort().map(function (b) { return chiSoTuanCuaTo_(b, tuan, d); });
+  const dsTo = dsToBaoCaoTuan_(d.cauHinh, Object.keys(dsBp)).map(function (b) { return chiSoTuanCuaTo_(b, tuan, d); });
   const veTheoLyDo = {};
   dsTo.forEach(function (t) {
     Object.keys(t.veTheoLyDo).forEach(function (k) { veTheoLyDo[k] = (veTheoLyDo[k] || 0) + t.veTheoLyDo[k]; });
@@ -319,6 +342,24 @@ function chiSoToanNhaMay_(tuan, dulieu) {
 }
 
 const SO_COT_HUY_DONG = 9;
+
+/**
+ * Tên hiển thị của chỉ số thứ hai trên báo cáo xuất ra. Cách tính vẫn là `hieuSuat` của tinhChiSoTuan_;
+ * đổi tên vì chỉ trừ giờ mất CÓ GHI NHẬN — ngưng vặt không ai ghi nên gọi "hiệu suất" dễ hiểu sai.
+ */
+const TEN_TL_KHONG_MAT_GIO = 'Tỷ lệ không mất giờ';
+
+const CHU_THICH_HUY_DONG =
+  'Huy động = lượt bố trí chạy / lượt áp dụng (máy có được đem ra chạy không) — do tổ trưởng khai. ' +
+  TEN_TL_KHONG_MAT_GIO + ' = 1 − (dừng máy có báo hỏng + về giữa ca + ca đêm thiếu thợ sau tăng ca) / ' +
+  'giờ kế hoạch của các lượt đã bố trí chạy. CHƯA trừ các lần ngưng ngắn không ghi lại (lấy vải, đi vệ sinh, ' +
+  'chờ nguyên liệu…) vì chưa có đồng hồ đếm giờ máy chạy, nên con số này CAO HƠN tỷ lệ máy chạy thật. ' +
+  'Hai chỉ số không gộp.';
+
+/** Nhãn tổ trên báo cáo, kèm cờ khi số liệu không đủ. */
+function nhanToBaoCao_(x) {
+  return x.boPhan + (x.tong.soMay === 0 ? ' (không có máy)' : x.thieuLich ? ' (thiếu lịch)' : '');
+}
 
 function menuBaoCaoHuyDong() {
   const ui = SpreadsheetApp.getUi();
@@ -335,16 +376,23 @@ function menuBaoCaoHuyDong() {
   });
 }
 
-/** Tạo một Google Sheet mới chứa báo cáo huy động / hiệu suất của tuần `tuan` (thứ Hai). */
+/**
+ * Tạo một Google Sheet mới chứa báo cáo tuần `tuan` (thứ Hai): trang Tom_Tat (gửi sếp, so với tuần
+ * trước) + trang Chi_Tiet (từng máy). Hai tuần tính trên cùng một lần đọc sheet.
+ */
 function xuatBaoCaoHuyDong(tuan) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(String(tuan))) throw new Error('Tuần phải dạng yyyy-MM-dd.');
-  const kq = chiSoToanNhaMay_(tuan);
-  if (!kq.to.length) throw new Error('Không có máy đang hoạt động.');
+  const d = napDuLieuHuyDong_();
+  const kq = chiSoToanNhaMay_(tuan, d);
+  if (!kq.to.length) throw new Error('Không có tổ nào để báo cáo (xem Cau_Hinh.BAO_CAO_TUAN_TO).');
+  const kqTruoc = chiSoToanNhaMay_(ymdCongNgay_(tuan, -7), d);
+  const luc = Utilities.formatDate(nowVN_(), CONFIG.MUI_GIO, 'HH:mm dd/MM/yyyy');
   const tenFile = 'Bao_cao_huy_dong_tuan_' + tuan;
   const ssMoi = SpreadsheetApp.create(tenFile);
   const sh = ssMoi.getSheets()[0];
-  sh.setName('Huy_Dong_Tuan');
-  ghiBaoCaoHuyDong_(sh, kq);
+  sh.setName('Tom_Tat');
+  ghiTomTatHuyDong_(sh, bangTomTatHuyDong_(kq, kqTruoc, luc));
+  ghiBaoCaoHuyDong_(ssMoi.insertSheet('Chi_Tiet'), kq, luc);
   ssMoi.setActiveSheet(sh);
   SpreadsheetApp.flush();
   return { ok: true, url: ssMoi.getUrl(), tenFile: tenFile, soTo: kq.to.length };
@@ -362,21 +410,19 @@ function bangBaoCaoHuyDong_(kq, luc) {
   const tl = function (v) { return v === null ? '—' : v; };
   const gio = function (p) { return phutSangGio_(p); };
   const cotTieuDe = ['Bộ phận', 'Số máy', 'Lượt áp dụng', 'Lượt bố trí chạy', 'Huy động',
-    'Kế hoạch (giờ)', 'Dừng máy (giờ)', 'Về giữa ca (giờ)', 'Hiệu suất'];
+    'Kế hoạch (giờ)', 'Dừng máy (giờ)', 'Về giữa ca / thiếu thợ (giờ)', TEN_TL_KHONG_MAT_GIO];
 
   const ngayCuoi = ymdCongNgay_(kq.tuan, 6);
   them(['BÁO CÁO HUY ĐỘNG VÀ HIỆU SUẤT MÁY THEO TUẦN']);
   them(['Tuần ' + kq.tuan.slice(8) + '/' + kq.tuan.slice(5, 7) + ' – ' + ngayCuoi.slice(8) + '/' + ngayCuoi.slice(5, 7) +
     '/' + ngayCuoi.slice(0, 4), '', '', '', '', '', '', 'Xuất lúc', luc || '']);
-  them(['Huy động = lượt bố trí chạy / lượt áp dụng (máy có được đem ra chạy không). ' +
-    'Hiệu suất = 1 − (dừng máy + về giữa ca + ca đêm thiếu thợ sau tăng ca) / kế hoạch của các lượt đã bố trí chạy (máy đã chạy thì chạy tốt không). ' +
-    'Hai chỉ số không gộp.']);
+  them([CHU_THICH_HUY_DONG]);
   them([]);
 
-  dongTieuDe.push(them(['TỔNG TOÀN NHÀ MÁY']));
+  dongTieuDe.push(them(['TỔNG CÁC TỔ BÁO CÁO']));
   dongHeader.push(them(cotTieuDe));
   const t = kq.tong;
-  them(['Toàn nhà máy', t.soMay, t.luotApDung, t.luotChay, tl(t.tiLeHuyDong),
+  them(['Tổng ' + kq.to.length + ' tổ', t.soMay, t.luotApDung, t.luotChay, tl(t.tiLeHuyDong),
     gio(t.phutKeHoach), gio(t.phutDungMay), gio(t.phutVeGiuaCa), tl(t.hieuSuat)]);
   them([]);
 
@@ -385,7 +431,7 @@ function bangBaoCaoHuyDong_(kq, luc) {
   const dongDauTo = bang.length + 1;
   kq.to.forEach(function (x) {
     const c = x.tong;
-    them([x.boPhan + (x.thieuLich ? ' (thiếu lịch)' : ''), c.soMay, c.luotApDung, c.luotChay, tl(c.tiLeHuyDong),
+    them([nhanToBaoCao_(x), c.soMay, c.luotApDung, c.luotChay, tl(c.tiLeHuyDong),
       gio(c.phutKeHoach), gio(c.phutDungMay), gio(c.phutVeGiuaCa), tl(c.hieuSuat)]);
   });
   them([]);
@@ -400,7 +446,7 @@ function bangBaoCaoHuyDong_(kq, luc) {
   kq.to.forEach(function (x) {
     dongTieuDe.push(them(['TỔ ' + x.boPhan + ' — TỪNG MÁY']));
     dongHeader.push(them(['Mã máy', 'Tên máy', 'Lượt áp dụng', 'Lượt bố trí chạy', 'Huy động',
-      'Kế hoạch (giờ)', 'Dừng máy (giờ)', 'Về giữa ca (giờ)', 'Hiệu suất']));
+      'Kế hoạch (giờ)', 'Dừng máy (giờ)', 'Về giữa ca / thiếu thợ (giờ)', TEN_TL_KHONG_MAT_GIO]));
     x.may.slice().sort(function (a, b) {
       const ha = a.phutKeHoach > 0 ? a.phutChay / a.phutKeHoach : 2;
       const hb = b.phutKeHoach > 0 ? b.phutChay / b.phutKeHoach : 2;
@@ -415,8 +461,8 @@ function bangBaoCaoHuyDong_(kq, luc) {
   return { bang: bang, dongHeader: dongHeader, dongTieuDe: dongTieuDe, dongDauTo: dongDauTo };
 }
 
-function ghiBaoCaoHuyDong_(sh, kq) {
-  const b = bangBaoCaoHuyDong_(kq, Utilities.formatDate(nowVN_(), CONFIG.MUI_GIO, 'HH:mm dd/MM/yyyy'));
+function ghiBaoCaoHuyDong_(sh, kq, luc) {
+  const b = bangBaoCaoHuyDong_(kq, luc);
   sh.getRange(1, 1, b.bang.length, SO_COT_HUY_DONG).setValues(b.bang);
   sh.getDataRange().setFontFamily('Arial').setFontSize(10).setVerticalAlignment('middle').setWrap(true);
   sh.getRange(1, 1, 1, SO_COT_HUY_DONG).merge().setFontSize(16).setFontWeight('bold')
@@ -435,4 +481,119 @@ function ghiBaoCaoHuyDong_(sh, kq) {
   sh.setColumnWidth(1, 150);
   sh.setColumnWidth(2, 210);
   for (let c = 3; c <= SO_COT_HUY_DONG; c++) sh.setColumnWidth(c, 105);
+}
+
+// ============================================================================
+// TRANG TÓM TẮT (gửi sếp) — các tổ báo cáo, so với tuần trước, máy mất giờ nhiều nhất
+// ============================================================================
+
+const SO_COT_TOM_TAT = 11;
+const SO_MAY_MAT_GIO_NHIEU = 5;
+
+/** Ngày 'yyyy-MM-dd' → 'dd/MM'. */
+function ddMM_(ymd) { return ymd.slice(8) + '/' + ymd.slice(5, 7); }
+
+/**
+ * Dựng trang tóm tắt (hàm THUẦN, test được). `kq`, `kqTruoc` là kết quả chiSoToanNhaMay_ của tuần
+ * báo cáo và tuần liền trước. Trả { bang, dongTieuDe, dongHeader, dongDauTo, dongTong }.
+ * Chênh lệch = tuần này − tuần trước (điểm phần trăm), '—' khi một trong hai tuần không đo được.
+ */
+function bangTomTatHuyDong_(kq, kqTruoc, luc) {
+  const bang = [], dongTieuDe = [], dongHeader = [];
+  const them = function (r) {
+    const x = (r || []).slice(0, SO_COT_TOM_TAT);
+    while (x.length < SO_COT_TOM_TAT) x.push('');
+    bang.push(x);
+    return bang.length;
+  };
+  const tl = function (v) { return v === null || v === undefined ? '—' : v; };
+  const chenh = function (a, b) { return a === null || a === undefined || b === null || b === undefined ? '—' : a - b; };
+  const gio = function (p) { return phutSangGio_(p); };
+  const truocTheoTo = {};
+  (kqTruoc ? kqTruoc.to : []).forEach(function (x) { truocTheoTo[x.boPhan] = x.tong; });
+  const dong = function (nhan, c, ct) {
+    ct = ct || {};
+    return [nhan, c.soMay,
+      tl(c.tiLeHuyDong), tl(ct.tiLeHuyDong), chenh(c.tiLeHuyDong, ct.tiLeHuyDong),
+      tl(c.hieuSuat), tl(ct.hieuSuat), chenh(c.hieuSuat, ct.hieuSuat),
+      gio(c.phutKeHoach), gio(c.phutDungMay), gio(c.phutVeGiuaCa)];
+  };
+
+  const cuoi = ymdCongNgay_(kq.tuan, 6);
+  const tTruoc = ymdCongNgay_(kq.tuan, -7);
+  them(['BÁO CÁO TUẦN — HUY ĐỘNG MÁY CÁC TỔ']);
+  them(['Tuần ' + ddMM_(kq.tuan) + ' – ' + ddMM_(cuoi) + '/' + cuoi.slice(0, 4) +
+    ' (so với tuần ' + ddMM_(tTruoc) + ' – ' + ddMM_(ymdCongNgay_(tTruoc, 6)) + ')',
+    '', '', '', '', '', '', '', '', 'Xuất lúc', luc || '']);
+  them([CHU_THICH_HUY_DONG]);
+  them([]);
+
+  dongTieuDe.push(them(['CHỈ SỐ THEO TỔ']));
+  dongHeader.push(them(['Bộ phận', 'Số máy',
+    'Huy động tuần này', 'Huy động tuần trước', 'Huy động ± (điểm %)',
+    TEN_TL_KHONG_MAT_GIO + ' tuần này', TEN_TL_KHONG_MAT_GIO + ' tuần trước', TEN_TL_KHONG_MAT_GIO + ' ± (điểm %)',
+    'Kế hoạch (giờ)', 'Dừng máy (giờ)', 'Về giữa ca / thiếu thợ (giờ)']));
+  const dongDauTo = bang.length + 1;
+  kq.to.forEach(function (x) { them(dong(nhanToBaoCao_(x), x.tong, truocTheoTo[x.boPhan])); });
+  const dongTong = them(dong('Tổng ' + kq.to.length + ' tổ', kq.tong, kqTruoc ? kqTruoc.tong : null));
+  them([]);
+
+  dongTieuDe.push(them([SO_MAY_MAT_GIO_NHIEU + ' MÁY MẤT GIỜ NHIỀU NHẤT TUẦN NÀY']));
+  dongHeader.push(them(['Máy', 'Bộ phận', 'Giờ mất', 'Dừng máy (giờ)', 'Về giữa ca / thiếu thợ (giờ)']));
+  const dsMay = [];
+  kq.to.forEach(function (x) {
+    x.may.forEach(function (m) {
+      const mat = m.phutDungMay + m.phutVeGiuaCa;
+      if (mat > 0) dsMay.push({ bp: x.boPhan, m: m, mat: mat });
+    });
+  });
+  dsMay.sort(function (a, b) { return b.mat - a.mat || String(a.m.maMay).localeCompare(String(b.m.maMay)); });
+  dsMay.slice(0, SO_MAY_MAT_GIO_NHIEU).forEach(function (x) {
+    them([x.m.maMay + (x.m.tenMay ? ' — ' + x.m.tenMay : ''), x.bp, gio(x.mat),
+      gio(x.m.phutDungMay), gio(x.m.phutVeGiuaCa)]);
+  });
+  if (!dsMay.length) them(['Không có máy nào mất giờ.']);
+  them([]);
+
+  const lyDo = Object.keys(kq.veTheoLyDo).filter(function (k) { return kq.veTheoLyDo[k] > 0; }).sort();
+  if (lyDo.length) {
+    dongTieuDe.push(them(['VỀ GIỮA CA / CA ĐÊM THIẾU THỢ THEO LÝ DO (tuần này)']));
+    dongHeader.push(them(['Lý do', 'Giờ']));
+    lyDo.forEach(function (k) { them([k, gio(kq.veTheoLyDo[k])]); });
+    them([]);
+  }
+
+  them(['"(thiếu lịch)": tổ chưa khai lịch làm việc đủ 7 ngày của tuần, số liệu có thể thiếu. ' +
+    '"—": không đo được. Chi tiết từng máy ở trang Chi_Tiet.']);
+  return { bang: bang, dongTieuDe: dongTieuDe, dongHeader: dongHeader,
+    dongDauTo: dongDauTo, dongTong: dongTong };
+}
+
+function ghiTomTatHuyDong_(sh, b) {
+  const n = SO_COT_TOM_TAT;
+  sh.getRange(1, 1, b.bang.length, n).setValues(b.bang);
+  sh.getDataRange().setFontFamily('Arial').setFontSize(10).setVerticalAlignment('middle').setWrap(true);
+  sh.getRange(1, 1, 1, n).merge().setFontSize(16).setFontWeight('bold')
+    .setFontColor('#17324d').setBackground('#dceeff').setHorizontalAlignment('center');
+  sh.getRange(2, 1, 1, 9).merge().setFontWeight('bold');
+  sh.getRange(3, 1, 1, n).merge().setFontColor('#52606d');
+  sh.setRowHeight(3, 60);
+  sh.getRange(b.bang.length, 1, 1, n).merge().setFontColor('#52606d');
+  b.dongTieuDe.forEach(function (d) {
+    sh.getRange(d, 1, 1, n).setFontWeight('bold').setFontColor('#17324d').setFontSize(12);
+  });
+  b.dongHeader.forEach(function (d) {
+    const soCot = b.bang[d - 1].filter(function (v) { return v !== ''; }).length;
+    sh.getRange(d, 1, 1, soCot).setFontWeight('bold').setBackground('#eaf2f8').setHorizontalAlignment('center')
+      .setBorder(true, true, true, true, true, true, '#c9d6e2', SpreadsheetApp.BorderStyle.SOLID);
+  });
+  // Định dạng phần trăm CHỈ trong bảng theo tổ — các bảng bên dưới dùng lại cột 3–8 cho số giờ.
+  const soDongTo = b.dongTong - b.dongDauTo + 1;
+  [3, 4, 6, 7].forEach(function (c) { sh.getRange(b.dongDauTo, c, soDongTo, 1).setNumberFormat('0.0%'); });
+  [5, 8].forEach(function (c) { sh.getRange(b.dongDauTo, c, soDongTo, 1).setNumberFormat('+0.0%;-0.0%;0.0%'); });
+  sh.getRange(b.dongDauTo, 1, soDongTo, n)
+    .setBorder(true, true, true, true, true, true, '#c9d6e2', SpreadsheetApp.BorderStyle.SOLID);
+  sh.getRange(b.dongTong, 1, 1, n).setFontWeight('bold').setBackground('#f4f8fb');
+  sh.setColumnWidth(1, 230);
+  for (let c = 2; c <= n; c++) sh.setColumnWidth(c, 95);
 }
