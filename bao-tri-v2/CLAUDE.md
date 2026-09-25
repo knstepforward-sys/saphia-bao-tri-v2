@@ -149,6 +149,10 @@ loại trừ với tăng ca cùng máy-ngày. Mục 9f của `TASK_KE_HOACH_TO_T
 được bố trí chạy** theo tuần, tính từ 3 sheet trên + `Su_Co` — không cần schema mới, không đụng `HieuDung.gs`.
 File `HuyDong.gs` (`tinhChiSoTuan_` thuần + RPC `layChiSoTuan` + menu "📉 Báo cáo huy động / hiệu suất máy (tuần)…"),
 nút "Chỉ số tuần" trong `ToTruong.html`. Công thức và quy ước ở `TASK_KE_HOACH_TO_TRUONG.md` mục 8.
+Báo cáo menu (25/09/2026) chỉ lấy các tổ trong `Cau_Hinh.BAO_CAO_TUAN_TO` (mặc định
+`SOI,DET,ICM,TRANG,CMTX,MTX`, `TAT_CA` = mọi tổ), file có trang `Tom_Tat` (so với tuần trước, gửi sếp) +
+`Chi_Tiet`. Trên file xuất, chỉ số thứ hai tên là "Tỷ lệ không mất giờ" — nó KHÔNG trừ ngưng vặt (không ai ghi),
+đừng gọi là hiệu suất máy chạy thật. Đo giờ chạy thật: xem `TASK_DEM_GIO_MAY_HMI.md` (ý tưởng, chưa làm).
 
 **BA MỐC ca ngày / tăng ca / ca đêm (22/09/2026, chờ `clasp push` + deploy) — THAY các mô tả tăng ca ở trên:**
 một máy-ngày có 3 mốc: ca ngày (`Ca='N'`), **tăng ca** (`Ca='T'`, từ giờ muộn hơn giữa hết ca ngày và

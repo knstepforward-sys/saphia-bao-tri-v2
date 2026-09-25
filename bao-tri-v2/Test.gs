@@ -2508,6 +2508,63 @@ function chayTest() {
      _bc_.bang.some(function (r) { return r[0] === 'M2' && r[4] === 1 && r[8] === 1; })],
     [true, true]);
 
+  // ============================================================================
+  // BÁO CÁO TUẦN 6 TỔ — lọc tổ theo Cau_Hinh, trang tóm tắt so với tuần trước
+  // ============================================================================
+  t.bang('Báo cáo tuần: dsToBaoCaoTuan_ trống/chưa có khoá = 6 tổ mặc định, đúng thứ tự',
+    [dsToBaoCaoTuan_({}, ['CO', 'DET']), dsToBaoCaoTuan_({ BAO_CAO_TUAN_TO: '  ' }, [])],
+    [['SOI', 'DET', 'ICM', 'TRANG', 'CMTX', 'MTX'], ['SOI', 'DET', 'ICM', 'TRANG', 'CMTX', 'MTX']]);
+  t.bang('Báo cáo tuần: dsToBaoCaoTuan_ giữ thứ tự khai, bỏ trùng, không phân biệt hoa/thường; TAT_CA = mọi tổ có máy',
+    [dsToBaoCaoTuan_({ BAO_CAO_TUAN_TO: ' det, soi ,DET,,cmtx' }, []),
+     dsToBaoCaoTuan_({ BAO_CAO_TUAN_TO: 'tat_ca' }, ['SOI', 'CO', 'DET'])],
+    [['DET', 'SOI', 'CMTX'], ['CO', 'DET', 'SOI']]);
+  t.bang('seed cấu hình: BAO_CAO_TUAN_TO = SOI,DET,ICM,TRANG,CMTX,MTX',
+    (CAU_HINH_MAC_DINH.filter(function (x) { return x[0] === 'BAO_CAO_TUAN_TO'; })[0] || [])[1],
+    'SOI,DET,ICM,TRANG,CMTX,MTX');
+
+  const _lichBc_ = ['TO1', 'TO2', 'TO3'].map(function (b) { return Object.assign({}, _lichHd_[0], { Bo_Phan: b }); });
+  const _dmBc_ = [
+    { Ma_May: 'A1', Ten_May: 'Máy A1', Bo_Phan: 'TO1', Hoat_Dong: true },
+    { Ma_May: 'B1', Ten_May: 'Máy B1', Bo_Phan: 'TO2', Hoat_Dong: true },
+    { Ma_May: 'C1', Ten_May: 'Máy C1', Bo_Phan: 'TO3', Hoat_Dong: true },
+    { Ma_May: 'B2', Ten_May: 'Máy B2', Bo_Phan: 'TO2', Hoat_Dong: false }];
+  const _dlBc_ = function (dsKeHoach, dsPhieu) {
+    return { bayGio: _luc_('2026-09-28T00:00'), cauHinh: { BAO_CAO_TUAN_TO: 'TO2,TO1,TO9' }, dsMay: _dmBc_,
+      dsLich: _lichBc_, dsKeHoach: dsKeHoach || [], dsPhieu: dsPhieu || [] };
+  };
+  const _dongB1_ = [0, 1, 2, 3, 4, 5, 6].map(function (i) {
+    return _khHd_('B1', ymdCongNgay_(_tuanHd_, i), 'DONG', 'N', { Bo_Phan: 'TO2' });
+  });
+  const _dl1_ = _dlBc_(_dongB1_.slice(0, 3), [_dungHd_('A1', '2026-09-15T09:00', '2026-09-15T11:00'),
+    _dungHd_('C1', '2026-09-15T08:00', '2026-09-15T16:00')]);
+  const _nm_ = chiSoToanNhaMay_(_tuanHd_, _dl1_);
+  t.bang('Báo cáo tuần: chỉ các tổ khai, đúng thứ tự; tổ khai mà không có máy vẫn hiện; tổ ngoài danh sách không vào tổng',
+    [_nm_.to.map(function (x) { return x.boPhan; }), _nm_.to[2].tong.soMay, _nm_.tong.soMay, _nm_.tong.luotApDung,
+     _nm_.tong.phutDungMay],
+    [['TO2', 'TO1', 'TO9'], 0, 2, 14, 120]);
+
+  const _nmTruoc_ = chiSoToanNhaMay_(ymdCongNgay_(_tuanHd_, -7), _dl1_);
+  const _tt_ = bangTomTatHuyDong_(_nm_, _nmTruoc_, 'x');
+  const _dongTo_ = function (nhan) { return _tt_.bang.filter(function (r) { return r[0] === nhan; })[0]; };
+  t.bang('Tóm tắt: mọi dòng đủ 11 cột; dòng tổng nằm ngay sau các tổ',
+    [_tt_.bang.every(function (r) { return r.length === SO_COT_TOM_TAT; }),
+     _tt_.bang[_tt_.dongTong - 1][0], _tt_.dongTong - _tt_.dongDauTo],
+    [true, 'Tổng 3 tổ', 3]);
+  t.bang('Tóm tắt: TO2 đóng máy 3/7 ngày → huy động 4/7, tuần trước 100%, chênh 4/7 − 1',
+    _dongTo_('TO2').slice(2, 5), [4 / 7, 1, 4 / 7 - 1]);
+  t.bang('Tóm tắt: tổ không có máy → nhãn "(không có máy)", tỷ lệ "—", chênh "—"',
+    _dongTo_('TO9 (không có máy)').slice(1, 8), [0, '—', '—', '—', '—', '—', '—']);
+  t.bang('Tóm tắt: máy mất giờ nhiều nhất chỉ lấy máy của các tổ báo cáo (C1 của TO3 không vào), đủ giờ',
+    _tt_.bang.filter(function (r) { return /^[A-C]1 — /.test(r[0]); }).map(function (r) { return [r[0], r[1], r[2]]; }),
+    [['A1 — Máy A1', 'TO1', 2]]);
+  t.bang('Tóm tắt: tuần trước chưa khai lịch → cột tuần trước và chênh lệch là "—"',
+    bangTomTatHuyDong_(_nm_, { tuan: '', to: [], tong: tongHopChiSo_([]) }, 'x').bang
+      .filter(function (r) { return r[0] === 'TO1'; })[0].slice(3, 5),
+    ['—', '—']);
+  t.bang('Tóm tắt: không máy nào mất giờ → một dòng thông báo',
+    bangTomTatHuyDong_(chiSoToanNhaMay_(_tuanHd_, _dlBc_()), null, 'x').bang
+      .some(function (r) { return r[0] === 'Không có máy nào mất giờ.'; }), true);
+
   // --- Kết quả ---------------------------------------------------------------
   const tong = kq.dat + kq.loi.length;
   const bao = kq.loi.length
